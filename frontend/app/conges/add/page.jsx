@@ -292,6 +292,19 @@ export default function AddCongePage() {
       });
       return;
     }
+    console.log(
+      "nombreJourRestant",
+      nombreJourRestant,
+      "dureeConge",
+      formData.dureeConge
+    );
+    if (selectedPersonnel.holidaysLeft - parseInt(formData.dureeConge) < 0) {
+      toast.error("Le nombre de jours restants est insuffisant pour ce congé", {
+        duration: 3000,
+        position: "bottom-left",
+      });
+      return;
+    }
 
     setLoading(true);
     console.log("formData", formData.stationId);
@@ -300,10 +313,7 @@ export default function AddCongePage() {
       formDataToSend.append("personnelId", selectedPersonnel._id);
       formDataToSend.append("stationName", formData.stationName);
       formDataToSend.append("typeConge", formData.typeConge);
-      formDataToSend.append(
-        "dureeConge",
-        Number.parseInt(formData.dureeConge).toString()
-      );
+      formDataToSend.append("dureeConge", Number.parseInt(formData.dureeConge));
       formDataToSend.append("dateDebut", formData.dateDebut);
       formDataToSend.append("dateRetour", formData.dateRetour);
       formDataToSend.append("lieuSejour", formData.lieuSejour);
@@ -687,7 +697,8 @@ export default function AddCongePage() {
               <div className="flex items-center p-3 border rounded-md bg-gray-50">
                 <Plane className="mr-2 h-5 w-5 text-blue-500" />
                 <span className="font-medium text-blue-600">
-                  {nombreJourRestant} jour{nombreJourRestant > 1 ? "s" : ""}
+                  {selectedPersonnel?.holidaysLeft} jour
+                  {selectedPersonnel?.holidaysLeft > 1 ? "s" : ""}
                 </span>
               </div>
               <p className="text-xs text-gray-500">

@@ -104,7 +104,10 @@ export default function AffectationTemporairePage() {
     const fetchAffectations = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/affectationTemp`
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/affectationTemp`,
+          {
+            credentials: "include",
+          }
         );
         const data = await res.json();
         console.log("Fetched absences:", data);
@@ -138,14 +141,17 @@ export default function AffectationTemporairePage() {
     setDeletingAffectation(true);
     try {
       // In a real application, you would call your API
-      // const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/affectations/${affectationToDelete._id}`, {
-      //   method: "DELETE",
-      //   credentials: "include",
-      // })
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/affectationTemp/${affectationToDelete._id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
-      // if (!response.ok) {
-      //   throw new Error("Failed to delete affectation")
-      // }
+      if (!response.ok) {
+        throw new Error("Failed to delete affectation");
+      }
 
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));

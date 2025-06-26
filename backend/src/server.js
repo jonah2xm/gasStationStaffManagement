@@ -17,6 +17,8 @@ const absenceAIRoutes = require("./routes/absenceAIRoutes");
 const affectationTempRoutes = require("./routes/affectationTemporaireRoutes");
 const affectatoinDefinitif = require("./routes/affectationDefinitifRoutes");
 const congeRoutes = require("./routes/congeRoutes");
+const recuperationRoutes = require("./routes/recuperationRoutes");
+const path = require("path");
 // 2. Load environment variables
 dotenv.config();
 
@@ -27,7 +29,7 @@ const allowedOrigin = ["http://10.34.6.42:3000", "http://localhost:3000"];
 app.use(cors({ credentials: true, origin: allowedOrigin })); // Adjust frontend origin
 app.use(express.json());
 app.use(morgan("dev"));
-
+require("./cronjobs/statusCronjobs");
 // 5. Session middleware (must come before routes)
 app.use(
   session({
@@ -48,6 +50,8 @@ app.use(
 // 6. Connect to the database
 connectDB();
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // 7. Basic route
 app.get("/", (req, res) => {
   res.send("Welcome to the backend!");
@@ -62,6 +66,7 @@ app.use("/api/absencesAI", absenceAIRoutes);
 app.use("/api/affectationTemp", affectationTempRoutes);
 app.use("/api/affectationDef", affectatoinDefinitif);
 app.use("/api/conges", congeRoutes);
+app.use("/api/recuperations", recuperationRoutes);
 
 // 9. Error handler
 app.use((err, req, res, next) => {

@@ -7,6 +7,7 @@ const {
   getAbsenceAAById,
   deleteAbsenceAA,
   updateAbsenceAA,
+  streamAbsenceAADocument,
 } = require("../controllers/absenceAAController");
 
 // Import the upload middleware
@@ -23,5 +24,7 @@ router.put(
   upload.single("document"), // process a single file upload if provided
   updateAbsenceAA
 );
+
+router.get("/document/:id", ensureAuthenticated, streamAbsenceAADocument);
 
 module.exports = router;

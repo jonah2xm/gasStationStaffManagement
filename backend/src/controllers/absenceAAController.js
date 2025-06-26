@@ -1,6 +1,7 @@
 // absenceAA.controller.js
 const AbsenceAA = require("../models/absenceAAModel");
-
+const fs = require("fs");
+const path = require("path");
 /**
  * Create a new absence record.
  * Expects form-data with fields: personnelId, startDate, endDate, absenceType, description,
@@ -14,61 +15,85 @@ exports.createAbsenceAA = async (req, res) => {
     const { personnelId, startDate, endDate, absenceType, description } =
       req.body;
 
-    // Basic required fields check
+    // 1) Required fields
     if (!personnelId || !startDate || !endDate || !absenceType) {
       return res.status(400).json({ message: "Champs requis manquants" });
     }
 
-    // Convert dates to Date objects for comparison
-    const newStartDate = new Date(startDate);
-    const newEndDate = new Date(endDate);
-
-    // Query for existing absences for the same employee that overlap the new date range
-    const overlappingAbsences = await AbsenceAA.find({
-      personnel: personnelId,
-      $or: [
-        {
-          startDate: { $lte: newEndDate },
-          endDate: { $gte: newStartDate },
-        },
-      ],
-    });
-
-    if (overlappingAbsences.length > 0) {
-      return res.status(409).json({
-        message:
-          "Une absence pour cet employé existe déjà pour la période spécifiée.",
-      });
+    // 2) Load personnel
+    const personnel = await Personnel.findById(personnelId);
+    if (!personnel) {
+      return res.status(404).json({ message: "Personnel non trouvé" });
     }
 
-    // Build absence record data
+    // 3) Parse dates
+    const newStart = new Date(startDate);
+    const newEnd = new Date(endDate);
+    const today = new Date();
+    const isInPeriod = today >= newStart && today <= newEnd;
+
+    // 4) Check overlap AGAINST THE LAST absence (before insert)
+    const lastAbs = await AbsenceAA.findOne({ personnel: personnelId })
+      .sort({ startDate: -1 })
+      .lean();
+
+    if (lastAbs) {
+      const lastStart = new Date(lastAbs.startDate);
+      const lastEnd = new Date(lastAbs.endDate);
+      const overlaps =
+        (newStart <= lastEnd && newStart >= lastStart) ||
+        (newEnd <= lastEnd && newEnd >= lastStart) ||
+        (newStart <= lastStart && newEnd >= lastEnd);
+
+      if (overlaps) {
+        return res.status(409).json({
+          message:
+            "Une absence pour cet employé existe déjà pour cette période.",
+        });
+      }
+    }
+
+    // 5a) If NOT in period → create without touching status
+    if (!isInPeriod) {
+      const absenceData = {
+        personnel: personnelId,
+        startDate: newStart,
+        endDate: newEnd,
+        absenceType,
+        description: description || "",
+      };
+      if (req.file) absenceData.document = req.file.path.replace(/\\/g, "/");
+
+      const created = await AbsenceAA.create(absenceData);
+      return res.status(201).json(created);
+    }
+
+    // 5b) If IN period → personnel must be Actif
+    if (personnel.status !== "Actif") {
+      return res.status(400).json({ message: "L'employé n'est pas actif." });
+    }
+
+    // 6) Create AND update status
     const absenceData = {
       personnel: personnelId,
-      startDate: newStartDate,
-      endDate: newEndDate,
+      startDate: newStart,
+      endDate: newEnd,
       absenceType,
       description: description || "",
     };
+    if (req.file) absenceData.document = req.file.path.replace(/\\/g, "/");
 
-    // If file uploaded, attach its normalized path.
-    if (req.file) {
-      absenceData.document = req.file.path.replace(/\\/g, "/");
-    }
+    const created = await AbsenceAA.create(absenceData);
 
-    // Create and save the absence record.
-    const newAbsence = new AbsenceAA(absenceData);
-    const savedAbsence = await newAbsence.save();
-
-    // Update personnel status to reflect current absence type
     await Personnel.findByIdAndUpdate(personnelId, {
       status: absenceType,
     });
 
-    return res.status(201).json(savedAbsence);
+    return res.status(201).json(created);
   } catch (err) {
-    console.error("Erreur lors de l'enregistrement de l'absence :", err);
+    console.error("Erreur lors de la création d'absence AA:", err);
     return res.status(500).json({
-      message: err.message || "Erreur lors de l'enregistrement de l'absence",
+      message: err.message || "Erreur lors de la création de l'absence",
     });
   }
 };
@@ -115,24 +140,33 @@ exports.getAbsenceAAById = async (req, res) => {
 
 exports.deleteAbsenceAA = async (req, res) => {
   try {
-    const { id } = req.params; // Extract ID from URL params (e.g., `/absencesAA/:id`)
+    const { id } = req.params;
 
-    // Optional: Validate if ID is a valid MongoDB ObjectId
-    /*if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "ID invalide" });
-    }*/
-
-    // Find and delete the absence
-    const deletedAbsence = await AbsenceAA.findByIdAndDelete(id);
-
-    if (!deletedAbsence) {
+    // 1) Charger l'absence pour récupérer le chemin du document et les dates
+    const absence = await AbsenceAA.findById(id);
+    if (!absence) {
       return res.status(404).json({ message: "Absence non trouvée" });
     }
 
-    return res.status(200).json({
-      message: "Absence supprimée avec succès",
-      deletedAbsence,
-    });
+    // 2) Supprimer le PDF s'il existe
+    if (absence.document && fs.existsSync(absence.document)) {
+      fs.unlink(path.resolve(absence.document), (err) => {
+        if (err) console.warn("Échec de suppression du document PDF :", err);
+      });
+    }
+
+    // 3) Supprimer l'entrée en base
+    await AbsenceAA.findByIdAndDelete(id);
+
+    // 4) Si on est toujours dans la période de l'absence, repasser le personnel à "Actif"
+    const today = new Date();
+    const start = new Date(absence.startDate);
+    const end = new Date(absence.endDate);
+    if (today >= start && today <= end) {
+      await Personnel.findByIdAndUpdate(absence.personnel, { status: "Actif" });
+    }
+
+    return res.status(200).json({ message: "Absence supprimée avec succès" });
   } catch (err) {
     console.error("Erreur lors de la suppression de l'absence :", err);
     return res.status(500).json({
@@ -182,5 +216,29 @@ exports.updateAbsenceAA = async (req, res) => {
     return res.status(500).json({
       message: err.message || "Erreur lors de la modification de l'absence",
     });
+  }
+};
+
+exports.streamAbsenceAADocument = async (req, res, next) => {
+  try {
+    // 1) Load the absence to get its document path
+    const absence = await AbsenceAA.findById(req.params.id).lean();
+    if (!absence || !absence.document) {
+      return res.status(404).json({ message: "Document introuvable" });
+    }
+
+    // 2) Resolve filesystem path
+    const filePath = path.resolve(absence.document);
+    if (!fs.existsSync(filePath)) {
+      return res
+        .status(404)
+        .json({ message: "Fichier manquant sur le serveur" });
+    }
+
+    // 3) Stream as PDF
+    res.type("application/pdf");
+    fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    next(err);
   }
 };

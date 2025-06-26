@@ -60,12 +60,13 @@ export default function EditCongePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
-    stationId: "",
+    stationName: "",
     typeConge: "ordinaire",
     dureeConge: "",
     dateDebut: "",
     dateRetour: "",
     lieuSejour: "",
+    personnelId: "",
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -88,15 +89,34 @@ export default function EditCongePage() {
         if (!response.ok) {
           throw new Error("Failed to fetch congé");
         }
+
         const data = await response.json();
-        console.log("data", data);
+        console.log("Fetched congé data:", data);
+
         setOriginalData(data);
+
+        // Fetch personnel data using personnel._id
+        let personnelData = data.personnel;
+        if (personnelData && personnelData._id) {
+          try {
+            const personnelRes = await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/personnel/${personnelData._id}`,
+              { credentials: "include" }
+            );
+            if (personnelRes.ok) {
+              personnelData = await personnelRes.json();
+            }
+          } catch (err) {
+            console.warn("Could not fetch personnel details:", err);
+          }
+        }
 
         // Pre-populate form data
         setFormData({
-          stationId: data.station._id,
+          personnelId: personnelData._id || "",
+          stationName: data.stationName,
           typeConge: data.typeConge,
-          dureeConge: data.dureeConge.toString(),
+          dureeConge: data.dureeConge,
           dateDebut: data.dateDebut
             ? new Date(data.dateDebut).toISOString().split("T")[0]
             : "",
@@ -106,16 +126,16 @@ export default function EditCongePage() {
           lieuSejour: data.lieuSejour || "",
         });
 
-        setSelectedPersonnel(data.personnel);
+        setSelectedPersonnel(personnelData);
         setNombreJourRestant(data.nombreJourRestant || 0);
-        setExistingDocument(data.document || null);
+        setExistingDocument(data.documentPath || null);
       } catch (err) {
         console.error("Error fetching congé:", err);
         toast.error("Impossible de charger les données du congé", {
           duration: 3000,
           position: "bottom-left",
         });
-        router.push("/conges");
+        // router.push("/conges");
       } finally {
         setInitialLoading(false);
       }
@@ -123,54 +143,6 @@ export default function EditCongePage() {
 
     fetchConge();
   }, [congeId, router]);
-
-  // Fetch stations data
-  useEffect(() => {
-    const fetchStations = async () => {
-      setFetchingStations(true);
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stations`
-        );
-        if (response.status === 401) {
-          toast.error("Session expired. Redirecting to login...");
-          router.push("/login");
-          return;
-        }
-        if (!response.ok) {
-          throw new Error("Failed to fetch stations");
-        }
-        const data = await response.json();
-        setStations(data);
-      } catch (err) {
-        console.error(err.message);
-        toast.error("Impossible de charger les stations", {
-          duration: 3000,
-          position: "bottom-left",
-        });
-      } finally {
-        setFetchingStations(false);
-      }
-    };
-
-    fetchStations();
-  }, [router]);
-
-  // Calculate return date when start date or duration changes
-  useEffect(() => {
-    if (formData.dateDebut && formData.dureeConge) {
-      const startDate = new Date(formData.dateDebut);
-      const duration = Number.parseInt(formData.dureeConge);
-      if (!isNaN(duration) && duration > 0) {
-        const returnDate = new Date(startDate);
-        returnDate.setDate(startDate.getDate() + duration);
-        setFormData((prev) => ({
-          ...prev,
-          dateRetour: returnDate.toISOString().split("T")[0],
-        }));
-      }
-    }
-  }, [formData.dateDebut, formData.dureeConge]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -214,13 +186,6 @@ export default function EditCongePage() {
     const newErrors = { ...errors };
 
     switch (field) {
-      case "stationId":
-        if (!formData.stationId) {
-          newErrors.stationId = "La station est requise";
-        } else {
-          delete newErrors.stationId;
-        }
-        break;
       case "dureeConge":
         if (!formData.dureeConge) {
           newErrors.dureeConge = "La durée du congé est requise";
@@ -246,7 +211,7 @@ export default function EditCongePage() {
   };
 
   const validateForm = () => {
-    const fields = ["stationId", "dureeConge", "dateDebut"];
+    const fields = ["dureeConge", "dateDebut"];
     const newTouched = {};
     fields.forEach((field) => {
       newTouched[field] = true;
@@ -259,6 +224,15 @@ export default function EditCongePage() {
         isValid = false;
       }
     });
+
+    // Check if document is provided (either existing or new file)
+    if (!existingDocument && !selectedFile) {
+      toast.error("Un document justificatif est requis", {
+        duration: 3000,
+        position: "bottom-left",
+      });
+      isValid = false;
+    }
 
     return isValid;
   };
@@ -283,16 +257,13 @@ export default function EditCongePage() {
 
     try {
       const dataToSend = new FormData();
-      dataToSend.append("stationId", formData.stationId);
+      dataToSend.append("stationName", formData.stationName);
       dataToSend.append("typeConge", formData.typeConge);
-      dataToSend.append(
-        "dureeConge",
-        Number.parseInt(formData.dureeConge).toString()
-      );
+      dataToSend.append("dureeConge", Number.parseInt(formData.dureeConge));
       dataToSend.append("dateDebut", formData.dateDebut);
       dataToSend.append("dateRetour", formData.dateRetour);
       dataToSend.append("lieuSejour", formData.lieuSejour);
-
+      dataToSend.append("personnelId", formData.personnelId);
       if (selectedFile) {
         dataToSend.append("document", selectedFile);
       }
@@ -410,42 +381,24 @@ export default function EditCongePage() {
               </p>
             </div>
 
-            {/* Station */}
+            {/* Station (Read-only) */}
             <div className="space-y-2">
-              <Label htmlFor="station">Station*</Label>
+              <Label htmlFor="station">Station</Label>
               <div className="relative">
-                <Select
-                  value={formData.stationId}
-                  onValueChange={(value) =>
-                    handleSelectChange(value, "stationId")
-                  }
+                <Input
+                  value={formData.stationName}
                   disabled={true}
-                >
-                  <SelectTrigger
-                    className={`pl-10 ${
-                      touched.stationId && errors.stationId
-                        ? "border-red-500"
-                        : ""
-                    }`}
-                  >
-                    <SelectValue placeholder="Sélectionner une station" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stations.map((station) => (
-                      <SelectItem key={station._id} value={station._id}>
-                        {station.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  className="pl-10 bg-gray-50"
+                  placeholder="Station de l'employé"
+                />
                 <Building
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                   size={16}
                 />
               </div>
-              {touched.stationId && errors.stationId && (
-                <p className="text-red-500 text-sm">{errors.stationId}</p>
-              )}
+              <p className="text-xs text-gray-500">
+                La station est automatiquement définie selon l'employé.
+              </p>
             </div>
 
             {/* Type and Duration */}
@@ -576,7 +529,8 @@ export default function EditCongePage() {
               <div className="flex items-center p-3 border rounded-md bg-gray-50">
                 <Plane className="mr-2 h-5 w-5 text-blue-500" />
                 <span className="font-medium text-blue-600">
-                  {nombreJourRestant} jour{nombreJourRestant > 1 ? "s" : ""}
+                  {selectedPersonnel?.holidaysLeft} jour
+                  {selectedPersonnel?.holidaysLeft > 1 ? "s" : ""}
                 </span>
               </div>
               <p className="text-xs text-gray-500">
@@ -585,9 +539,9 @@ export default function EditCongePage() {
               </p>
             </div>
 
-            {/* Document Upload */}
+            {/* Document Upload (Required) */}
             <div className="space-y-2">
-              <Label htmlFor="document">Document (optionnel)</Label>
+              <Label htmlFor="document">Document justificatif*</Label>
               <Input
                 type="file"
                 id="document"
@@ -597,15 +551,18 @@ export default function EditCongePage() {
               />
               {selectedFile && (
                 <p className="text-sm text-gray-500">
-                  Fichier sélectionné: {selectedFile.name}
+                  Fichier sélectionné: {selectedFile.name} yes
                 </p>
               )}
+              <p className="text-xs text-gray-500">
+                Un document justificatif est requis.
+              </p>
             </div>
 
             {/* Existing Document Display */}
             {existingDocument && (
               <div className="space-y-2">
-                <Label>Document Actuel</Label>
+                <Label>Document Existant</Label>
                 <div className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
                   <div className="flex items-center">
                     <File className="mr-2 h-5 w-5 text-blue-500" />
@@ -615,7 +572,7 @@ export default function EditCongePage() {
                       rel="noopener noreferrer"
                       className="font-medium text-blue-600 hover:underline"
                     >
-                      Voir le document
+                      Document existant
                     </a>
                   </div>
                   <Button

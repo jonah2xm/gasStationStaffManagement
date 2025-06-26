@@ -67,6 +67,24 @@ const leaveTypes = {
   anticipe: { label: "Anticipé", color: "bg-orange-100 text-orange-800" },
 };
 
+const getLeaveStatusLabel = (dateDebut, dateRetour) => {
+  const today = new Date();
+  const start = new Date(dateDebut);
+  const end = new Date(dateRetour);
+  return today >= start && today <= end ? "En cours" : "Terminé";
+};
+
+// badge helper, relies on the label above
+const getLeaveStatusBadge = (dateDebut, dateRetour) => {
+  const label = getLeaveStatusLabel(dateDebut, dateRetour);
+  const info =
+    label === "En cours"
+      ? { color: "bg-green-100 text-green-800" }
+      : { color: "bg-gray-100 text-gray-700" };
+
+  return <Badge className={info.color}>{label}</Badge>;
+};
+
 export default function CongeMainPage() {
   const router = useRouter();
   const [records, setRecords] = useState([]);
@@ -76,6 +94,7 @@ export default function CongeMainPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState([]);
   const [stationFilter, setStationFilter] = useState([]);
+  const [statusFilter, setStatusFilter] = useState([]);
   const [sortConfig, setSortConfig] = useState({
     key: "dateDebut",
     direction: "desc",
@@ -195,7 +214,10 @@ export default function CongeMainPage() {
 
     if (stationFilter.length && !stationFilter.includes(r.station?.name))
       return false;
-
+    if (statusFilter.length) {
+      const status = getLeaveStatusLabel(r.dateDebut, r.dateRetour);
+      if (!statusFilter.includes(status)) return false;
+    }
     return true;
   });
 
@@ -219,6 +241,10 @@ export default function CongeMainPage() {
         av = +a.dureeConge;
         bv = +b.dureeConge;
         break;
+      case "dateRetour":
+        av = new Date(a.dateRetour);
+        bv = new Date(b.dateRetour);
+        break;
       default:
         av = "";
         bv = "";
@@ -232,6 +258,8 @@ export default function CongeMainPage() {
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paged = sorted.slice(startIndex, startIndex + itemsPerPage);
+
+  // above your CongeMainPage component:
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
@@ -312,6 +340,26 @@ export default function CongeMainPage() {
                   ))}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Status</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {["En cours", "Terminé"].map((label) => (
+                    <DropdownMenuCheckboxItem
+                      key={label}
+                      checked={statusFilter.includes(label)}
+                      onCheckedChange={(chk) =>
+                        setStatusFilter((prev) =>
+                          chk
+                            ? [...prev, label]
+                            : prev.filter((x) => x !== label)
+                        )
+                      }
+                    >
+                      {label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
 
               <div className="p-2">
                 <Button
@@ -321,6 +369,7 @@ export default function CongeMainPage() {
                     setSearchTerm("");
                     setTypeFilter([]);
                     setStationFilter([]);
+                    setStatusFilter([]);
                   }}
                 >
                   Effacer tous les filtres
@@ -478,6 +527,20 @@ export default function CongeMainPage() {
                         : null}
                     </Button>
                   </TableHead>
+
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("dateRetour")}
+                    >
+                      Date de retour{" "}
+                      {sortConfig.key === "dateRetour"
+                        ? sortConfig.direction === "asc"
+                          ? "↑"
+                          : "↓"
+                        : null}{" "}
+                    </Button>
+                  </TableHead>
                   <TableHead>
                     <Button variant="ghost" onClick={() => handleSort("duree")}>
                       Durée{" "}
@@ -489,6 +552,7 @@ export default function CongeMainPage() {
                     </Button>
                   </TableHead>
                   <TableHead>Jours restants</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -510,6 +574,10 @@ export default function CongeMainPage() {
                       {formatDate(r.dateDebut)}
                     </TableCell>
                     <TableCell>
+                      <Calendar className="inline mr-1" />{" "}
+                      {formatDate(r.dateRetour)}
+                    </TableCell>
+                    <TableCell>
                       <Clock className="inline mr-1" /> {r.dureeConge} jour
                       {r.dureeConge > 1 && "s"}
                     </TableCell>
@@ -519,6 +587,9 @@ export default function CongeMainPage() {
                         {calculateRemainingDays(r.dateDebut, r.dureeConge) >
                           1 && "s"}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {getLeaveStatusBadge(r.dateDebut, r.dateRetour)}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>

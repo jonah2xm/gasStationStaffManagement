@@ -4,24 +4,24 @@ const Personnel = require("../models/personnelModel");
 const Station = require("../models/stationModel");
 
 exports.createAffectationDefinitif = async (req, res) => {
-  console.log("description", req.body);
   try {
     const {
       personnelId,
       startDate,
-      originStation, // ID string
-      affectedStation, // ID string
+      originStation,
+      affectedStation,
       description,
     } = req.body;
 
-    // 1. Validation
+    // 1) Required fields
     if (!personnelId || !startDate || !originStation || !affectedStation) {
       return res.status(400).json({
         message: "Champs requis manquants pour l’affectation définitive.",
       });
     }
 
-    // 2. Vérifier l’existence des stations
+    // 2) Parse and fetch station docs
+    const parsedStart = new Date(startDate);
     const [originDoc, affectedDoc] = await Promise.all([
       Station.findById(originStation),
       Station.findById(affectedStation),
@@ -32,10 +32,40 @@ exports.createAffectationDefinitif = async (req, res) => {
         .json({ message: "Origine ou station cible introuvable." });
     }
 
-    // 3. Construire assignData (sans endDate)
+    // 3) Load personnel & ensure "Actif" if today ≥ startDate
+    const today = new Date();
+    const perso = await Personnel.findById(personnelId);
+    if (!perso) {
+      return res.status(404).json({ message: "Personnel non trouvé." });
+    }
+    if (today >= parsedStart && perso.status !== "Actif") {
+      return res.status(400).json({
+        message:
+          "L'employé n'est pas actif à la date de début de l’affectation.",
+      });
+    }
+
+    // 4) Overlap check vs existing definitive assignments
+    const lastOther = await AffectationDefinitif.findOne({
+      personnel: personnelId,
+    })
+      .sort({ startDate: -1 })
+      .lean();
+    if (lastOther) {
+      const oStart = new Date(lastOther.startDate);
+      const overlaps = parsedStart >= oStart;
+      if (overlaps) {
+        return res.status(409).json({
+          message:
+            "Cet employé a déjà une affectation définitive à partir de cette date.",
+        });
+      }
+    }
+
+    // 5) Build & save
     const assignData = {
       personnel: personnelId,
-      startDate: new Date(startDate),
+      startDate: parsedStart,
       originStation: originDoc._id,
       affectedStation: affectedDoc._id,
       description: description || "",
@@ -44,17 +74,16 @@ exports.createAffectationDefinitif = async (req, res) => {
       assignData.document = req.file.path.replace(/\\/g, "/");
     }
 
-    // 4. Créer et enregistrer en base
     const newAssign = new AffectationDefinitif(assignData);
     const savedAssign = await newAssign.save();
 
-    // 5. Mettre à jour la station courante du personnel
+    // 6) Update only the station fields on Personnel
     await Personnel.findByIdAndUpdate(personnelId, {
       station: affectedDoc._id,
       stationName: affectedDoc.name,
     });
 
-    // 6. Retourner la réponse
+    // 7) Respond
     return res.status(201).json({
       message: "Affectation définitive créée avec succès.",
       data: savedAssign,
@@ -121,62 +150,82 @@ exports.updateAffectationDefinitif = async (req, res) => {
       description,
     } = req.body;
 
-    const updates = {};
-
-    // Normaliser personnel
-    if (personnelId) {
-      updates.personnel =
-        typeof personnelId === "object"
-          ? personnelId._id || personnelId.id
-          : personnelId;
-    }
-
-    // Date de début
-    if (startDate) updates.startDate = new Date(startDate);
-
-    // Normaliser stations
-    if (originStation) {
-      updates.originStation =
-        typeof originStation === "object"
-          ? originStation._id || originStation.id
-          : originStation;
-    }
-    if (affectedStation) {
-      updates.affectedStation =
-        typeof affectedStation === "object"
-          ? affectedStation._id || affectedStation.id
-          : affectedStation;
-    }
-
-    // Description
-    if (description !== undefined) updates.description = description;
-
-    // Fichier optionnel
-    if (req.file) {
-      updates.document = req.file.path.replace(/\\/g, "/");
-    }
-
-    // Appliquer la mise à jour
-    const updated = await AffectationDefinitif.findByIdAndUpdate(
-      id,
-      { $set: updates },
-      { new: true }
-    )
-      .populate("personnel", "firstName lastName matricule")
-      .populate("originStation", "name")
-      .populate("affectedStation", "name");
-
-    if (!updated) {
+    // 1) Fetch existing assignment
+    const existing = await AffectationDefinitif.findById(id).lean();
+    if (!existing) {
       return res
         .status(404)
         .json({ message: "Affectation définitive introuvable." });
     }
 
-    // Si affectedStation a changé, mettre à jour la station du personnel
+    // 2) Determine new startDate (or fallback)
+    const newStart = startDate
+      ? new Date(startDate)
+      : new Date(existing.startDate);
+    const today = new Date();
+
+    // 3) If today >= newStart, enforce personnel.status === "Actif"
+    const persoId = personnelId || existing.personnel;
+    const perso = await Personnel.findById(persoId);
+    if (!perso) {
+      return res.status(404).json({ message: "Personnel non trouvé." });
+    }
+    if (today >= newStart && perso.status !== "Actif") {
+      return res.status(400).json({
+        message:
+          "L'employé n'est pas actif à la date de début de l’affectation.",
+      });
+    }
+
+    // 4) Check overlap vs other definitive assignments
+    const other = await AffectationDefinitif.findOne({
+      _id: { $ne: id },
+      personnel: persoId,
+    })
+      .sort({ startDate: -1 })
+      .lean();
+    if (other) {
+      const oStart = new Date(other.startDate);
+      // Since definitives have no endDate, just ensure newStart > oStart
+      if (newStart <= oStart) {
+        return res.status(409).json({
+          message:
+            "Cet employé a déjà une affectation définitive à partir du " +
+            oStart.toISOString().slice(0, 10) +
+            ".",
+        });
+      }
+    }
+
+    // 5) Build updates
+    const updates = {};
+    if (personnelId) updates.personnel = persoId;
+    if (startDate) updates.startDate = newStart;
+    if (originStation) updates.originStation = originStation;
+    if (affectedStation) updates.affectedStation = affectedStation;
+    if (description !== undefined) updates.description = description;
+    if (req.file) {
+      // delete old PDF
+      if (existing.document) {
+        fs.unlink(path.resolve(existing.document), () => {});
+      }
+      updates.document = req.file.path.replace(/\\/g, "/");
+    }
+
+    // 6) Apply update
+    const updated = await AffectationDefinitif.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true }
+    )
+      .populate("originStation", "name")
+      .populate("affectedStation", "name");
+
+    // 7) If station changed, update personnel.station
     if (updates.affectedStation) {
-      await Personnel.findByIdAndUpdate(updated.personnel._id, {
-        station: updates.affectedStation,
-        stationName: updated.affectedStation.name || updated.affectedStation,
+      await Personnel.findByIdAndUpdate(persoId, {
+        station: updated.affectedStation._id,
+        stationName: updated.affectedStation.name,
       });
     }
 
@@ -184,10 +233,12 @@ exports.updateAffectationDefinitif = async (req, res) => {
       message: "Affectation définitive mise à jour avec succès.",
       data: updated,
     });
-  } catch (error) {
-    console.error("Erreur mise à jour affectation définitive :", error);
+  } catch (err) {
+    console.error("Erreur updateAffectationDefinitif:", err);
     return res.status(500).json({
-      message: "Erreur lors de la mise à jour de l'affectation définitive.",
+      message:
+        err.message ||
+        "Erreur interne lors de la mise à jour de l'affectation définitive.",
     });
   }
 };

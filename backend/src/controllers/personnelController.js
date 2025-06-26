@@ -46,6 +46,7 @@ const updatePersonnel = async (req, res) => {
       return res.status(404).json({ message: "Personnel not found" });
     res.status(200).json(updatedPersonnel);
   } catch (error) {
+    console.log("error", error);
     res.status(500).json({ message: error.message });
   }
 };

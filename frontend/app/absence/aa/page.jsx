@@ -18,6 +18,9 @@ import {
   AlertTriangle,
   Filter,
   SlidersHorizontal,
+  Clock,
+  Plane,
+  Building,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -265,6 +268,11 @@ export default function AbsenceAAListPage() {
         aValue = a.status;
         bValue = b.status;
         break;
+
+      case "endDate":
+        aValue = new Date(a.endDate);
+        bValue = new Date(b.endDate);
+        break;
       default:
         aValue = a[sortConfig.key];
         bValue = b[sortConfig.key];
@@ -428,8 +436,11 @@ export default function AbsenceAAListPage() {
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="endDate">
                   Date de fin{" "}
-                  {sortConfig.key === "endDate" &&
-                    (sortConfig.direction === "asc" ? "↑" : "↓")}
+                  {sortConfig.key === "endDate"
+                    ? sortConfig.direction === "asc"
+                      ? "↑"
+                      : "↓"
+                    : null}
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="duration">
                   Durée{" "}
@@ -613,6 +624,16 @@ export default function AbsenceAAListPage() {
                   <TableHead>
                     <Button
                       variant="ghost"
+                      onClick={() => handleSort("endDate")}
+                    >
+                      Date de fin{" "}
+                      {sortConfig.key === "endDate" &&
+                        (sortConfig.direction === "asc" ? "↑" : "↓")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
                       onClick={() => handleSort("duration")}
                       className="font-semibold"
                     >
@@ -648,23 +669,7 @@ export default function AbsenceAAListPage() {
                   <TableRow key={absence._id} className="hover:bg-gray-50">
                     <TableCell>
                       <div>
-                        <div
-                          className="inline-flex
-                      items-center
-                      text-black-300
-                      justify-center
-                      rounded-md
-                      text-sm
-                      font-medium
-                      ring-offset-background
-                      transition-colors
-                      focus-visible:outline-none
-                      focus-visible:ring-2
-                      focus-visible:ring-ring
-                      focus-visible:ring-offset-2
-                      disabled:pointer-events-none
-                      disabled:opacity-50 hover:bg-accent hover:text-accent-foreground font-semibold"
-                        >
+                        <div>
                           {absence.personnel.firstName}{" "}
                           {absence.personnel.lastName}
                         </div>
@@ -674,25 +679,8 @@ export default function AbsenceAAListPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span
-                        className="inline-flex
-                      items-center
-                      text-black-300
-                      justify-center
-                      rounded-md
-                      text-sm
-                      font-medium
-                      ring-offset-background
-                      transition-colors
-                      focus-visible:outline-none
-                      focus-visible:ring-2
-                      focus-visible:ring-ring
-                      focus-visible:ring-offset-2
-                      disabled:pointer-events-none
-                      disabled:opacity-50 hover:bg-accent hover:text-accent-foreground font-semibold"
-                      >
-                        {absence.personnel.stationName || "Non défini"}
-                      </span>
+                      <Building className="inline mr-1" />
+                      {absence.personnel.stationName || "Non défini"}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -705,58 +693,29 @@ export default function AbsenceAAListPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div
-                        className="flex flex-col
-                    text-black-300
-                    justify-center
-                    rounded-md
-                    text-sm
-                    font-medium
-                    ring-offset-background
-                    transition-colors
-                    focus-visible:outline-none
-                    focus-visible:ring-2
-                    focus-visible:ring-ring
-                    focus-visible:ring-offset-2
-                    disabled:pointer-events-none
-                    disabled:opacity-50 hover:bg-accent hover:text-accent-foreground font-semibold"
-                      >
-                        <span className="text-sm">
-                          Du: {formatDate(absence.startDate)}
-                        </span>
-                        <span className="text-sm">
-                          Au: {formatDate(absence.endDate)}
-                        </span>
-                      </div>
+                      {" "}
+                      <Calendar className="inline mr-1" />
+                      {formatDate(absence.startDate)}
                     </TableCell>
-                    <TableCell
-                      className="inline-flex
-                    items-center
-                    text-black-300
-                    justify-center
-                    rounded-md
-                    text-sm
-                    font-medium
-                    ring-offset-background
-                    transition-colors
-                    focus-visible:outline-none
-                    focus-visible:ring-2
-                    focus-visible:ring-ring
-                    focus-visible:ring-offset-2
-                    disabled:pointer-events-none
-                    disabled:opacity-50 hover:bg-accent hover:text-accent-foreground font-semibold"
-                    >
-                      {calculateDaysBetweenDates(
-                        absence.startDate,
-                        absence.endDate
-                      )}{" "}
-                      jour
-                      {calculateDaysBetweenDates(
-                        absence.startDate,
-                        absence.endDate
-                      ) > 1
-                        ? "s"
-                        : ""}
+                    <TableCell>
+                      {" "}
+                      <Calendar className="inline mr-1" />{" "}
+                      {formatDate(absence.endDate)}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium text-blue-600">
+                        {calculateDaysBetweenDates(
+                          absence.startDate,
+                          absence.endDate
+                        )}{" "}
+                        jour
+                        {calculateDaysBetweenDates(
+                          absence.startDate,
+                          absence.endDate
+                        ) > 1
+                          ? "s"
+                          : ""}
+                      </span>
                     </TableCell>
 
                     <TableCell className="text-middle">

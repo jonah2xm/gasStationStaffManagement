@@ -69,6 +69,7 @@ export default function EditPersonnel() {
     decision: "",
     station: "",
     stationName: "",
+    holidaysLeft: "",
   });
   const [originalData, setOriginalData] = useState({});
   const [errors, setErrors] = useState({});
@@ -117,7 +118,7 @@ export default function EditPersonnel() {
         }
 
         const data = await response.json();
-
+        console.log("data", data);
         // Format dates for input fields (YYYY-MM-DD)
         const formatDate = (dateString) => {
           if (!dateString) return "";
@@ -136,6 +137,7 @@ export default function EditPersonnel() {
           decision: data.decision || "",
           station: data.station || "",
           stationName: data.stationName || "",
+          holidaysLeft: data.holidaysLeft?.toString() || "",
         });
         setOriginalData(data);
         setFetchError(null);
@@ -297,6 +299,15 @@ export default function EditPersonnel() {
           delete newErrors.station;
         }
         break;
+      case "holidaysLeft":
+        if (!personnelData.holidaysLeft) {
+          newErrors.holidaysLeft = "Le congé restant est requis";
+        } else if (isNaN(personnelData.holidaysLeft)) {
+          newErrors.holidaysLeft = "Le congé restant doit être un nombre";
+        } else {
+          delete newErrors.holidaysLeft;
+        }
+        break;
       default:
         break;
     }
@@ -316,6 +327,7 @@ export default function EditPersonnel() {
       "contractType",
       "decision",
       "station",
+      "holidaysLeft",
     ];
 
     // Mark all fields as touched
@@ -343,7 +355,7 @@ export default function EditPersonnel() {
       setLoading(true);
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/personnel/${personnelId}`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/personnel/${personnelId}`,
           {
             method: "PUT",
             headers: {
@@ -393,6 +405,7 @@ export default function EditPersonnel() {
   };
 
   const hasChanges = () => {
+    console.log("originalData", originalData);
     return (
       personnelData.matricule !== originalData.matricule ||
       personnelData.firstName !== originalData.firstName ||
@@ -408,7 +421,8 @@ export default function EditPersonnel() {
       personnelData.poste !== originalData.poste ||
       personnelData.contractType !== originalData.contractType ||
       personnelData.decision !== originalData.decision ||
-      personnelData.station !== originalData.station
+      personnelData.station !== originalData.station ||
+      personnelData.holidaysLeft !== originalData.holidaysLeft.toString()
     );
   };
 
@@ -702,6 +716,25 @@ export default function EditPersonnel() {
                   {touched.station && errors.station && (
                     <p className="text-red-500 text-sm">{errors.station}</p>
                   )}
+                </div>
+
+                {/* Congé restant (jours) */}
+                <div className="space-y-2">
+                  <Label htmlFor="holidaysLeft">Congé restant (jours)</Label>
+                  <Input
+                    type="number"
+                    id="holidaysLeft"
+                    name="holidaysLeft"
+                    value={personnelData.holidaysLeft}
+                    onChange={handleInputChange}
+                    min="0"
+                    placeholder="Ex: 20"
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Modifiez le nombre de jours de congé restant pour ce
+                    personnel.
+                  </p>
                 </div>
               </div>
 

@@ -1,0 +1,678 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import {
+  Calendar,
+  AlertTriangle,
+  Loader2,
+  Save,
+  ArrowLeft,
+  Building,
+  Clock,
+  File,
+} from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AccountHeader } from "@/components/account-header";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+export default function EditRecuperationPage() {
+  const router = useRouter();
+  const params = useParams();
+  const recuperationId = params.id;
+
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [fetchingStations, setFetchingStations] = useState(true);
+  const [stations, setStations] = useState([]);
+  const [selectedPersonnel, setSelectedPersonnel] = useState(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [originalData, setOriginalData] = useState(null);
+  const [formData, setFormData] = useState({
+    stationName: "",
+    dureeRecuperation: "",
+    dateDebut: "",
+    dateRetour: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [nombreJourRestant, setNombreJourRestant] = useState(0);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [existingDocument, setExistingDocument] = useState(null);
+
+  // Fetch récupération data
+  useEffect(() => {
+    const fetchRecuperation = async () => {
+      if (!recuperationId) return;
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/recuperations/${recuperationId}`,
+          {
+            credentials: "include",
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch récupération");
+        }
+        const data = await response.json();
+        console.log("data", data);
+        setOriginalData(data);
+
+        // Pre-populate form data
+        setFormData({
+          stationName: data.stationName,
+          dureeRecuperation: data.dureeRecuperation.toString(),
+          dateDebut: data.dateDebut
+            ? new Date(data.dateDebut).toISOString().split("T")[0]
+            : "",
+          dateRetour: data.dateRetour
+            ? new Date(data.dateRetour).toISOString().split("T")[0]
+            : "",
+        });
+
+        setSelectedPersonnel(data.personnelId);
+        setNombreJourRestant(data.nombreJourRestant || 0);
+        setExistingDocument(data.document || null);
+      } catch (err) {
+        console.error("Error fetching récupération:", err);
+        toast.error("Impossible de charger les données de la récupération", {
+          duration: 3000,
+          position: "bottom-left",
+        });
+        router.push("/recuperations");
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchRecuperation();
+  }, [recuperationId, router]);
+
+  // Fetch stations data
+  useEffect(() => {
+    const fetchStations = async () => {
+      setFetchingStations(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stations`
+        );
+        if (response.status === 401) {
+          toast.error("Session expired. Redirecting to login...");
+          router.push("/login");
+          return;
+        }
+        if (!response.ok) {
+          throw new Error("Failed to fetch stations");
+        }
+        const data = await response.json();
+        setStations(data);
+      } catch (err) {
+        console.error(err.message);
+        toast.error("Impossible de charger les stations", {
+          duration: 3000,
+          position: "bottom-left",
+        });
+      } finally {
+        setFetchingStations(false);
+      }
+    };
+
+    fetchStations();
+  }, [router]);
+
+  // Calculate return date when start date or duration changes
+  useEffect(() => {
+    if (formData.dateDebut && formData.dureeRecuperation) {
+      const startDate = new Date(formData.dateDebut);
+      const duration = Number.parseInt(formData.dureeRecuperation);
+      if (!isNaN(duration) && duration > 0) {
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + duration); // Add duration to start date
+        setFormData((prev) => ({
+          ...prev,
+          dateRetour: endDate.toISOString().split("T")[0],
+        }));
+      }
+    }
+  }, [formData.dateDebut, formData.dureeRecuperation]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // Mark field as touched
+    if (!touched[name]) {
+      setTouched((prev) => ({ ...prev, [name]: true }));
+    }
+
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleSelectChange = (value, field) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    if (!touched[field]) {
+      setTouched((prev) => ({ ...prev, [field]: true }));
+    }
+
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    validateField(field);
+  };
+
+  const validateField = (field) => {
+    const newErrors = { ...errors };
+
+    switch (field) {
+      case "dureeRecuperation":
+        if (!formData.dureeRecuperation) {
+          newErrors.dureeRecuperation =
+            "La durée de la récupération est requise";
+        } else if (Number.parseInt(formData.dureeRecuperation) <= 0) {
+          newErrors.dureeRecuperation = "La durée doit être supérieure à 0";
+        } else {
+          delete newErrors.dureeRecuperation;
+        }
+        break;
+      case "dateDebut":
+        if (!formData.dateDebut) {
+          newErrors.dateDebut = "La date de début est requise";
+        } else {
+          delete newErrors.dateDebut;
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+    return !newErrors[field];
+  };
+
+  const validateForm = () => {
+    const fields = ["dureeRecuperation", "dateDebut"];
+    const newTouched = {};
+    fields.forEach((field) => {
+      newTouched[field] = true;
+    });
+    setTouched(newTouched);
+
+    let isValid = true;
+    fields.forEach((field) => {
+      if (!validateField(field)) {
+        isValid = false;
+      }
+    });
+
+    // Check if document is provided (either existing or new file)
+    if (!existingDocument && !selectedFile) {
+      toast.error("Un document justificatif est requis", {
+        duration: 3000,
+        position: "bottom-left",
+      });
+      isValid = false;
+    }
+
+    return isValid;
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    setSelectedFile(file);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      toast.error("Veuillez corriger les erreurs dans le formulaire", {
+        duration: 3000,
+        position: "bottom-left",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const dataToSend = new FormData();
+      dataToSend.append("stationName", formData.stationName);
+      dataToSend.append(
+        "dureeRecuperation",
+        Number.parseInt(formData.dureeRecuperation).toString()
+      );
+      dataToSend.append("dateDebut", formData.dateDebut);
+      dataToSend.append("dateRetour", formData.dateRetour);
+
+      if (selectedFile) {
+        dataToSend.append("document", selectedFile);
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/recuperations/${recuperationId}`,
+        {
+          method: "PUT",
+          body: dataToSend,
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            "Erreur lors de la mise à jour de la récupération"
+        );
+      }
+
+      setShowSuccessDialog(true);
+    } catch (error) {
+      console.error("Error updating récupération:", error.message);
+      setErrorMessage(
+        error.message || "Erreur lors de la mise à jour de la récupération"
+      );
+      setShowErrorDialog(true);
+      toast.error(
+        error.message || "Erreur lors de la mise à jour de la récupération",
+        {
+          duration: 3000,
+          position: "bottom-left",
+        }
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSuccessConfirm = () => {
+    setShowSuccessDialog(false);
+    router.push("/recuperations");
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "??";
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase();
+  };
+
+  // Helper to extract file name from path
+  const getFileName = (path) => path?.split(/[/\\]/).pop();
+
+  if (initialLoading) {
+    return (
+      <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+        <AccountHeader
+          name="John Doe"
+          role="HR Manager"
+          avatarUrl="/placeholder.svg?height=40&width=40"
+        />
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="animate-spin h-8 w-8" />
+          <span className="ml-2">Chargement des données...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+      <AccountHeader
+        name="John Doe"
+        role="HR Manager"
+        avatarUrl="/placeholder.svg?height=40&width=40"
+      />
+
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Modifier la Récupération
+        </h1>
+        <Button variant="outline" onClick={() => router.push("/recuperations")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Retour à la liste
+        </Button>
+      </div>
+
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>Modifier la Récupération</CardTitle>
+          <CardDescription>
+            Modifiez les informations relatives à la récupération de l'employé.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Personnel Display (Read-only) */}
+            <div className="space-y-2">
+              <Label>Employé</Label>
+              <div className="flex items-center p-3 border rounded-md bg-gray-50">
+                <Avatar className="h-8 w-8 mr-3">
+                  <AvatarFallback className="bg-blue-100 text-blue-800">
+                    {selectedPersonnel &&
+                      getInitials(
+                        `${selectedPersonnel.firstName} ${selectedPersonnel.lastName}`
+                      )}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="font-medium text-gray-800">
+                    {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {selectedPersonnel?.matricule}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                L'employé ne peut pas être modifié lors de l'édition.
+              </p>
+            </div>
+
+            {/* Station (Read-only) */}
+            <div className="space-y-2">
+              <Label htmlFor="station">Station</Label>
+              <div className="relative">
+                <Input
+                  value={formData.stationName}
+                  disabled={true}
+                  className="pl-10 bg-gray-50"
+                  placeholder="Station de l'employé"
+                />
+                <Building
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={16}
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                La station est automatiquement définie selon l'employé.
+              </p>
+            </div>
+
+            {/* Type and Duration */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="dureeRecuperation">
+                  Durée de la récupération (Jours)
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    id="dureeRecuperation"
+                    name="dureeRecuperation"
+                    value={formData.dureeRecuperation}
+                    onChange={handleInputChange}
+                    onBlur={() => handleBlur("dureeRecuperation")}
+                    disabled={loading}
+                    className={`pl-10 ${
+                      touched.dureeRecuperation && errors.dureeRecuperation
+                        ? "border-red-500"
+                        : ""
+                    }`}
+                    placeholder={
+                      formData.typeRecuperation === "jour" ? "Ex: 2" : "Ex: 8"
+                    }
+                    min="1"
+                  />
+                  <Clock
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
+                </div>
+                {touched.dureeRecuperation && errors.dureeRecuperation && (
+                  <p className="text-red-500 text-sm">
+                    {errors.dureeRecuperation}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Dates */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="dateDebut">Date de début*</Label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    id="dateDebut"
+                    name="dateDebut"
+                    value={formData.dateDebut}
+                    onChange={handleInputChange}
+                    onBlur={() => handleBlur("dateDebut")}
+                    disabled={loading}
+                    className={`pl-10 ${
+                      touched.dateDebut && errors.dateDebut
+                        ? "border-red-500"
+                        : ""
+                    }`}
+                  />
+                  <Calendar
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
+                </div>
+                {touched.dateDebut && errors.dateDebut && (
+                  <p className="text-red-500 text-sm">{errors.dateDebut}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dateRetour">Date de fin</Label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    id="dateRetour"
+                    name="dateRetour"
+                    value={formData.dateRetour}
+                    className="pl-10 bg-gray-50"
+                    disabled={true}
+                  />
+                  <Calendar
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Calculée automatiquement selon la date de début et la durée
+                </p>
+              </div>
+            </div>
+
+            {/* Document Upload (Required) */}
+            <div className="space-y-2">
+              <Label htmlFor="document">Document justificatif*</Label>
+              <Input
+                type="file"
+                id="document"
+                name="document"
+                onChange={handleFileChange}
+                disabled={loading}
+              />
+              {selectedFile && (
+                <p className="text-sm text-gray-500">
+                  Fichier sélectionné: {selectedFile.name}
+                </p>
+              )}
+              <p className="text-xs text-gray-500">
+                Un document justificatif est requis.
+              </p>
+            </div>
+
+            {/* Existing Document Display */}
+            {existingDocument && (
+              <div className="space-y-2">
+                <Label>Document Existant</Label>
+                <div className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
+                  <div className="flex items-center">
+                    <File className="mr-2 h-5 w-5 text-blue-500" />
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${existingDocument}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      Document existant
+                    </a>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExistingDocument(null)}
+                  >
+                    Remplacer
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-4 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push("/recuperations")}
+                disabled={loading}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-500 hover:bg-blue-600"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Mise à jour...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Mettre à jour la récupération
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <div className="mt-4 text-center text-sm text-gray-500">
+        <AlertTriangle className="inline-block mr-1" size={16} />
+        Les champs marqués avec * sont obligatoires.
+      </div>
+
+      {/* Success Dialog */}
+      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-green-600 flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Récupération Mise à Jour avec Succès
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              La récupération a été mise à jour avec succès pour{" "}
+              {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleSuccessConfirm}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Error Dialog */}
+      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              Erreur
+            </AlertDialogTitle>
+            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
+              Fermer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Toaster position="bottom-left" />
+    </div>
+  );
+}
