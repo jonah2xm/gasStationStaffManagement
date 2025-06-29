@@ -45,18 +45,6 @@ function Sidebar() {
                 Dashboard
               </Link>
             </li>
-            {/* Mutations */}
-            <li>
-              <Link
-                href="/mutations"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname === "/mutations" ? "bg-gray-100 font-medium" : ""
-                }`}
-              >
-                <RefreshCw className="mr-3 h-5 w-5" />
-                Mutations
-              </Link>
-            </li>
             {/* Stations */}
             <li>
               <Link

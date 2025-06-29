@@ -19,6 +19,7 @@ const affectatoinDefinitif = require("./routes/affectationDefinitifRoutes");
 const congeRoutes = require("./routes/congeRoutes");
 const recuperationRoutes = require("./routes/recuperationRoutes");
 const path = require("path");
+const authRoutes = require("./routes/authRoutes");
 // 2. Load environment variables
 dotenv.config();
 
@@ -67,6 +68,7 @@ app.use("/api/affectationTemp", affectationTempRoutes);
 app.use("/api/affectationDef", affectatoinDefinitif);
 app.use("/api/conges", congeRoutes);
 app.use("/api/recuperations", recuperationRoutes);
+app.use("/api/auth", authRoutes);
 
 // 9. Error handler
 app.use((err, req, res, next) => {

@@ -116,7 +116,6 @@ exports.getAllAffectationsDefinitif = async (req, res) => {
 };
 
 exports.getAffectationDefinitifById = async (req, res) => {
-  console.log("req.params", req.params);
   try {
     const { id } = req.params;
     const affectation = await AffectationDefinitif.findById(id)
@@ -253,7 +252,14 @@ exports.deleteAffectationDefinitif = async (req, res) => {
         .status(404)
         .json({ message: "Affectation définitive introuvable." });
     }
-
+    const originDoc = await Station.findById(deleted.originStation).lean();
+    if (originDoc) {
+      // 5) Update Personnel back to originStation
+      await Personnel.findByIdAndUpdate(deleted.personnel, {
+        station: originDoc._id,
+        stationName: originDoc.name,
+      });
+    }
     return res
       .status(200)
       .json({ message: "Affectation définitive supprimée avec succès." });

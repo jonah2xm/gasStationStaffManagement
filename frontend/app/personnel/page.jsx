@@ -24,6 +24,7 @@ import {
   Edit,
   Trash2,
   MoreHorizontal,
+  Download,
 } from "lucide-react";
 import { AccountHeader } from "../components/account-header";
 import {
@@ -60,6 +61,8 @@ import {
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
@@ -94,11 +97,77 @@ export default function EmployeeListPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [deletingEmployee, setDeletingEmployee] = useState(false);
+  const [user, setUser] = useState();
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetchEmployees();
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include", // 👈 IMPORTANT: needed to send cookies
+          }
+        );
+
+        if (!res.ok) {
+          // router.push("/login");
+          throw new Error("Not authenticated");
+        }
+
+        const data = await res.json();
+        console.log("data", data);
+        setUser(data.user); // Adjust based on backend response structure
+      } catch (err) {
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
   }, []);
+  useEffect(() => {
+    fetchEmployees();
+  }, [user]);
+
+  const exportToExcel = () => {
+    // 1️⃣ Group rows by stationName
+    const grouped = sortedEmployees.reduce((acc, e) => {
+      const station = e.stationName || "Non définie";
+      if (!acc[station]) acc[station] = [];
+      acc[station].push({
+        "N°": `N${acc[station].length + 1}`,
+        Station: station,
+        P_MAT: e.matricule,
+        P_NOMP: `${e.lastName.toUpperCase()} ${e.firstName}`,
+        "poste sur fiche de paie": e.poste,
+        Status: e.status || "Non défini",
+      });
+      return acc;
+    }, {});
+
+    // 2️⃣ Create a new workbook
+    const wb = XLSX.utils.book_new();
+
+    // 3️⃣ For each station, add a sheet
+    Object.entries(grouped).forEach(([station, rows]) => {
+      const ws = XLSX.utils.json_to_sheet(rows, { origin: "A1" });
+      // Optionally freeze header row:
+      ws["!freeze"] = { xSplit: 0, ySplit: 1 };
+      // Sheet names limited to 31 characters:
+      XLSX.utils.book_append_sheet(wb, ws, station.slice(0, 31));
+    });
+
+    // 4️⃣ Write and trigger download
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([wbout], { type: "application/octet-stream" }),
+      "personnel_par_station.xlsx"
+    );
+  };
 
   const fetchEmployees = async () => {
     setLoading(true);
@@ -148,10 +217,9 @@ export default function EmployeeListPage() {
   }, [employeeData]);
 
   const allStations = useMemo(() => {
-    const stations = [...new Set(employeeData.map((e) => e.station))].filter(
-      Boolean
-    );
-    return stations.sort();
+    return [...new Set(employeeData.map((e) => e.stationName))]
+      .filter(Boolean)
+      .sort();
   }, [employeeData]);
 
   const filteredEmployees = useMemo(() => {
@@ -179,21 +247,7 @@ export default function EmployeeListPage() {
         (stationFilter.length === 0 ||
           (employee.stationName &&
             stationFilter.includes(employee.stationName))) &&
-        (quickFilters.length === 0 ||
-          quickFilters.every((filter) => {
-            switch (filter) {
-              case "Actif":
-                return employee.status === "Actif";
-              case "En congé":
-                return employee.status === "En congé";
-              case "En formation":
-                return employee.status === "En formation";
-              case "Inactif":
-                return employee.status === "Inactif";
-              default:
-                return true;
-            }
-          }))
+        (quickFilters.length === 0 || quickFilters.includes(employee.status))
     );
   }, [
     searchTerm,
@@ -329,18 +383,27 @@ export default function EmployeeListPage() {
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
       <AccountHeader
-        name="HR Manager"
-        role="Employee Management"
+        name={user?.username || "Utilisateur"}
+        role={user?.role || "Invité"}
         avatarUrl="/placeholder.svg?height=40&width=40"
       />
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Liste du Personnel</h1>
-        <Link href="/personnel/add-personnel">
-          <Button className="bg-blue-500 hover:bg-blue-600 text-white">
-            <Plus className="mr-2 h-4 w-4" /> Ajouter Personnel
+        <div className="flex justify-between items-center mb-8 ">
+          <Link href="/personnel/add-personnel" className="mx-5">
+            <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter Personnel
+            </Button>
+          </Link>
+          <Button
+            onClick={exportToExcel}
+            variant="outline"
+            className="flex items-center mx-5"
+          >
+            <Download className="mr-2 h-4 w-4" /> Exporter Excel
           </Button>
-        </Link>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">
@@ -398,6 +461,11 @@ export default function EmployeeListPage() {
                     <DropdownMenuRadioItem value="status">
                       Status{" "}
                       {sortConfig.key === "status" &&
+                        (sortConfig.direction === "asc" ? "↑" : "↓")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="stationName">
+                      Station{" "}
+                      {sortConfig.key === "stationName" &&
                         (sortConfig.direction === "asc" ? "↑" : "↓")}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
@@ -487,82 +555,27 @@ export default function EmployeeListPage() {
           </DropdownMenu>
         </div>
       </div>
-
       <div className="flex flex-wrap gap-2 mb-4">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={
-                  quickFilters.includes("Actif") ? "secondary" : "outline"
-                }
-                size="sm"
-                onClick={() => toggleQuickFilter("Actif")}
-              >
-                Actif
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Afficher uniquement les employés actifs</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={
-                  quickFilters.includes("En congé") ? "secondary" : "outline"
-                }
-                size="sm"
-                onClick={() => toggleQuickFilter("En congé")}
-              >
-                En congé
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Afficher uniquement les employés en congé</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={
-                  quickFilters.includes("En formation")
-                    ? "secondary"
-                    : "outline"
-                }
-                size="sm"
-                onClick={() => toggleQuickFilter("En formation")}
-              >
-                En formation
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Afficher uniquement les employés en formation</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={
-                  quickFilters.includes("Inactif") ? "secondary" : "outline"
-                }
-                size="sm"
-                onClick={() => toggleQuickFilter("Inactif")}
-              >
-                Inactif
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Afficher uniquement les employés inactifs</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {allStatuses.map((status) => (
+          <TooltipProvider key={status}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={
+                    quickFilters.includes(status) ? "secondary" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => toggleQuickFilter(status)}
+                >
+                  {status}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Afficher uniquement les employés “{status}”</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ))}
       </div>
 
       {(statusFilter.length > 0 ||
@@ -695,7 +708,17 @@ export default function EmployeeListPage() {
                         (sortConfig.direction === "asc" ? "↑" : "↓")}
                     </Button>
                   </TableHead>
-                  <TableHead>Station</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("stationName")}
+                      className="font-semibold"
+                    >
+                      Station{" "}
+                      {sortConfig.key === "stationName" &&
+                        (sortConfig.direction === "asc" ? "↑" : "↓")}
+                    </Button>
+                  </TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"

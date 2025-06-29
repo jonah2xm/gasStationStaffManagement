@@ -2,8 +2,10 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 
 // Helper function to generate a JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+const generateToken = (id, username, email, role) => {
+  return jwt.sign({ id, username, email, role }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 };
 
 /**
@@ -29,7 +31,7 @@ exports.registerUser = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id),
+      token: generateToken(user._id, username, email, role),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -118,5 +120,56 @@ exports.deleteUser = async (req, res) => {
     res.json({ message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updatePassword = async (req, res) => {
+  try {
+    const userSession = req.session.user;
+    if (!userSession) {
+      return res.status(401).json({ message: "Non authentifié" });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Champs manquants" });
+    }
+
+    // Fetch the user
+    const user = await User.findById(userSession.id);
+    if (!user) {
+      console.error("Utilisateur introuvable:", userSession.id);
+      return res.status(404).json({ message: "Utilisateur introuvable" });
+    }
+
+    // Verify current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Mot de passe actuel incorrect" });
+    }
+
+    // Update to new password
+    user.password = newPassword;
+    await user.save();
+
+    // Destroy session & clear cookie
+    req.session.destroy((err) => {
+      if (err) console.error("Error destroying session:", err);
+      // Default cookie name is 'connect.sid'
+      res.clearCookie("connect.sid", {
+        path: "/",
+        httpOnly: true,
+        secure: false, // true if your site is served over HTTPS
+      });
+
+      // Respond only after session is cleared
+      res.status(200).json({
+        message:
+          "Mot de passe mis à jour avec succès. Vous avez été déconnecté.",
+      });
+    });
+  } catch (err) {
+    console.error("Erreur updatePassword:", err);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
