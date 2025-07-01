@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -15,19 +16,51 @@ import { Users, Briefcase, Calendar, Activity } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+  const [user, setUser] = useState({});
   const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include", // 👈 IMPORTANT: needed to send cookies
+          }
+        );
+
+        if (!res.ok) {
+          // router.push("/login");
+          throw new Error("Not authenticated");
+        }
+
+        const data = await res.json();
+        console.log("data", data);
+        setUser(data.user); // Adjust based on backend response structure
+      } catch (err) {
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
   useEffect(() => {
     const token = localStorage.getItem("token");
     console.log("token", token);
     if (!token) {
       //router.push("/login");
     }
-  }, [router]);
+  }, [router, user]);
   return (
     <div className="container mx-auto p-6 text-gray-800">
       <AccountHeader
-        name="John Doe"
-        role="HR Manager"
+        name={user?.username || "Utilisateur"}
+        role={user?.role || "Invité"}
         avatarUrl="/placeholder.svg?height=40&width=40"
       />
 

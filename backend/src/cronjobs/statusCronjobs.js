@@ -40,6 +40,18 @@ cron.schedule("5 0 * * *", async () => {
   }).select("personnel");
   for (let aff of affectations) {
     await markPersonnelActif(aff.personnel);
+    const originDoc = await Station.findById(aff.originStation).lean();
+    if (originDoc) {
+      // 4) Update the Personnel doc with its origin station
+      await Personnel.findByIdAndUpdate(
+        aff.personnel,
+        {
+          station: originDoc._id,
+          stationName: originDoc.name,
+        },
+        { new: true, runValidators: true }
+      );
+    }
   }
 
   // 4. Conge

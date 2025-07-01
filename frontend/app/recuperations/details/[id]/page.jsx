@@ -54,7 +54,38 @@ export default function RecuperationDetailsPage() {
   const [recuperation, setRecuperation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState({});
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include", // 👈 IMPORTANT: needed to send cookies
+          }
+        );
+
+        if (!res.ok) {
+          // router.push("/login");
+          throw new Error("Not authenticated");
+        }
+
+        const data = await res.json();
+        console.log("data", data);
+        setUser(data.user); // Adjust based on backend response structure
+      } catch (err) {
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
   // Fetch récupération details using the id from the URL
   useEffect(() => {
     if (!id) return;
@@ -157,11 +188,11 @@ export default function RecuperationDetailsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
       {/* Account header */}
       <AccountHeader
-        name="John Doe"
-        role="HR Manager"
+        name={user?.username || "Utilisateur"}
+        role={user?.role || "Invité"}
         avatarUrl="/placeholder.svg?height=40&width=40"
       />
 

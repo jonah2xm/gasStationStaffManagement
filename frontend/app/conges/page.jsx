@@ -103,9 +103,69 @@ export default function CongeMainPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [user, setUser] = useState({});
 
   const itemsPerPage = 5;
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include", // 👈 IMPORTANT: needed to send cookies
+          }
+        );
 
+        if (!res.ok) {
+          // router.push("/login");
+          throw new Error("Not authenticated");
+        }
+
+        const data = await res.json();
+        console.log("data", data);
+        setUser(data.user); // Adjust based on backend response structure
+      } catch (err) {
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include", // 👈 IMPORTANT: needed to send cookies
+          }
+        );
+
+        if (!res.ok) {
+          // router.push("/login");
+          throw new Error("Not authenticated");
+        }
+
+        const data = await res.json();
+        console.log("data", data);
+        setUser(data.user); // Adjust based on backend response structure
+      } catch (err) {
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [user]);
   // Fetch congés and derive stations
   useEffect(() => {
     (async () => {
@@ -133,7 +193,7 @@ export default function CongeMainPage() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [user]);
 
   // Format date for display
   const formatDate = (d) =>
@@ -263,7 +323,11 @@ export default function CongeMainPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader name="John Doe" role="HR" avatarUrl="/placeholder.svg" />
+      <AccountHeader
+        name={user?.username || "Utilisateur"}
+        role={user?.role || "Invité"}
+        avatarUrl="/placeholder.svg?height=40&width=40"
+      />
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold">Gestion des Congés</h1>

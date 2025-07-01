@@ -210,18 +210,7 @@ function Sidebar() {
                 </ul>
               )}
             </li>
-            {/* Reports */}
-            <li>
-              <Link
-                href="/reports"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname === "/reports" ? "bg-gray-100 font-medium" : ""
-                }`}
-              >
-                <FileText className="mr-3 h-5 w-5" />
-                Reports
-              </Link>
-            </li>
+
             {/* Settings */}
             <li>
               <Link

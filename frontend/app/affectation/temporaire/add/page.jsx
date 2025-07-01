@@ -85,7 +85,37 @@ export default function AddAffectationTemporairePage() {
   const [touched, setTouched] = useState({});
   const [file, setFile] = useState(null);
   const [fileError, setFileError] = useState("");
+  const [user, setUser] = useState({});
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include", // 👈 IMPORTANT: needed to send cookies
+          }
+        );
 
+        if (!res.ok) {
+          // router.push("/login");
+          throw new Error("Not authenticated");
+        }
+
+        const data = await res.json();
+        console.log("data", data);
+        setUser(data.user); // Adjust based on backend response structure
+      } catch (err) {
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
   // Fetch personnel data
   useEffect(() => {
     const fetchPersonnel = async () => {
@@ -114,7 +144,7 @@ export default function AddAffectationTemporairePage() {
     };
 
     fetchPersonnel();
-  }, []);
+  }, [user]);
 
   // Fetch stations data
   useEffect(() => {
@@ -412,8 +442,8 @@ export default function AddAffectationTemporairePage() {
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
       <AccountHeader
-        name="John Doe"
-        role="HR Manager"
+        name={user?.username || "Utilisateur"}
+        role={user?.role || "Invité"}
         avatarUrl="/placeholder.svg?height=40&width=40"
       />
 
