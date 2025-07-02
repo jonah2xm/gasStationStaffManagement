@@ -136,36 +136,7 @@ export default function CongeMainPage() {
 
     checkAuth();
   }, []);
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
-          {
-            method: "GET",
-            credentials: "include", // 👈 IMPORTANT: needed to send cookies
-          }
-        );
 
-        if (!res.ok) {
-          // router.push("/login");
-          throw new Error("Not authenticated");
-        }
-
-        const data = await res.json();
-        console.log("data", data);
-        setUser(data.user); // Adjust based on backend response structure
-      } catch (err) {
-        console.warn("User not logged in or error:", err.message);
-        setUser(null);
-        router.push("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [user]);
   // Fetch congés and derive stations
   useEffect(() => {
     (async () => {

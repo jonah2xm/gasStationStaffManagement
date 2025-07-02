@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, ChevronDown, Settings, LogOut } from "lucide-react";
 
-interface Notification {
-  id: number;
-  title: string;
-  description: string;
-  time: string; // e.g. "2h ago"
+interface ApiNotification {
+  _id: string;
+  message: string;
+  detailsUrl: string;
+  createdAt: string;
+  seen: boolean;
 }
 
 interface AccountHeaderProps {
@@ -20,33 +21,56 @@ interface AccountHeaderProps {
 export function AccountHeader({ name, role, avatarUrl }: AccountHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<ApiNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLDivElement>(null);
 
-  // Sample notifications
-  const notifications: Notification[] = [
-    {
-      id: 1,
-      title: "New message from Alice",
-      description: "Hey, are you free tomorrow?",
-      time: "1h ago",
-    },
-    {
-      id: 2,
-      title: "Server rebooted",
-      description: "Your server was rebooted successfully.",
-      time: "3h ago",
-    },
-    {
-      id: 3,
-      title: "Payment received",
-      description: "$120 credited to your account.",
-      time: "Yesterday",
-    },
-  ];
+  // 1) On mount: fetch overview (total & unread)
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/overview`, {
+      method: "GET",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) {
+          setUnreadCount(json.data.unread);
+        }
+      })
+      .catch((err) => console.error("Overview fetch error:", err));
+  }, []);
 
-  // Close dropdowns when clicking outside
+  // 2) Handler: on bell click, fetch latest 3 & mark read
+  const handleBellClick = () => {
+    setShowNotifications((v) => !v);
+
+    // only fetch if opening
+    if (!showNotifications) {
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/latest`, {
+        method: "GET",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success) {
+            console.log("jsondata", json.data);
+            setNotifications(json.data);
+            // after marking read on server, update our badge
+            const stillUnread = json.data.filter(
+              (n: ApiNotification) => !n.seen
+            ).length;
+            setUnreadCount((prev) => Math.max(prev - stillUnread, 0));
+          }
+        })
+        .catch((err) => console.error("Latest fetch error:", err));
+    }
+  };
+
+  // 3) Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -79,39 +103,37 @@ export function AccountHeader({ name, role, avatarUrl }: AccountHeaderProps) {
         <div className="flex items-center space-x-2">
           {/* Notifications */}
           <div className="relative" ref={bellRef}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowNotifications((v) => !v)}
-            >
+            <Button variant="ghost" size="icon" onClick={handleBellClick}>
               <Bell className="h-5 w-5" />
-              {notifications.length > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 w-4 text-[10px] font-medium text-white bg-red-600 rounded-full">
-                  {notifications.length}
+                  {unreadCount}
                 </span>
               )}
             </Button>
+
             {showNotifications && (
               <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 shadow-lg rounded-md z-10">
                 <h3 className="px-4 py-2 text-sm font-medium border-b border-gray-100">
                   Notifications
                 </h3>
                 <div className="max-h-64 overflow-y-auto">
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className="px-4 py-3 hover:bg-gray-50 cursor-pointer"
-                    >
-                      <div className="flex justify-between">
-                        <span className="font-medium text-gray-800">
-                          {n.title}
-                        </span>
-                        <span className="text-xs text-gray-400">{n.time}</span>
-                      </div>
-                      <p className="text-sm text-gray-600">{n.description}</p>
-                    </div>
-                  ))}
-                  {notifications.length === 0 && (
+                  {notifications.length > 0 ? (
+                    notifications.map((n) => (
+                      <a
+                        key={n._id}
+                        href={n.detailsUrl}
+                        className="block px-4 py-3 hover:bg-gray-50"
+                      >
+                        <p className="text-sm font-medium text-gray-800">
+                          {n.message}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(n.createdAt).toLocaleString()}
+                        </p>
+                      </a>
+                    ))
+                  ) : (
                     <p className="px-4 py-3 text-sm text-gray-500">
                       No new notifications.
                     </p>
@@ -121,8 +143,9 @@ export function AccountHeader({ name, role, avatarUrl }: AccountHeaderProps) {
                   <button
                     className="text-sm text-blue-600 hover:underline"
                     onClick={() => {
-                      /* e.g. navigate to /notifications */
                       setShowNotifications(false);
+                      // navigate to full notifications page if desired
+                      // e.g. router.push("/notifications");
                     }}
                   >
                     View all
@@ -146,7 +169,7 @@ export function AccountHeader({ name, role, avatarUrl }: AccountHeaderProps) {
                 <div
                   className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
                   onClick={() => {
-                    console.log("Settings clicked");
+                    /* e.g. navigate to Settings */
                     setDropdownOpen(false);
                   }}
                 >
@@ -156,7 +179,7 @@ export function AccountHeader({ name, role, avatarUrl }: AccountHeaderProps) {
                 <div
                   className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
                   onClick={() => {
-                    console.log("Log out clicked");
+                    /* e.g. perform logout */
                     setDropdownOpen(false);
                   }}
                 >
