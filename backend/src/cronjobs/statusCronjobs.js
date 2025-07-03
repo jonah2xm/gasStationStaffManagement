@@ -14,12 +14,24 @@ cron.schedule("5 0 * * *", async () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Helper to update Personnel status
-  const markPersonnelActif = async (personnelId) => {
-    await Personnel.findByIdAndUpdate(personnelId, { status: "Actif" });
-  };
+  // 0. Monthly holiday accrual on the 1st
+  if (today.getDate() === 1) {
+    await Personnel.updateMany({}, { $inc: { holidaysLeft: 2.5 } });
+    const allUsers = await Users.find().select("_id").lean();
+    const accrualNotifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "MonthlyAccrual",
+      reference: null,
+      message: "Vous avez reçu 2,5 jours de congés supplémentaires ce mois-ci.",
+      detailsUrl: "/conges",
+    }));
+    if (accrualNotifs.length) await Notification.insertMany(accrualNotifs);
+  }
 
-  // Fetch all users once (for broadcast)
+  // collect IDs to mark active
+  const toActivate = new Set();
+
+  // fetch all users once (for broadcasting notifications)
   const allUsers = await Users.find().select("_id").lean();
 
   //
@@ -36,7 +48,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $ne: "Actif" } } },
+    { $match: { "personnel.status": { $eq: "Actif" } } },
     {
       $project: {
         _id: 1,
@@ -65,19 +77,17 @@ cron.schedule("5 0 * * *", async () => {
         });
       }
 
-      // finally mark each personnel Actif
-      await markPersonnelActif(a.personnel._id);
+      toActivate.add(a.personnel._id);
     }
     if (inserts.length) await Notification.insertMany(inserts);
   }
 
   //
-  // 2. AbsenceAI (only avisAbsence)
+  // 2. AbsenceAI
   //
   const absAI = await AbsenceAI.aggregate([
     {
       $match: {
-        operationType: "avisAbsence",
         endDate: { $exists: true, $lt: today },
       },
     },
@@ -90,7 +100,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $ne: "Actif" } } },
+    { $match: { "personnel.status": { $eq: "Actif" } } },
     {
       $project: {
         _id: 1,
@@ -119,7 +129,7 @@ cron.schedule("5 0 * * *", async () => {
         });
       }
 
-      await markPersonnelActif(a.personnel._id);
+      toActivate.add(a.personnel._id);
     }
     if (inserts.length) await Notification.insertMany(inserts);
   }
@@ -138,7 +148,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $ne: "Actif" } } },
+    { $match: { "personnel.status": { $eq: "Actif" } } },
     {
       $project: {
         _id: 1,
@@ -168,8 +178,9 @@ cron.schedule("5 0 * * *", async () => {
         });
       }
 
-      // update personnel status + restore origin station
-      await markPersonnelActif(aff.personnel._id);
+      toActivate.add(aff.personnel._id);
+
+      // restore origin station now
       const origin = await Station.findById(aff.originStation).lean();
       if (origin) {
         await Personnel.findByIdAndUpdate(aff.personnel._id, {
@@ -195,7 +206,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $ne: "Actif" } } },
+    { $match: { "personnel.status": { $eq: "Actif" } } },
     {
       $project: {
         _id: 1,
@@ -224,12 +235,22 @@ cron.schedule("5 0 * * *", async () => {
         });
       }
 
-      await markPersonnelActif(c.personnel._id);
+      toActivate.add(c.personnel._id);
     }
     if (inserts.length) await Notification.insertMany(inserts);
   }
 
+  // 5. Finally, mark everyone collected above as Actif
+  if (toActivate.size) {
+    await Personnel.updateMany(
+      { _id: { $in: Array.from(toActivate) } },
+      { status: "Actif" }
+    );
+  }
+
   console.log(
-    `[CRON] Status reset + notifications at ${new Date().toISOString()}`
+    `[CRON] Completed at ${new Date().toISOString()} – ${
+      toActivate.size
+    } personnels activated.`
   );
 });
