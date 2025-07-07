@@ -9,7 +9,13 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["AbsenceAA", "AbsenceAI", "AffectationTemporaire", "Conge"],
+    enum: [
+      "AbsenceAA",
+      "AbsenceAI",
+      "AffectationTemporaire",
+      "Conge",
+      "CongeDays",
+    ],
     required: true,
   },
   reference: {

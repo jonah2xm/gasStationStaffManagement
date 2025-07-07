@@ -1,7 +1,9 @@
 // absenceAA.controller.js
 const AbsenceAA = require("../models/absenceAAModel");
+const Notification = require("../models/notificationModel");
 const fs = require("fs");
 const path = require("path");
+const Users = require("../models/userModel");
 /**
  * Create a new absence record.
  * Expects form-data with fields: personnelId, startDate, endDate, absenceType, description,
@@ -88,6 +90,20 @@ exports.createAbsenceAA = async (req, res) => {
     await Personnel.findByIdAndUpdate(personnelId, {
       status: absenceType,
     });
+    const allUsers = await Users.find().select("_id").lean();
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AbsenceAA",
+      reference: created._id, // point at the new absence
+      message: `Nouvelle absence AA pour ${personnel.firstName} ${
+        personnel.lastName
+      } du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}.`,
+      detailsUrl: `/absences/aa/details/${created._id}`,
+    }));
+
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
+    }
 
     return res.status(201).json(created);
   } catch (err) {

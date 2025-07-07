@@ -10,7 +10,7 @@ const Notification = require("../models/notificationModel");
 const Users = require("../models/userModel");
 
 // Run every day at 12:05 AM
-cron.schedule("5 0 * * *", async () => {
+cron.schedule("05 0 * * *", async () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -48,7 +48,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $eq: "Actif" } } },
+    { $match: { "personnel.status": { $ne: "Actif" } } },
     {
       $project: {
         _id: 1,
@@ -100,7 +100,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $eq: "Actif" } } },
+    { $match: { "personnel.status": { $ne: "Actif" } } },
     {
       $project: {
         _id: 1,
@@ -148,7 +148,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $eq: "Actif" } } },
+    { $match: { "personnel.status": { $ne: "Actif" } } },
     {
       $project: {
         _id: 1,
@@ -206,7 +206,7 @@ cron.schedule("5 0 * * *", async () => {
       },
     },
     { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $eq: "Actif" } } },
+    { $match: { "personnel.status": { $ne: "Actif" } } },
     {
       $project: {
         _id: 1,
