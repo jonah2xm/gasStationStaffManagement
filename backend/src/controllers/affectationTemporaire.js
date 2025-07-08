@@ -1,9 +1,8 @@
 const AffectationTemporaire = require("../models/affectationTemporaire");
 const Personnel = require("../models/personnelModel");
-
 const Station = require("../models/stationModel");
-
-// controllers/affectationController.js
+const Users = require("../models/userModel");
+const Notification = require("../models/notificationModel");
 
 const fs = require("fs");
 const path = require("path");
@@ -37,20 +36,20 @@ exports.createAffectation = async (req, res) => {
     const end = new Date(endDate);
     const today = new Date();
 
-    // 3) Load personnel and check existence
+    // 3) Load personnel
     const personnel = await Personnel.findById(personnelId);
     if (!personnel) {
       return res.status(404).json({ message: "Personnel non trouvé." });
     }
 
-    // 4) If today ∈ [start, end], ensure personnel.status is "Actif"
+    // 4) In‑period must be Actif
     if (today >= start && today <= end && personnel.status !== "Actif") {
       return res
         .status(400)
         .json({ message: "L'employé n'est pas actif pendant cette période." });
     }
 
-    // 5) Check overlap with the *last* assignment of this person
+    // 5) Overlap check
     const last = await AffectationTemporaire.findOne({ personnel: personnelId })
       .sort({ startDate: -1 })
       .lean();
@@ -96,13 +95,33 @@ exports.createAffectation = async (req, res) => {
     const newAssign = new AffectationTemporaire(assignData);
     const savedAssign = await newAssign.save();
 
-    // 8) Update Personnel’s current station (but never touch status)
+    // 8) Update Personnel’s current station
     await Personnel.findByIdAndUpdate(personnelId, {
       station: affectedDoc._id,
       stationName: affectedDoc.name,
     });
 
-    // 9) Return
+    // 9) Broadcast notification to all users
+    const allUsers = await Users.find().select("_id").lean();
+    const msg = `Affectation temporaire: ${personnel.firstName} ${
+      personnel.lastName
+    } déplacé de "${originDoc.name}" à "${
+      affectedDoc.name
+    }" du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}.`;
+
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AffectationTemporaire",
+      reference: savedAssign._id,
+      message: msg,
+      detailsUrl: `/affectations/temporaire/details/${savedAssign._id}`,
+    }));
+
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
+    }
+
+    // 10) Return success
     return res.status(201).json({
       message: "Affectation temporaire créée avec succès",
       data: savedAssign,
@@ -264,7 +283,9 @@ exports.deleteAffectationTemporaire = async (req, res) => {
     const { id } = req.params;
 
     // 1) Find the assignment
-    const assign = await AffectationTemporaire.findById(id).lean();
+    const assign = await AffectationTemporaire.findById(id)
+      .lean()
+      .populate("personnel", "firstName lastName");
     if (!assign) {
       return res
         .status(404)
@@ -276,7 +297,7 @@ exports.deleteAffectationTemporaire = async (req, res) => {
       const fullPath = path.resolve(assign.document);
       fs.unlink(fullPath, (err) => {
         if (err && err.code !== "ENOENT") {
-          console.warn("Impossible de supprimer le fichier PDF :", err);
+          console.warn("Impossible de supprimer le fichier PDF :", err);
         }
       });
     }
@@ -286,17 +307,37 @@ exports.deleteAffectationTemporaire = async (req, res) => {
 
     // 4) Load the origin station document to get its name
     const originDoc = await Station.findById(assign.originStation).lean();
+    let stationResetMsg = "";
     if (originDoc) {
       // 5) Update Personnel back to originStation
       await Personnel.findByIdAndUpdate(assign.personnel, {
         station: originDoc._id,
         stationName: originDoc.name,
       });
+      stationResetMsg = `Station remise à "${originDoc.name}"`;
     }
 
-    // 6) Respond
+    // 6) Broadcast notification to all users
+    const allUsers = await Users.find().select("_id").lean();
+    const msg = `Affectation temporaire  pour le personnel ${
+      assign.personnel.firstName + " " + assign.personnel.lastName
+    } a ete supprimée. ${stationResetMsg}.`;
+
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AffectationTemporaire",
+      reference: assign._id,
+      message: msg,
+      detailsUrl: "/affectations/temporaire", // link back to listing
+    }));
+
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
+    }
+
+    // 7) Respond
     return res.status(200).json({
-      message: "Affectation temporaire supprimée, station remise à l'origine.",
+      message: "Affectation temporaire supprimée et notifications envoyées.",
     });
   } catch (err) {
     console.error("Erreur deleteAffectationTemporaire:", err);

@@ -15,6 +15,7 @@ const notificationSchema = new mongoose.Schema({
       "AffectationTemporaire",
       "Conge",
       "CongeDays",
+      "AffectationDefinitive",
     ],
     required: true,
   },

@@ -2,6 +2,8 @@
 const AffectationDefinitif = require("../models/affectatoinDefinitifModel");
 const Personnel = require("../models/personnelModel");
 const Station = require("../models/stationModel");
+const Users = require("../models/userModel");
+const Notification = require("../models/notificationModel");
 
 exports.createAffectationDefinitif = async (req, res) => {
   try {
@@ -20,7 +22,7 @@ exports.createAffectationDefinitif = async (req, res) => {
       });
     }
 
-    // 2) Parse and fetch station docs
+    // 2) Parse start date & fetch stations
     const parsedStart = new Date(startDate);
     const [originDoc, affectedDoc] = await Promise.all([
       Station.findById(originStation),
@@ -32,13 +34,13 @@ exports.createAffectationDefinitif = async (req, res) => {
         .json({ message: "Origine ou station cible introuvable." });
     }
 
-    // 3) Load personnel & ensure "Actif" if today ≥ startDate
+    // 3) Load personnel & ensure "Actif" if in-period
     const today = new Date();
     const perso = await Personnel.findById(personnelId);
     if (!perso) {
       return res.status(404).json({ message: "Personnel non trouvé." });
     }
-    if (today >= parsedStart && perso.status !== "Actif") {
+    if (today === parsedStart && perso.status !== "Actif") {
       return res.status(400).json({
         message:
           "L'employé n'est pas actif à la date de début de l’affectation.",
@@ -53,8 +55,7 @@ exports.createAffectationDefinitif = async (req, res) => {
       .lean();
     if (lastOther) {
       const oStart = new Date(lastOther.startDate);
-      const overlaps = parsedStart >= oStart;
-      if (overlaps) {
+      if (parsedStart === oStart) {
         return res.status(409).json({
           message:
             "Cet employé a déjà une affectation définitive à partir de cette date.",
@@ -62,7 +63,7 @@ exports.createAffectationDefinitif = async (req, res) => {
       }
     }
 
-    // 5) Build & save
+    // 5) Build & save the definitive assignment
     const assignData = {
       personnel: personnelId,
       startDate: parsedStart,
@@ -73,23 +74,40 @@ exports.createAffectationDefinitif = async (req, res) => {
     if (req.file) {
       assignData.document = req.file.path.replace(/\\/g, "/");
     }
-
     const newAssign = new AffectationDefinitif(assignData);
     const savedAssign = await newAssign.save();
 
-    // 6) Update only the station fields on Personnel
+    // 6) Update only the station on Personnel
     await Personnel.findByIdAndUpdate(personnelId, {
       station: affectedDoc._id,
       stationName: affectedDoc.name,
     });
 
-    // 7) Respond
+    // 7) Broadcast notification to all users
+    const allUsers = await Users.find().select("_id").lean();
+    const msg = `Affectation définitive : ${perso.firstName} ${
+      perso.lastName
+    } déplacé de "${originDoc.name}" à "${
+      affectedDoc.name
+    }" à partir du ${parsedStart.toLocaleDateString()}.`;
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AffectationTemporaire", // or use a new type if you like
+      reference: savedAssign._id,
+      message: msg,
+      detailsUrl: `/affectations/definitives/details/${savedAssign._id}`,
+    }));
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
+    }
+
+    // 8) Return success
     return res.status(201).json({
       message: "Affectation définitive créée avec succès.",
       data: savedAssign,
     });
   } catch (err) {
-    console.error("Erreur création affectation définitive :", err);
+    console.error("Erreur création affectation définitive :", err);
     return res.status(500).json({
       message:
         err.message ||
@@ -245,24 +263,48 @@ exports.updateAffectationDefinitif = async (req, res) => {
 exports.deleteAffectationDefinitif = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await AffectationDefinitif.findByIdAndDelete(id);
 
+    // 1) Delete the definitive assignment
+    const deleted = await AffectationDefinitif.findByIdAndDelete(id)
+      .lean()
+      .populate("personnel", "firstName,lastName");
     if (!deleted) {
       return res
         .status(404)
         .json({ message: "Affectation définitive introuvable." });
     }
+
+    // 2) Restore the personnel’s station to origin
     const originDoc = await Station.findById(deleted.originStation).lean();
+    let stationResetMsg = "";
     if (originDoc) {
-      // 5) Update Personnel back to originStation
       await Personnel.findByIdAndUpdate(deleted.personnel, {
         station: originDoc._id,
         stationName: originDoc.name,
       });
+      stationResetMsg = `Station remise à "${originDoc.name}"`;
     }
-    return res
-      .status(200)
-      .json({ message: "Affectation définitive supprimée avec succès." });
+
+    // 3) Broadcast notification to all users
+    const allUsers = await Users.find().select("_id").lean();
+    const msg = `Aff. définitive de ${
+      deleted.personnel.firstName + " " + deleted.personnel.lastName
+    } supprimée. ${stationResetMsg}.`;
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AffectationDefinitive",
+      reference: deleted._id,
+      message: msg,
+      detailsUrl: "/affectations/definitives",
+    }));
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
+    }
+
+    // 4) Respond
+    return res.status(200).json({
+      message: "Affectation définitive supprimée et notifications envoyées.",
+    });
   } catch (err) {
     console.error("Erreur suppression affectation définitive :", err);
     return res.status(500).json({

@@ -1,5 +1,8 @@
+// controllers/absenceAIController.js
 const AbsenceAI = require("../models/absenceAIModel");
 const Personnel = require("../models/personnelModel");
+const Users = require("../models/userModel");
+const Notification = require("../models/notificationModel");
 
 exports.createAbsenceAI = async (req, res) => {
   try {
@@ -34,7 +37,6 @@ exports.createAbsenceAI = async (req, res) => {
     const lastAI = await AbsenceAI.findOne({ personnel: personnelId })
       .sort({ startDate: -1 })
       .lean();
-
     if (lastAI && newEnd) {
       const lastStart = new Date(lastAI.startDate);
       const lastEnd = lastAI.endDate ? new Date(lastAI.endDate) : null;
@@ -50,7 +52,32 @@ exports.createAbsenceAI = async (req, res) => {
       }
     }
 
-    // 6a) If not in period → create only
+    // Prepare the notification payload function
+    const broadcastNotification = async (createdId) => {
+      const allUsers = await Users.find().select("_id").lean();
+      const baseMsg =
+        operationType === "avisAbsence"
+          ? `Nouvel avis d'absence pour ${personnel.firstName} ${personnel.lastName}`
+          : `Avis de reprise pour ${personnel.firstName} ${personnel.lastName}`;
+
+      const dateRange = newEnd
+        ? ` du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}`
+        : ` à partir du ${newStart.toLocaleDateString()}`;
+
+      const msg = baseMsg + dateRange + ".";
+
+      const notifs = allUsers.map((u) => ({
+        personnel: u._id,
+        type: "AbsenceAI",
+        reference: createdId,
+        message: msg,
+        detailsUrl: `/absences/ai/details/${createdId}`,
+      }));
+
+      await Notification.insertMany(notifs);
+    };
+
+    // 6a) If not in period → create only, then notify
     if (!isInPeriod) {
       const aiData = {
         operationType,
@@ -60,6 +87,10 @@ exports.createAbsenceAI = async (req, res) => {
         document: req.file ? req.file.path : undefined,
       };
       const created = await AbsenceAI.create(aiData);
+
+      // broadcast even out‑of‑period
+      await broadcastNotification(created._id);
+
       return res.status(201).json(created);
     }
 
@@ -68,7 +99,7 @@ exports.createAbsenceAI = async (req, res) => {
       return res.status(400).json({ message: "L'employé n'est pas actif." });
     }
 
-    // 7) Create & set status = "AI"
+    // 7) Create & set status = "AI", then notify
     const aiData = {
       operationType,
       startDate: newStart,
@@ -78,7 +109,11 @@ exports.createAbsenceAI = async (req, res) => {
     };
     const created = await AbsenceAI.create(aiData);
 
+    // update personnel status
     await Personnel.findByIdAndUpdate(personnelId, { status: "AI" });
+
+    // broadcast in‑period notification
+    await broadcastNotification(created._id);
 
     return res.status(201).json(created);
   } catch (err) {
@@ -124,8 +159,11 @@ exports.deleteAbsenceAI = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1) Load the entry to get its dates and personnel
-    const entry = await AbsenceAI.findById(id);
+    // 1) Load the entry to get dates and personnel
+    const entry = await AbsenceAI.findById(id).populate(
+      "personnel",
+      "firstName lastName"
+    );
     if (!entry) {
       return res.status(404).json({ message: "Entrée introuvable." });
     }
@@ -133,13 +171,35 @@ exports.deleteAbsenceAI = async (req, res) => {
     // 2) Delete the database record
     await AbsenceAI.findByIdAndDelete(id);
 
-    // 3) If today ∈ [startDate, endDate], reset personnel to "Actif"
+    // 3) Determine if the personnel status should be reset
     const today = new Date();
     const start = new Date(entry.startDate);
     const end = entry.endDate ? new Date(entry.endDate) : null;
 
+    let statusReset = false;
     if (end && today >= start && today <= end) {
-      await Personnel.findByIdAndUpdate(entry.personnel, { status: "Actif" });
+      await Personnel.findByIdAndUpdate(entry.personnel._id, {
+        status: "Actif",
+      });
+      statusReset = true;
+    }
+
+    // 4) Broadcast a notification to all users
+    const allUsers = await Users.find().select("_id").lean();
+    const baseMsg = statusReset
+      ? `L'avis AI de ${entry.personnel.firstName} ${entry.personnel.lastName} a été supprimé et son statut est repassé à Actif.`
+      : `L'avis AI  de ${entry.personnel.firstName} ${entry.personnel.lastName} a été supprimé.`;
+
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AbsenceAI",
+      reference: entry._id,
+      message: baseMsg,
+      detailsUrl: `/absences/ai`,
+    }));
+
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
     }
 
     return res.status(200).json({ message: "Suppression réussie." });
@@ -176,23 +236,39 @@ exports.updateEndDate = async (req, res) => {
     }
 
     // 3) Adjust personnel status based on the new period
-    const personnel = await Personnel.findById(updated.personnel._id);
-    if (!personnel) {
-      return res.status(404).json({ message: "Personnel non trouvé." });
-    }
-
     const today = new Date();
     const start = new Date(updated.startDate);
     const end = new Date(updated.endDate);
     const inPeriod = today >= start && today <= end;
 
-    await Personnel.findByIdAndUpdate(personnel._id, {
-      status: inPeriod ? "AI" : "Actif",
+    const newStatus = inPeriod ? "AI" : "Actif";
+    await Personnel.findByIdAndUpdate(updated.personnel._id, {
+      status: newStatus,
     });
+
+    // 4) Broadcast notification to all users
+    const allUsers = await Users.find().select("_id").lean();
+    const baseMsg = inPeriod
+      ? `L'avis de reprise de ${updated.personnel.firstName} ${
+          updated.personnel.lastName
+        } démarre aujourd'hui jusqu'au ${end.toLocaleDateString()}.`
+      : `L'avis de reprise de ${updated.personnel.firstName} ${
+          updated.personnel.lastName
+        } est terminé le ${end.toLocaleDateString()}.`;
+
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AbsenceAI",
+      reference: updated._id,
+      message: baseMsg,
+      detailsUrl: `/absences/ai/details/${updated._id}`,
+    }));
+
+    await Notification.insertMany(notifs);
 
     return res.status(200).json({
       message:
-        "Date de fin mise à jour et operationType défini sur 'avisReprise'.",
+        "Date de fin mise à jour, operationType défini sur 'avisReprise', et notifications envoyées.",
       data: updated,
     });
   } catch (error) {

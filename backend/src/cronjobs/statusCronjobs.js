@@ -10,7 +10,7 @@ const Notification = require("../models/notificationModel");
 const Users = require("../models/userModel");
 
 // Run every day at 12:05 AM
-cron.schedule("05 0 * * *", async () => {
+cron.schedule("26 09 * * *", async () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

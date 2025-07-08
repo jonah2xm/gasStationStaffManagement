@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,47 +28,46 @@ export function AccountHeader({ name, role, avatarUrl }: AccountHeaderProps) {
   const bellRef = useRef<HTMLDivElement>(null);
 
   // 1) On mount: fetch overview (total & unread)
-  useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/overview`, {
-      method: "GET",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    })
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success) {
-          setUnreadCount(json.data.unread);
-        }
-      })
-      .catch((err) => console.error("Overview fetch error:", err));
+  const fetchOverview = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/overview`,
+        { credentials: "include" }
+      );
+      const json = await res.json();
+      if (json.success) setUnreadCount(json.data.unread);
+    } catch (err) {
+      console.error("Overview fetch error:", err);
+    }
   }, []);
+  useEffect(() => {
+    fetchOverview();
+  }, [fetchOverview]);
 
   // 2) Handler: on bell click, fetch latest 3 & mark read
-  const handleBellClick = () => {
+  const handleBellClick = useCallback(async () => {
     setShowNotifications((v) => !v);
 
     // only fetch if opening
     if (!showNotifications) {
-      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/latest`, {
-        method: "GET",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.success) {
-            console.log("jsondata", json.data);
-            setNotifications(json.data);
-            // after marking read on server, update our badge
-            const stillUnread = json.data.filter(
-              (n: ApiNotification) => !n.seen
-            ).length;
-            setUnreadCount((prev) => Math.max(prev - stillUnread, 0));
-          }
-        })
-        .catch((err) => console.error("Latest fetch error:", err));
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/latest`,
+          { credentials: "include" }
+        );
+        const json = await res.json();
+        if (json.success) {
+          setNotifications(json.data);
+          const newlyRead = json.data.filter((n) => !n.seen).length;
+          setUnreadCount((prev) => Math.max(prev - newlyRead, 0));
+        }
+      } catch (err) {
+        console.error("Latest fetch error:", err);
+      }
+
+      await fetchOverview();
     }
-  };
+  }, [showNotifications, fetchOverview]);
 
   // 3) Close dropdowns when clicking outside
   useEffect(() => {

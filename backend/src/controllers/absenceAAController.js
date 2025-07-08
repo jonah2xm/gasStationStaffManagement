@@ -13,6 +13,7 @@ const Users = require("../models/userModel");
 const Personnel = require("../models/personnelModel"); // make sure the path is correct
 
 exports.createAbsenceAA = async (req, res) => {
+  console.log("→ [createAbsenceAA] handler entered", { body: req.body });
   try {
     const { personnelId, startDate, endDate, absenceType, description } =
       req.body;
@@ -67,6 +68,27 @@ exports.createAbsenceAA = async (req, res) => {
       if (req.file) absenceData.document = req.file.path.replace(/\\/g, "/");
 
       const created = await AbsenceAA.create(absenceData);
+      const allUsers = await Users.find().select("_id").lean();
+
+      const accrualNotifs = allUsers.map((u) => ({
+        personnel: u._id,
+        type: "AbsenceAA",
+        reference: created._id,
+        message: `Nouvelle absence AA pour ${personnel.firstName} ${
+          personnel.lastName
+        } du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}.`,
+        detailsUrl: "/conges",
+      }));
+
+      try {
+        if (accrualNotifs.length) {
+          await Notification.insertMany(accrualNotifs);
+          console.log("Notifications inserted:", accrualNotifs.length);
+        }
+      } catch (notifErr) {
+        console.error("Error inserting notifications:", notifErr);
+      }
+
       return res.status(201).json(created);
     }
 
@@ -84,25 +106,34 @@ exports.createAbsenceAA = async (req, res) => {
       description: description || "",
     };
     if (req.file) absenceData.document = req.file.path.replace(/\\/g, "/");
-
     const created = await AbsenceAA.create(absenceData);
+    try {
+      await Personnel.findByIdAndUpdate(personnelId, {
+        status: absenceType,
+      });
+    } catch (updateErr) {
+      console.error("Error updating personnel status:", updateErr);
+    }
 
-    await Personnel.findByIdAndUpdate(personnelId, {
-      status: absenceType,
-    });
     const allUsers = await Users.find().select("_id").lean();
-    const notifs = allUsers.map((u) => ({
+
+    const accrualNotifs = allUsers.map((u) => ({
       personnel: u._id,
       type: "AbsenceAA",
-      reference: created._id, // point at the new absence
-      message: `Nouvelle absence AA pour ${personnel.firstName} ${
+      reference: created._id,
+      message: `Nouvelle absence AA pour ${personnel.firstName} ${
         personnel.lastName
       } du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}.`,
-      detailsUrl: `/absences/aa/details/${created._id}`,
+      detailsUrl: "/conges",
     }));
 
-    if (notifs.length) {
-      await Notification.insertMany(notifs);
+    try {
+      if (accrualNotifs.length) {
+        await Notification.insertMany(accrualNotifs);
+        console.log("Notifications inserted:", accrualNotifs.length);
+      }
+    } catch (notifErr) {
+      console.error("Error inserting notifications:", notifErr);
     }
 
     return res.status(201).json(created);
@@ -153,33 +184,58 @@ exports.getAbsenceAAById = async (req, res) => {
       .json({ message: "Erreur lors de la récupération de l'absence" });
   }
 };
-
 exports.deleteAbsenceAA = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1) Charger l'absence pour récupérer le chemin du document et les dates
-    const absence = await AbsenceAA.findById(id);
+    // 1) Load the absence so we have its dates & personnel
+    const absence = await AbsenceAA.findById(id).populate(
+      "personnel",
+      "firstName lastName status"
+    );
     if (!absence) {
       return res.status(404).json({ message: "Absence non trouvée" });
     }
 
-    // 2) Supprimer le PDF s'il existe
+    // 2) Delete the PDF file if it exists
     if (absence.document && fs.existsSync(absence.document)) {
       fs.unlink(path.resolve(absence.document), (err) => {
-        if (err) console.warn("Échec de suppression du document PDF :", err);
+        if (err) console.warn("Échec suppression document PDF :", err);
       });
     }
 
-    // 3) Supprimer l'entrée en base
+    // 3) Delete the DB record
     await AbsenceAA.findByIdAndDelete(id);
 
-    // 4) Si on est toujours dans la période de l'absence, repasser le personnel à "Actif"
+    // 4) If we are still within the absence period, reset status to "Actif"
     const today = new Date();
     const start = new Date(absence.startDate);
     const end = new Date(absence.endDate);
+    let statusReset = false;
+
     if (today >= start && today <= end) {
       await Personnel.findByIdAndUpdate(absence.personnel, { status: "Actif" });
+      statusReset = true;
+    }
+    console.log("absenceAA", absence.personnel);
+    // 5) Broadcast a notification to all users
+    const allUsers = await Users.find().select("_id").lean();
+    const msg = statusReset
+      ? `L'absence AA du ${
+          absence.personnel.firstName + " " + absence.personnel.lastName
+        } a été supprimée et le statut du personnel est repassé à Actif.`
+      : `L'absence AA (${absence._id}) a été supprimée.`;
+
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "AbsenceAA",
+      reference: absence._id,
+      message: msg,
+      detailsUrl: "/absences/aa", // link back to your list or overview page
+    }));
+
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
     }
 
     return res.status(200).json({ message: "Absence supprimée avec succès" });
