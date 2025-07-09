@@ -4,6 +4,8 @@ const Conge = require("../models/congeModel");
 const Personnel = require("../models/personnelModel");
 const fs = require("fs");
 const path = require("path");
+const Users = require("../models/userModel");
+const Notification = require("../models/notificationModel");
 
 // POST /api/conges
 exports.addConge = async (req, res) => {
@@ -20,18 +22,8 @@ exports.addConge = async (req, res) => {
     } = req.body;
 
     // 1) Champs obligatoires
-    if (!personnelId) {
-      return res
-        .status(400)
-        .json({ message: "Le champ personnelId est requis" });
-    }
-    if (!stationName) {
-      return res
-        .status(400)
-        .json({ message: "Le champ stationName est requis" });
-    }
-    if (!req.file) {
-      return res.status(400).json({ message: "Document PDF manquant" });
+    if (!personnelId || !stationName || !req.file) {
+      return res.status(400).json({ message: "Champs requis manquants." });
     }
 
     // 2) Charge le personnel
@@ -50,33 +42,22 @@ exports.addConge = async (req, res) => {
         .json({ message: "Le congé demandé dépasse le congé restant." });
     }
 
-    // 4) Parse les dates
+    // 4) Parse les dates & chevauchement
     const today = new Date();
     const start = new Date(dateDebut);
     const end = new Date(dateRetour);
     const isInPeriod = today >= start && today <= end;
 
-    // 5) Si dans la période, il doit être Actif
-    if (isInPeriod && personnel.status !== "Actif") {
-      return res.status(400).json({
-        message: "Le personnel n'est pas actif durant la période du congé.",
-      });
-    }
-
-    // 6) **Chevauchement** : on récupère la dernière entrée pour ce personnel
     const lastConge = await Conge.findOne({ personnelId })
       .sort({ dateDebut: -1 })
       .lean();
-
     if (lastConge) {
-      const lastStart = new Date(lastConge.dateDebut);
-      const lastEnd = new Date(lastConge.dateRetour);
-
+      const ls = new Date(lastConge.dateDebut),
+        le = new Date(lastConge.dateRetour);
       const overlaps =
-        (start >= lastStart && start <= lastEnd) ||
-        (end >= lastStart && end <= lastEnd) ||
-        (start <= lastStart && end >= lastEnd);
-
+        (start >= ls && start <= le) ||
+        (end >= ls && end <= le) ||
+        (start <= ls && end >= le);
       if (overlaps) {
         return res.status(400).json({
           message: "L'employé a déjà un congé entre ces dates.",
@@ -84,7 +65,7 @@ exports.addConge = async (req, res) => {
       }
     }
 
-    // 7) Création du congé
+    // 5) Création du congé
     const conge = new Conge({
       personnelId,
       stationName,
@@ -94,28 +75,49 @@ exports.addConge = async (req, res) => {
       dateRetour,
       lieuSejour,
       nombreJourRestant,
-      documentPath: req.file.path,
+      documentPath: req.file.path.replace(/\\/g, "/"),
     });
-    await conge.save();
+    const savedConge = await conge.save();
 
-    // 8) Mise à jour holidaysLeft et status si nécessaire
-    let newHolidaysLeft =
+    // 6) Mise à jour holidaysLeft et status si nécessaire
+    const newHolidaysLeft =
       typeof personnel.holidaysLeft === "number"
         ? personnel.holidaysLeft - Number(dureeConge)
         : undefined;
-
     const shouldChangeStatus = isInPeriod && personnel.status === "Actif";
 
     await Personnel.findByIdAndUpdate(personnelId, {
-      ...(shouldChangeStatus ? { status: "conge" } : {}),
+      ...(shouldChangeStatus ? { status: "Conge" } : {}),
       ...(newHolidaysLeft !== undefined && { holidaysLeft: newHolidaysLeft }),
     });
 
-    const pop = await conge.populate(
+    // 7) Notification au salarié concerné
+
+    // 8) Broadcast notification à tous les utilisateurs
+    const allUsers = await Users.find().select("_id").lean();
+    const broadcastMessage = `Congé de ${personnel.firstName} ${
+      personnel.lastName
+    } (${typeConge}) du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}. pour ${dureeConge} jour(s).`;
+
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "Conge",
+      reference: savedConge._id,
+      title: "Congé enregistré pour un employé",
+      message: broadcastMessage,
+      date: new Date(),
+      detailsUrl: `/conges/details/${savedConge._id}`,
+    }));
+
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
+    }
+
+    // 9) Réponse
+    const pop = await savedConge.populate(
       "personnelId",
       "firstName lastName matricule"
     );
-
     return res.status(201).json({
       _id: pop._id,
       personnel: pop.personnelId,
@@ -199,36 +201,71 @@ exports.getCongeById = async (req, res) => {
 // DELETE /api/conges/:id
 exports.deleteConge = async (req, res) => {
   try {
+    // 1) Supprimer et récupérer l’ancien document
     const conge = await Conge.findByIdAndDelete(req.params.id).lean();
     if (!conge) {
       return res.status(404).json({ message: "Congé non trouvé" });
     }
 
-    // optionally delete the PDF file on disk
-    fs.unlink(path.resolve(conge.documentPath), (err) => {
-      if (err) console.warn("Failed to delete file:", err);
-    });
+    // 2) Supprimer le fichier PDF
+    if (conge.documentPath && fs.existsSync(conge.documentPath)) {
+      fs.unlink(path.resolve(conge.documentPath), (err) => {
+        if (err) console.warn("Échec suppression du PDF :", err);
+      });
+    }
+
+    // 3) Mettre à jour le personnel : status = Actif + holidaysLeft
     if (conge.personnelId) {
-      // Récupérer le personnel pour mettre à jour holidaysLeft
       const personnel = await Personnel.findById(conge.personnelId);
-      let newHolidaysLeft =
-        personnel && typeof personnel.holidaysLeft === "number"
-          ? personnel.holidaysLeft + Number(conge.dureeConge)
+      const addedDays =
+        typeof personnel.holidaysLeft === "number"
+          ? Number(conge.dureeConge)
+          : 0;
+      const newHolidaysLeft =
+        typeof personnel.holidaysLeft === "number"
+          ? personnel.holidaysLeft + addedDays
           : personnel.holidaysLeft;
 
       await Personnel.findByIdAndUpdate(conge.personnelId, {
         status: "Actif",
         holidaysLeft: newHolidaysLeft,
       });
+
+      // 4) Notification privée à l’employé
     }
 
-    res.json({ message: "Congé supprimé avec succès" });
+    // 5) Notification broadcast à TOUS les utilisateurs
+    //    pour informer de l’annulation de ce congé
+    const allUsers = await Users.find().select("_id").lean();
+    const personnel = await Personnel.findById(conge.personnelId).lean();
+    const broadcastMessage = personnel
+      ? `Le congé de ${personnel.firstName} ${personnel.lastName} du ${new Date(
+          conge.dateDebut
+        ).toLocaleDateString()} au ${new Date(
+          conge.dateRetour
+        ).toLocaleDateString()} a été annulé.`
+      : `Un congé a été annulé (ID: ${conge._id}).`;
+
+    const notifs = allUsers.map((u) => ({
+      personnel: u._id,
+      type: "Conge",
+      reference: conge._id,
+      title: "Annulation de congé",
+      message: broadcastMessage,
+      date: new Date(),
+      detailsUrl: `/conges/archives/${conge._id}`,
+    }));
+
+    if (notifs.length) {
+      await Notification.insertMany(notifs);
+    }
+
+    return res.json({ message: "Congé supprimé avec succès" });
   } catch (err) {
     console.error("Error deleting conge:", err);
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
-
 // PUT /api/conges/:id
 exports.updateConge = async (req, res) => {
   try {

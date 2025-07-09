@@ -129,3 +129,60 @@ exports.getAndMarkLatestNotifications = async (req, res) => {
     });
   }
 };
+
+exports.listNotifications = async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Utilisateur non authentifié" });
+    }
+
+    // pagination
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
+    const skip = (page - 1) * limit;
+
+    // base filter
+    const filter = { personnel: userId };
+
+    // search
+    if (req.query.search) {
+      filter.message = { $regex: req.query.search, $options: "i" };
+    }
+    // types filter
+    if (req.query.types) {
+      filter.type = { $in: req.query.types.split(",") };
+    }
+    // read/unread filter
+    if (req.query.status === "read") filter.seen = true;
+    if (req.query.status === "unread") filter.seen = false;
+
+    // sort
+    const sortKey = req.query.sortKey || "createdAt";
+    const sortDir = req.query.sortDir === "asc" ? 1 : -1;
+    const sortObj = { [sortKey]: sortDir };
+
+    const total = await Notification.countDocuments(filter);
+    const notifications = await Notification.find(filter)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        notifications,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    console.error("Error in listNotifications:", err);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+};
