@@ -107,6 +107,7 @@ export default function StationDashboard() {
           credentials: "include",
         }
       );
+
       if (response.status === 401) {
         toast.error("Session expired. Redirecting to login...");
         router.push("/login");
@@ -251,7 +252,7 @@ export default function StationDashboard() {
           <Button
             variant="outline"
             onClick={fetchStations}
-            className="flex items-center"
+            className="flex items-center bg-transparent"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             Réessayer
@@ -342,7 +343,7 @@ export default function StationDashboard() {
                       </div>
                       <div className="flex items-center space-x-4">
                         <span className="text-sm text-gray-500">
-                          {station.personnel?.length || 0} personnel
+                          {station.personnels?.length || 0} personnel
                         </span>
                         <div className="flex items-center space-x-2">
                           <Button
@@ -409,7 +410,7 @@ export default function StationDashboard() {
                       Personnel
                     </h3>
                     {station.personnels?.length > 0 ? (
-                      <div className="overflow-x-auto">
+                      <div className="max-w-full">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -491,7 +492,10 @@ export default function StationDashboard() {
                         <p className="text-gray-500">
                           Aucun personnel assigné à cette station
                         </p>
-                        <Button variant="outline" className="mt-2">
+                        <Button
+                          variant="outline"
+                          className="mt-2 bg-transparent"
+                        >
                           <Plus className="mr-2 h-4 w-4" /> Ajouter Personnel
                         </Button>
                       </div>

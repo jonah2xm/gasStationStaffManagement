@@ -155,9 +155,6 @@ exports.listNotifications = async (req, res) => {
     if (req.query.types) {
       filter.type = { $in: req.query.types.split(",") };
     }
-    // read/unread filter
-    if (req.query.status === "read") filter.seen = true;
-    if (req.query.status === "unread") filter.seen = false;
 
     // sort
     const sortKey = req.query.sortKey || "createdAt";
@@ -170,6 +167,21 @@ exports.listNotifications = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .lean();
+
+    const unreadIds = notifications.filter((n) => !n.seen).map((n) => n._id);
+    if (unreadIds.length > 0) {
+      await Notification.updateMany(
+        { _id: { $in: unreadIds } },
+        { $set: { seen: true, seenAt: new Date() } }
+      );
+      // (optional) reflect that change back in your response:
+      notifications.forEach((n) => {
+        if (unreadIds.includes(n._id)) {
+          n.seen = true;
+          n.seenAt = new Date();
+        }
+      });
+    }
 
     res.status(200).json({
       success: true,

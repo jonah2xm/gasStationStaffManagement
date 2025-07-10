@@ -7,8 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   Users,
-  RefreshCw,
-  FileText,
+  Bell,
   Settings,
   FuelIcon,
   Calendar,
@@ -43,6 +42,18 @@ function Sidebar() {
               >
                 <Home className="mr-3 h-5 w-5" />
                 Dashboard
+              </Link>
+            </li>
+            {/*Notifications */}
+            <li>
+              <Link
+                href="/notifications"
+                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
+                  pathname === "/notifications" ? "bg-gray-100 font-medium" : ""
+                }`}
+              >
+                <Bell className="mr-3 h-5 w-5" />
+                Notifications
               </Link>
             </li>
             {/* Stations */}
@@ -236,7 +247,7 @@ export default function RootLayout({ children }) {
 
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={" overflow-y-hidden"}>
         <div
           className={`flex h-screen bg-gray-100 ${isLoginPage ? "" : "flex"}`}
         >
