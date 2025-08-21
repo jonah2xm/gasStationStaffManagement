@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import toast, { Toaster } from "react-hot-toast";
 
-const stationTypes = ["Urban", "Suburban", "Rural", "Highway", "Airport"];
+const stationTypes = ["Urbaine", "Rurale", "Autoroute", "Airport"];
 export default function EditStation() {
   const router = useRouter();
   const params = useParams();

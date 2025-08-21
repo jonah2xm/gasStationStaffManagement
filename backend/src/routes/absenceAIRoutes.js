@@ -7,10 +7,14 @@ const {
   getAbsenceAIById,
   deleteAbsenceAI,
   updateEndDate,
+  getAIAfter48h,
+  getAvisAbsence
 } = require("../controllers/absenceAIController");
 const { ensureAuthenticated } = require("../middleware/auth");
 
 router.post("/", upload.single("document"), createAbsenceAI);
+router.get("/getAI-48h", ensureAuthenticated, getAIAfter48h);
+router.get("/getAI-only", getAvisAbsence);
 router.get("/", ensureAuthenticated, getAllAbsenceAI);
 router.get("/:id", ensureAuthenticated, getAbsenceAIById);
 router.delete("/:id", ensureAuthenticated, deleteAbsenceAI);

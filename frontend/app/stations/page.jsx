@@ -119,7 +119,7 @@ export default function StationDashboard() {
       }
 
       const data = await response.json();
-      console.log("data", data);
+      console.log('data',data)
       setStations(data);
       calculateStats(data);
       setError(null);
@@ -135,8 +135,9 @@ export default function StationDashboard() {
   const calculateStats = (stationData) => {
     const totalStations = stationData.length;
     const totalPersonnel = stationData.reduce((total, station) => {
-      return total + (station.personnel?.length || 0);
+      return total + (station.personnels?.length || 0);
     }, 0);
+    console.log("total personnel", totalPersonnel);
     const avgPersonnelPerStation =
       totalStations > 0 ? (totalPersonnel / totalStations).toFixed(1) : 0;
     const stationsWithChief = stationData.filter((station) => {
@@ -225,7 +226,7 @@ export default function StationDashboard() {
               placeholder="Rechercher stations ou personnel..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              className="pl-10 pr-4 py-2 w-full rounded-full bg-white border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
             />
             <Search
               className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -341,36 +342,63 @@ export default function StationDashboard() {
                           {station.code}
                         </Badge>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <span className="text-sm text-gray-500">
-                          {station.personnels?.length || 0} personnel
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
+                      {/* inside AccordionTrigger: the Edit & Delete controls */}
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="inline-flex items-center text-gray-500 justify-center text-sm focus:outline-none"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEditStation(station);
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleEditStation(station);
+                              }
+                            }}
+                            aria-label="Edit"
                           >
                             <Edit className="h-4 w-4 text-blue-500" />
                             <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
+                          </span>
+                        </Button>
+
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="inline-flex items-center text-gray-500 justify-center text-sm focus:outline-none"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteClick(station);
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteClick(station);
+                              }
+                            }}
+                            aria-label="Delete"
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                             <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
+                          </span>
+                        </Button>
                       </div>
                     </div>
                   </AccordionTrigger>
@@ -470,15 +498,14 @@ export default function StationDashboard() {
                                         Actions
                                       </DropdownMenuLabel>
                                       <DropdownMenuItem>
-                                        Voir détails
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem>
+                                      <Link href={`/personnel/edit-personnel/${employee._id}`}>
                                         Modifier employé
+                                      </Link>
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-red-600">
+                                     { /*<DropdownMenuItem className="text-red-600">
                                         Supprimer employé
-                                      </DropdownMenuItem>
+                                      </DropdownMenuItem>*/}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
@@ -495,6 +522,9 @@ export default function StationDashboard() {
                         <Button
                           variant="outline"
                           className="mt-2 bg-transparent"
+                          onClick={()=>{
+                            router.push('/personnel/add-personnel')
+                          }}
                         >
                           <Plus className="mr-2 h-4 w-4" /> Ajouter Personnel
                         </Button>

@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import toast, { Toaster } from "react-hot-toast";
 
-const stationTypes = ["Urban", "Suburban", "Rural", "Highway", "Airport"];
+const stationTypes = ["Urbaine", "Rurale", "Autoroute", "Airport"];
 
 export default function AddStation() {
   const router = useRouter();
@@ -360,6 +360,7 @@ export default function AddStation() {
               <div className="space-y-2">
                 <Label htmlFor="type">Type Station*</Label>
                 <Select
+                
                   onValueChange={handleSelectChange}
                   value={stationData.type}
                   onOpenChange={() => !stationData.type && handleBlur("type")}
@@ -406,7 +407,7 @@ export default function AddStation() {
               >
                 Annuler
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" variant='submit' disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

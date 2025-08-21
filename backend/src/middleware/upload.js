@@ -1,32 +1,33 @@
 // middleware/upload.js
 const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
-// Configure storage options
+// absolute uploads folder -> <project-root>/src/uploads
+const uploadsDir = path.resolve(process.cwd(), "src", "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Ensure that the "uploads" directory exists.
-    cb(null, "uploads/");
+    console.log("MULTER -> saving file to:", uploadsDir);
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    // Create a unique file name
-    cb(null, Date.now() + "-" + file.originalname);
+    const filename = `${Date.now()}-${file.originalname}`;
+    console.log("MULTER -> filename chosen:", filename);
+    cb(null, filename);
   },
 });
 
-// Only accept PDF files
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype === "application/pdf") {
-    cb(null, true);
-  } else {
-    cb(new Error("Le fichier doit être au format PDF"), false);
-  }
+  if (file.mimetype === "application/pdf") cb(null, true);
+  else cb(new Error("Le fichier doit être au format PDF"), false);
 };
 
-// Set up the Multer middleware
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Maximum file size: 5 MB
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 module.exports = upload;

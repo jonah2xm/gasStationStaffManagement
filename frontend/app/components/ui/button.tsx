@@ -4,26 +4,34 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../../lib/utils";
 
+
 const buttonVariants = cva(
-  "inline-flex items-center text-gray-500 justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  // base
+  "inline-flex items-center justify-center gap-2 select-none rounded-lg font-medium transition duration-150 ease-in-out " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default:
+          "bg-sky-600 text-white hover:bg-sky-700 active:scale-[0.98] shadow-sm hover:shadow-md focus-visible:ring-sky-500",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-red-600 text-white hover:bg-red-700 active:scale-[0.98] shadow-sm hover:shadow-md focus-visible:ring-red-500",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm focus-visible:ring-slate-400",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-slate-400",
+        ghost:
+          "bg-transparent text-slate-700 hover:bg-slate-100",
+        link:
+          "bg-transparent text-sky-600 underline-offset-4 hover:underline hover:text-sky-700 px-0 py-0",
+        submit:
+          "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-md hover:shadow-lg focus-visible:ring-green-500",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        default: "h-11 px-5 py-2 rounded-lg text-sm",
+        sm: "h-9 px-3 rounded-md text-sm",
+        lg: "h-12 px-6 rounded-xl text-base",
+        icon: "h-10 w-10 p-0 rounded-md",
       },
     },
     defaultVariants: {

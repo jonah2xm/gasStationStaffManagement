@@ -14,16 +14,7 @@ const { ensureAuthenticated } = require("../middleware/auth");
 const router = express.Router();
 
 // configure multer to store uploads in /uploads
-const upload = multer({
-  dest: "uploads/",
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype !== "application/pdf") {
-      return cb(new Error("Seuls les PDF sont autorisés"));
-    }
-    cb(null, true);
-  },
-});
+const upload = require("../middleware/upload");
 
 router.post("/", ensureAuthenticated, upload.single("document"), addConge);
 router.get("/", ensureAuthenticated, getAllConges);

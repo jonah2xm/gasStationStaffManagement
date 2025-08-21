@@ -50,29 +50,27 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
+import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 // Leave types
 const leaveTypes = {
   ordinaire: { label: "Ordinaire", color: "bg-blue-100 text-blue-800" },
   anticipe: { label: "Anticipé", color: "bg-orange-100 text-orange-800" },
 };
-
 const getLeaveStatusLabel = (dateDebut, dateRetour) => {
   const today = new Date();
   const start = new Date(dateDebut);
   const end = new Date(dateRetour);
-  return today >= start && today <= end ? "En cours" : "Terminé";
+
+  if (today < start) {
+    return "Pas encore débuté";
+  } else if (today >= start && today <= end) {
+    return "En cours";
+  } else {
+    return "Terminé";
+  }
 };
+
 
 // badge helper, relies on the label above
 const getLeaveStatusBadge = (dateDebut, dateRetour) => {
@@ -465,7 +463,7 @@ export default function CongeMainPage() {
       </div>
 
       {/* Active filters */}
-      {(searchTerm || typeFilter.length || stationFilter.length) && (
+      {(searchTerm || typeFilter.length > 0 || stationFilter.length > 0)&& (
         <div className="flex flex-wrap gap-2 mb-4">
           <span className="text-sm font-medium">Filtres actifs:</span>
           {typeFilter.map((t) => (
@@ -636,7 +634,7 @@ export default function CongeMainPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
-                            onClick={() => router.push(`/conges/${r._id}`)}
+                            onClick={() => router.push(`/conges/details/${r._id}`)}
                           >
                             <Eye className="mr-2" /> Voir
                           </DropdownMenuItem>
@@ -691,27 +689,18 @@ export default function CongeMainPage() {
       )}
 
       {/* Delete Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer ce congé ? Cette action est
-              irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={deleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deleting && <Loader2 className="mr-2 animate-spin" />} Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CustomAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Confirmer la suppression"
+        description="Êtes-vous sûr de vouloir supprimer ce congé ? Cette action est irréversible."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

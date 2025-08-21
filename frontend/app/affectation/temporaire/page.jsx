@@ -22,7 +22,7 @@ import {
   MapPin,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-
+import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,16 +51,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 
 // Status types
 const statusTypes = {
@@ -97,6 +88,7 @@ export default function AffectationTemporairePage() {
   const [deletingAffectation, setDeletingAffectation] = useState(false);
   const [stations, setStations] = useState([]);
   const [user, setUser] = useState({});
+    const [deleting, setDeleting] = useState(false);
 
   const itemsPerPage = 5;
   useEffect(() => {
@@ -167,7 +159,7 @@ export default function AffectationTemporairePage() {
 
   const confirmDelete = async () => {
     if (!affectationToDelete) return;
-
+    setDeleting(true)
     setDeletingAffectation(true);
     try {
       // In a real application, you would call your API
@@ -200,6 +192,7 @@ export default function AffectationTemporairePage() {
       console.error("Error deleting affectation:", error);
       toast.error("Erreur lors de la suppression de l'affectation");
     } finally {
+      setDeleting(true)
       setDeletingAffectation(false);
     }
   };
@@ -838,38 +831,18 @@ export default function AffectationTemporairePage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer l'affectation temporaire de{" "}
-              {affectationToDelete?.personnel?.firstName}{" "}
-              {affectationToDelete?.personnel?.lastName} ? Cette action ne peut
-              pas être annulée.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingAffectation}>
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={deletingAffectation}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deletingAffectation ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Suppression...
-                </>
-              ) : (
-                "Supprimer"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+  <CustomAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Confirmer la suppression"
+        description="Êtes-vous sûr de vouloir supprimer ce congé ? Cette action est irréversible."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

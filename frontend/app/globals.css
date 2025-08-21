@@ -79,3 +79,15 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Treat the cmdk group wrapper as transparent so child items are direct children again */
+[cmdk-group-items] {
+  display: contents;               /* flattens wrapper out of the layout */
+}
+
+/* Ensure items accept pointer events & are stacked above other layers */
+[cmdk-item] {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 60;
+}

@@ -52,7 +52,7 @@ exports.createAbsenceAI = async (req, res) => {
       }
     }
 
-    // Prepare the notification payload function
+    // Prepare broadcast fn (unchanged)
     const broadcastNotification = async (createdId) => {
       const allUsers = await Users.find().select("_id").lean();
       const baseMsg =
@@ -88,10 +88,14 @@ exports.createAbsenceAI = async (req, res) => {
       };
       const created = await AbsenceAI.create(aiData);
 
-      // broadcast even out‑of‑period
       await broadcastNotification(created._id);
-
-      return res.status(201).json(created);
+      if (operationType === "avisAbsence") {
+        console.log("new absence", created);
+        // always set to Actif, except future start → "AI"
+        const newStatus = newStart > today ? "AI" : "Actif";
+        await Personnel.findByIdAndUpdate(personnelId, { status: newStatus });
+        return res.status(201).json(created);
+      }
     }
 
     // 6b) If in period → must be Actif
@@ -99,7 +103,7 @@ exports.createAbsenceAI = async (req, res) => {
       return res.status(400).json({ message: "L'employé n'est pas actif." });
     }
 
-    // 7) Create & set status = "AI", then notify
+    // 7) Create & then update status
     const aiData = {
       operationType,
       startDate: newStart,
@@ -108,13 +112,20 @@ exports.createAbsenceAI = async (req, res) => {
       document: req.file ? req.file.path : undefined,
     };
     const created = await AbsenceAI.create(aiData);
+    console.log("created", created);
+    // ←─── UPDATED STATUS LOGIC ───→
+    if (operationType === "avisAbsence") {
+      console.log("new absence", created);
+      // always set to Actif, except future start → "AI"
+      const newStatus = newStart > today ? "AI" : "Actif";
+      await Personnel.findByIdAndUpdate(personnelId, { status: newStatus });
+    } else {
+      // avisReprise (unchanged)
+      await Personnel.findByIdAndUpdate(personnelId, { status: "AI" });
+    }
+    // ←─────────────────────────────→
 
-    // update personnel status
-    await Personnel.findByIdAndUpdate(personnelId, { status: "AI" });
-
-    // broadcast in‑period notification
     await broadcastNotification(created._id);
-
     return res.status(201).json(created);
   } catch (err) {
     console.error("Erreur createAbsenceAI:", err);
@@ -275,6 +286,63 @@ exports.updateEndDate = async (req, res) => {
     console.error("Erreur updateEndDate :", error);
     return res.status(500).json({
       message: "Erreur lors de la mise à jour de la date de fin.",
+      error: error.message,
+    });
+  }
+};
+
+exports.getAIAfter48h = async (req, res) => {
+  try {
+    const now = new Date();
+    const fortyEightHoursAgo = new Date(now.getTime());
+
+    const results = await AbsenceAI.find({
+      operationType: "avisAbsence",
+      createdAt: { $lt: fortyEightHoursAgo },
+    }).populate("personnel"); // remove .populate() if not needed
+
+    return res.status(200).json({ success: true, data: results });
+  } catch (error) {
+    console.log("errorr", error);
+    console.error("Error fetching AI absences after 48h:", error);
+    return res.status(500).json({ success: false, message: "Erreur serveur" });
+  }
+};
+// Get only avisAbsence records (with optional pagination)
+exports.getAvisAbsence = async (req, res) => {
+  try {
+    // filter for avisAbsence
+    const filter = { operationType: "avisAbsence" };
+
+    // pagination (limit=0 means no limit)
+    const page = Math.max(parseInt(req.query.page ?? "1", 10), 1);
+    const limit = Math.max(parseInt(req.query.limit ?? "0", 10), 0);
+
+    const total = await AbsenceAI.countDocuments(filter);
+
+    let query = await AbsenceAI.find({
+      operationType: "avisAbsence",
+    }).populate("personnel").sort({ createdAt: -1 }); // remove .populate() if not needed
+
+    
+    if (limit > 0) {
+      const skip = (page - 1) * limit;
+      query = query.skip(skip).limit(limit);
+    }
+
+
+    return res.status(200).json({
+      success: true,
+      total,
+      page: limit > 0 ? page : 1,
+      pages: limit > 0 ? Math.max(Math.ceil(total / limit), 1) : 1,
+      data: query,
+    });
+  } catch (error) {
+    console.error("Error getAvisAbsence:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur lors de la récupération des avis d'absence.",
       error: error.message,
     });
   }

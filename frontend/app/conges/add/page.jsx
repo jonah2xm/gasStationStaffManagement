@@ -198,6 +198,17 @@ export default function AddCongePage() {
     }
   }, [formData.dateDebut, formData.dureeConge]);
 
+  // inside AddCongePage component
+const handleSelectById = (id) => {
+  const person = personnel.find((p) => p._id === id);
+  if (!person) return;
+  setSelectedPersonnel(person);
+  setOpenPersonnelCombobox(false);
+  if (errors.personnel) {
+    setErrors((prev) => ({ ...prev, personnel: "" }));
+  }
+};
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -444,6 +455,30 @@ export default function AddCongePage() {
       }
     } else console.log("no its  not working", selectedPersonnel);
   }, [selectedPersonnel]);
+useEffect(() => {
+  if (!openPersonnelCombobox) return;
+
+  const onPointerDownCapture = (e) => {
+    // find closest element that carries our data attribute
+    const el = e.target.closest && e.target.closest('[data-employee-id]');
+    if (!el) return;
+    // stop other handlers from interfering
+    e.preventDefault?.();
+    e.stopPropagation?.();
+    const id = el.getAttribute('data-employee-id');
+    if (id) {
+      // invoke your selection
+      handleSelectById(id);
+    }
+  };
+
+  // capture phase: runs before other handlers
+  document.addEventListener('pointerdown', onPointerDownCapture, true);
+
+  return () => {
+    document.removeEventListener('pointerdown', onPointerDownCapture, true);
+  };
+}, [openPersonnelCombobox, personnel]); // include any deps you need
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
@@ -477,7 +512,7 @@ export default function AddCongePage() {
                 open={openPersonnelCombobox}
                 onOpenChange={setOpenPersonnelCombobox}
               >
-                <PopoverTrigger asChild>
+                <PopoverTrigger asChild className="bg-gray-50">
                   <Button
                     variant="outline"
                     role="combobox"
@@ -515,15 +550,14 @@ export default function AddCongePage() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-[400px] p-0 bg-gray-50"
+                  className="w-[400px] p-0 "
                   align="start"
                 >
                   <Command>
                     <CommandInput
                       placeholder="Rechercher par nom ou matricule..."
                       className="h-9"
-                      value={searchTerm}
-                      onValueChange={setSearchTerm}
+                  
                     />
                     <CommandList>
                       <CommandEmpty>
@@ -533,23 +567,15 @@ export default function AddCongePage() {
                           </p>
                         </div>
                       </CommandEmpty>
-                      <CommandGroup heading="Employés">
+           
                         {filteredPersonnel.map((person) => (
-                          <CommandItem
-                            key={person._id}
-                            value={`${person.firstName} ${person.lastName} ${person.matricule}`}
-                            onSelect={() => {
-                              setSelectedPersonnel(person);
-                              setOpenPersonnelCombobox(false);
-                              if (errors.personnel) {
-                                setErrors((prev) => ({
-                                  ...prev,
-                                  personnel: "",
-                                }));
-                              }
-                            }}
-                            className="flex items-center py-3 text-gray-800"
-                          >
+  <CommandItem
+    key={person._id}
+    data-employee-id={person._id}           // ← add this
+    value={`${person.firstName} ${person.lastName} ${person.matricule}`}
+    onSelect={() => handleSelectById(person._id)}
+    className="flex items-center py-3 "
+  >
                             <Avatar className="h-8 w-8 mr-2">
                               <AvatarFallback className="bg-blue-100 text-blue-800">
                                 {getInitials(
@@ -558,7 +584,7 @@ export default function AddCongePage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <span className="font-medium text-gray-800">
+                              <span className="font-medium">
                                 {person.firstName} {person.lastName}
                               </span>
                               <span className="text-xs text-gray-800">
@@ -571,7 +597,7 @@ export default function AddCongePage() {
                             )}
                           </CommandItem>
                         ))}
-                      </CommandGroup>
+            
                     </CommandList>
                   </Command>
                 </PopoverContent>
@@ -755,7 +781,7 @@ export default function AddCongePage() {
                   variant="outline"
                   asChild
                   disabled={loading}
-                  onClick={() => document.getElementById("document").click()}
+             
                 >
                   <Label htmlFor="document" className="cursor-pointer">
                     <Upload className="mr-2 h-4 w-4" />

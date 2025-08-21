@@ -52,7 +52,38 @@ app.use(
 // 6. Connect to the database
 connectDB();
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const uploadsDir = path.resolve(process.cwd(), "src", "uploads");
+
+// serve uploads at /uploads
+app.use("/uploads", express.static(uploadsDir, {
+  dotfiles: "deny",
+  index: false,
+}));
+
+// debug endpoint (temporary)
+app.get("/debug/list-uploads", (req, res) => {
+  fs.readdir(uploadsDir, (err, files) => {
+    if (err) return res.status(500).json({ err: err.message, uploadsDir, cwd: process.cwd() });
+    res.json({ uploadsDir, cwd: process.cwd(), files });
+  });
+});
+
+
+
+// Close server properly on restart/exit
+process.on("SIGINT", () => {
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
+});
+
+process.on("SIGTERM", () => {
+  server.close(() => {
+    console.log("Server terminated");
+    process.exit(0);
+  });
+});
 
 // 7. Basic route
 app.get("/", (req, res) => {
@@ -82,4 +113,18 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+// Close server properly on restart/exit
+process.on("SIGINT", () => {
+  server.close(() => {
+    console.log("Server closed");
+    process.exit(0);
+  });
+});
+
+process.on("SIGTERM", () => {
+  server.close(() => {
+    console.log("Server terminated");
+    process.exit(0);
+  });
 });

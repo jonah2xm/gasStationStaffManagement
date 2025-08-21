@@ -15,231 +15,276 @@ import {
   Plane,
   Bed,
 } from "lucide-react";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
 function Sidebar() {
   const pathname = usePathname();
-  // State for controlling dropdown menus
-  const [absenceOpen, setAbsenceOpen] = useState(false);
-  const [affectationOpen, setAffectationOpen] = useState(false);
-  const [aiSubmenuOpen, setAiSubmenuOpen] = useState(false);
+
+  // collapsed: persisted in localStorage so user choice survives refresh
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("pms.sidebar.collapsed")) ?? false;
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("pms.sidebar.collapsed", JSON.stringify(collapsed));
+    } catch {}
+  }, [collapsed]);
+
+  // control which dropdowns are open (absence, affectation, ... )
+  const [open, setOpen] = useState({
+    absence: false,
+    affectation: false,
+  });
+
+  const toggleOpen = (key) => setOpen((s) => ({ ...s, [key]: !s[key] }));
+
+  // exact selected yellow and selected text size
+  const SELECTED_BG = "#ffeb10";
+  const SELECTED_COLOR = "#000"; // black for contrast
+
+  const navItemClass = (isActive) =>
+    `flex items-center gap-3 w-full p-2 rounded-md transition-colors duration-150 ${
+      isActive ? "font-medium text-base" : "text-gray-700 hover:bg-gray-100 text-sm"
+    }`;
+
+  const navStyle = (isActive) =>
+    isActive ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR } : {};
 
   return (
-    <aside className="w-64 bg-white shadow-md">
-      <div className="p-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">PMS</h2>
-        <nav>
-          <ul className="space-y-2">
-            {/* Dashboard */}
-            <li>
-              <Link
-                href="/dashboard"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname === "/dashboard" ? "bg-gray-100 font-medium" : ""
-                }`}
-              >
-                <Home className="mr-3 h-5 w-5" />
-                Dashboard
-              </Link>
-            </li>
-            {/*Notifications */}
-            <li>
-              <Link
-                href="/notifications"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname === "/notifications" ? "bg-gray-100 font-medium" : ""
-                }`}
-              >
-                <Bell className="mr-3 h-5 w-5" />
-                Notifications
-              </Link>
-            </li>
-            {/* Stations */}
-            <li>
-              <Link
-                href="/stations"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname.startsWith("/stations")
-                    ? "bg-gray-100 font-medium"
-                    : ""
-                }`}
-              >
-                <FuelIcon className="mr-3 h-5 w-5" />
-                Stations
-              </Link>
-            </li>
-            {/* Personnel */}
-            <li>
-              <Link
-                href="/personnel"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname.startsWith("/personnel")
-                    ? "bg-gray-100 font-medium"
-                    : ""
-                }`}
-              >
-                <Users className="mr-3 h-5 w-5" />
-                Personnel
-              </Link>
-            </li>
-            {/* Conge Dropdown */}
-            <li>
-              <Link
-                href="/conges"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname.startsWith("/conges")
-                    ? "bg-gray-100 font-medium"
-                    : ""
-                }`}
-              >
-                <Plane className="mr-3 h-5 w-5" />
-                Conges
-              </Link>
-            </li>
+    <aside
+      className={`flex flex-col h-full bg-white/80 backdrop-blur-sm border-r border-gray-100 shadow-sm
+        ${collapsed ? "w-20" : "w-64"} transition-all duration-200`}
+      aria-label="Sidebar"
+    >
+      {/* Top: Brand + collapse */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex items-center justify-center rounded-md p-2 ${
+              collapsed ? "w-8 h-8" : "w-10 h-10"
+            } ring-1 ring-gray-100`}
+          >
+            <FuelIcon className="h-5 w-5" style={{ color: collapsed ? undefined : SELECTED_BG }} />
+          </div>
+          {!collapsed && (
+            <div className="leading-tight">
+              <h2 className="text-lg font-semibold text-gray-800">PMS</h2>
+              <p className="text-xs text-gray-500">Portal Management</p>
+            </div>
+          )}
+        </div>
 
-            {/* Recuperation Dropdown */}
-            <li>
-              <Link
-                href="/recuperations"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname.startsWith("/recuperations")
-                    ? "bg-gray-100 font-medium"
-                    : ""
-                }`}
-              >
-                <Bed className="mr-3 h-5 w-5" />
-                Recuperations
-              </Link>
-            </li>
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="p-1 rounded-md hover:bg-gray-100"
+          title={collapsed ? "Expand" : "Collapse"}
+        >
+          {collapsed ? <ChevronDown className="w-4 h-4 rotate-90" /> : <ChevronDown className="w-4 h-4 -rotate-90" />}
+        </button>
+      </div>
 
-            {/* Absence Dropdown */}
-            <li className="relative">
-              <button
-                onClick={() => setAbsenceOpen(!absenceOpen)}
-                className={`flex items-center justify-between w-full p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname.startsWith("/absence")
-                    ? "bg-gray-100 font-medium"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center">
-                  <Calendar className="mr-3 h-5 w-5" />
-                  Absence
-                </div>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${
-                    absenceOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              {absenceOpen && (
-                <ul className="pl-6 mt-1 space-y-1">
-                  {/* Absence AA */}
-                  <li>
-                    <Link
-                      href="/absence/aa"
-                      className={`block p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                        pathname === "/absence/aa" ||
-                        pathname === "/absence/aa/add" ||
-                        pathname === "/absence/aa/edit"
-                          ? "bg-gray-100 font-medium"
-                          : ""
-                      }`}
-                    >
-                      Absence AA
-                    </Link>
-                  </li>
-                  {/* Absence AI with Nested Submenu */}
-                  <li className="relative">
-                    <Link
-                      href="/absence/ai"
-                      className={`block p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                        pathname === "/absence/ai" ||
-                        pathname === "/absence/ai/add" ||
-                        pathname === "/absence/ai/edit"
-                          ? "bg-gray-100 font-medium"
-                          : ""
-                      }`}
-                    >
-                      Absence AI
-                    </Link>
-                  </li>
-                </ul>
+
+
+      {/* Navigation */}
+      <nav className="flex-1 px-2 py-3 overflow-y-auto" aria-label="Main navigation">
+        <ul className="space-y-1">
+          <li>
+            <Link
+              href="/dashboard"
+              className={navItemClass(pathname === "/dashboard")}
+              style={navStyle(pathname === "/dashboard")}
+              title={collapsed ? "Dashboard" : undefined}
+            >
+              <Home className="w-5 h-5" style={pathname === "/dashboard" ? { color: SELECTED_COLOR } : undefined} />
+              {!collapsed && <span>Dashboard</span>}
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              href="/notifications"
+              className={navItemClass(pathname === "/notifications")}
+              style={navStyle(pathname === "/notifications")}
+              title={collapsed ? "Notifications" : undefined}
+            >
+              <Bell className="w-5 h-5" style={pathname === "/notifications" ? { color: SELECTED_COLOR } : undefined} />
+              {!collapsed && <span>Notifications</span>}
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              href="/stations"
+              className={navItemClass(pathname.startsWith("/stations"))}
+              style={navStyle(pathname.startsWith("/stations"))}
+              title={collapsed ? "Stations" : undefined}
+            >
+              <FuelIcon
+                className="w-5 h-5"
+                style={pathname.startsWith("/stations") ? { color: SELECTED_COLOR } : undefined}
+              />
+              {!collapsed && (
+                <>
+                  <span>Stations</span>
+                </>
               )}
-            </li>
-            {/*Affectation*/}
-            <li>
-              <button
-                onClick={() => setAffectationOpen(!affectationOpen)}
-                className={`flex items-center justify-between w-full p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname.startsWith("/affectation")
-                    ? "bg-gray-100 font-medium"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center">
-                  <Calendar className="mr-3 h-5 w-5" />
-                  Affectation
-                </div>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${
-                    affectationOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              {affectationOpen && (
-                <ul className="pl-6 mt-1 space-y-1">
-                  {/* Absence AA */}
-                  <li>
-                    <Link
-                      href="/affectation/definitif"
-                      className={`block p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                        pathname === "/affectation/definitif" ||
-                        pathname === "/affectation/definitif" ||
-                        pathname === "/affectation/definitif"
-                          ? "bg-gray-100 font-medium"
-                          : ""
-                      }`}
-                    >
-                      Definitif
-                    </Link>
-                  </li>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              href="/personnel"
+              className={navItemClass(pathname.startsWith("/personnel"))}
+              style={navStyle(pathname.startsWith("/personnel"))}
+              title={collapsed ? "Personnel" : undefined}
+            >
+              <Users className="w-5 h-5" style={pathname.startsWith("/personnel") ? { color: SELECTED_COLOR } : undefined} />
+              {!collapsed && <span>Personnel</span>}
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              href="/conges"
+              className={navItemClass(pathname.startsWith("/conges"))}
+              style={navStyle(pathname.startsWith("/conges"))}
+              title={collapsed ? "Conges" : undefined}
+            >
+              <Plane className="w-5 h-5" style={pathname.startsWith("/conges") ? { color: SELECTED_COLOR } : undefined} />
+              {!collapsed && <span>Congés</span>}
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              href="/recuperations"
+              className={navItemClass(pathname.startsWith("/recuperations"))}
+              style={navStyle(pathname.startsWith("/recuperations"))}
+              title={collapsed ? "Recuperations" : undefined}
+            >
+              <Bed className="w-5 h-5" style={pathname.startsWith("/recuperations") ? { color: SELECTED_COLOR } : undefined} />
+              {!collapsed && <span>Récupérations</span>}
+            </Link>
+          </li>
+
+          {/* Absence: collapsible submenu */}
+          <li>
+            <button
+              onClick={() => toggleOpen("absence")}
+              aria-expanded={open.absence}
+              className={`flex items-center justify-between w-full p-2 rounded-md transition-colors duration-150 ${
+                pathname.startsWith("/absence") ? "font-medium" : "text-gray-700 hover:bg-gray-100 text-sm"
+              }`}
+              style={pathname.startsWith("/absence") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR } : undefined}
+              title={collapsed ? "Absence" : undefined}
+            >
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5" style={pathname.startsWith("/absence") ? { color: SELECTED_COLOR } : undefined} />
+                {!collapsed && <span>Absence</span>}
+              </div>
+              <ChevronDown className={`w-4 h-4 transform transition-transform ${open.absence ? "rotate-180" : ""}`} />
+            </button>
+
+            {/* submenu */}
+            <div
+              className={`overflow-hidden transition-[max-height] duration-200 ${open.absence ? "max-h-40 mt-1" : "max-h-0"}`}
+            >
+              <ul className="pl-10 space-y-1">
+                <li>
+                  <Link
+                    href="/absence/aa"
+                    className="block p-2 rounded-md text-sm"
+                    style={pathname.startsWith("/absence/aa") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR, fontWeight: 600, fontSize: "1rem" } : undefined}
+                    title={collapsed ? "Absence AA" : undefined}
+                  >
+                    {!collapsed ? "Absence AA" : <span className="sr-only">Absence AA</span>}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/absence/ai"
+                    className="block p-2 rounded-md text-sm"
+                    style={pathname.startsWith("/absence/ai") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR, fontWeight: 600, fontSize: "1rem" } : undefined}
+                    title={collapsed ? "Absence AI" : undefined}
+                  >
+                    {!collapsed ? "Absence AI" : <span className="sr-only">Absence AI</span>}
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          {/* Affectation */}
+          <li>
+            <button
+              onClick={() => toggleOpen("affectation")}
+              aria-expanded={open.affectation}
+              className={`flex items-center justify-between w-full p-2 rounded-md transition-colors duration-150 ${
+                pathname.startsWith("/affectation") ? "font-medium" : "text-gray-700 hover:bg-gray-100 text-sm"
+              }`}
+              style={pathname.startsWith("/affectation") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR } : undefined}
+              title={collapsed ? "Affectation" : undefined}
+            >
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5" style={pathname.startsWith("/affectation") ? { color: SELECTED_COLOR } : undefined} />
+                {!collapsed && <span>Affectation</span>}
+              </div>
+              <ChevronDown className={`w-4 h-4 transform transition-transform ${open.affectation ? "rotate-180" : ""}`} />
+            </button>
+
+            <div className={`overflow-hidden transition-[max-height] duration-200 ${open.affectation ? "max-h-32 mt-1" : "max-h-0"}`}>
+              <ul className="pl-10 space-y-1">
+                <li>
+                  <Link
+                    href="/affectation/definitif"
+                    className="block p-2 rounded-md text-sm"
+                    style={pathname.startsWith("/affectation/definitif") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR, fontWeight: 600, fontSize: "1rem" } : undefined}
+                    title={collapsed ? "Définitif" : undefined}
+                  >
+                    {!collapsed ? "Définitif" : <span className="sr-only">Définitif</span>}
+                  </Link>
+                </li>
+                <li>
                   <Link
                     href="/affectation/temporaire"
-                    className={`block p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                      pathname === "/affectation/temporaire" ||
-                      pathname === "/affectation/temporaire" ||
-                      pathname === "/affectation/temporaire"
-                        ? "bg-gray-100 font-medium"
-                        : ""
-                    }`}
+                    className="block p-2 rounded-md text-sm"
+                    style={pathname.startsWith("/affectation/temporaire") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR, fontWeight: 600, fontSize: "1rem" } : undefined}
+                    title={collapsed ? "Temporaire" : undefined}
                   >
-                    Temporaire
+                    {!collapsed ? "Temporaire" : <span className="sr-only">Temporaire</span>}
                   </Link>
-                </ul>
-              )}
-            </li>
+                </li>
+              </ul>
+            </div>
+          </li>
 
-            {/* Settings */}
-            <li>
-              <Link
-                href="/settings"
-                className={`flex items-center p-2 text-gray-700 hover:bg-gray-100 rounded transition-colors duration-200 ${
-                  pathname === "/settings" ? "bg-gray-100 font-medium" : ""
-                }`}
-              >
-                <Settings className="mr-3 h-5 w-5" />
-                Settings
-              </Link>
-            </li>
-          </ul>
-        </nav>
-      </div>
+          {/* Settings */}
+          <li>
+            <Link
+              href="/settings"
+              className={navItemClass(pathname === "/settings")}
+              style={navStyle(pathname === "/settings")}
+              title={collapsed ? "Settings" : undefined}
+            >
+              <Settings className="w-5 h-5" style={pathname === "/settings" ? { color: SELECTED_COLOR } : undefined} />
+              {!collapsed && <span>Settings</span>}
+            </Link>
+          </li>
+        </ul>
+      </nav>
+
     </aside>
   );
 }
+
+
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();

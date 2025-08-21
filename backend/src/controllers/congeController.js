@@ -20,7 +20,7 @@ exports.addConge = async (req, res) => {
       lieuSejour,
       nombreJourRestant,
     } = req.body;
-
+    
     // 1) Champs obligatoires
     if (!personnelId || !stationName || !req.file) {
       return res.status(400).json({ message: "Champs requis manquants." });
@@ -75,7 +75,7 @@ exports.addConge = async (req, res) => {
       dateRetour,
       lieuSejour,
       nombreJourRestant,
-      documentPath: req.file.path.replace(/\\/g, "/"),
+      documentPath: req.file.path
     });
     const savedConge = await conge.save();
 

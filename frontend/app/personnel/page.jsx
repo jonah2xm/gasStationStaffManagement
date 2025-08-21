@@ -48,21 +48,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 import toast, { Toaster } from "react-hot-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 
 const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
@@ -98,6 +90,7 @@ export default function EmployeeListPage() {
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [deletingEmployee, setDeletingEmployee] = useState(false);
   const [user, setUser] = useState();
+  const [deleting,setDeleting]=useState(false)
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -336,7 +329,7 @@ export default function EmployeeListPage() {
 
   const confirmDelete = async () => {
     if (!employeeToDelete) return;
-
+    setDeleting(true)
     setDeletingEmployee(true);
     try {
       const response = await fetch(
@@ -366,6 +359,7 @@ export default function EmployeeListPage() {
       toast.error("Erreur lors de la suppression du personnel");
     } finally {
       setDeletingEmployee(false);
+      setDeleting(false)
     }
   };
 
@@ -413,7 +407,7 @@ export default function EmployeeListPage() {
             placeholder="Rechercher personnel..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            className="pl-10 pr-4 py-2 w-full bg-white rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           />
           <Search
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -814,38 +808,18 @@ export default function EmployeeListPage() {
           </div>
         </div>
       )}
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer {employeeToDelete?.firstName}{" "}
-              {employeeToDelete?.lastName} ? Cette action ne peut pas être
-              annulée.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingEmployee}>
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={deletingEmployee}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deletingEmployee ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Suppression...
-                </>
-              ) : (
-                "Supprimer"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+  <CustomAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Confirmer la suppression"
+        description="Êtes-vous sûr de vouloir supprimer ce congé ? Cette action est irréversible."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

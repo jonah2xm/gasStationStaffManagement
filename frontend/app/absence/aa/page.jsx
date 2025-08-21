@@ -23,7 +23,7 @@ import {
   Building,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-
+import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,16 +51,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 
 // Types of authorized absences
 const absenceTypes = {
@@ -97,6 +88,7 @@ export default function AbsenceAAListPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [absenceToDelete, setAbsenceToDelete] = useState(null);
   const [deletingAbsence, setDeletingAbsence] = useState(false);
+  const [deleting,setDeleting]=useState(false)
   const itemsPerPage = 5;
 
   useEffect(() => {
@@ -140,7 +132,7 @@ export default function AbsenceAAListPage() {
 
   const confirmDelete = async () => {
     if (!absenceToDelete) return;
-
+    setDeleting(true)
     setDeletingAbsence(true);
     try {
       // In a real application, you would call your API
@@ -171,6 +163,7 @@ export default function AbsenceAAListPage() {
       toast.error("Erreur lors de la suppression de l'absence");
     } finally {
       setDeletingAbsence(false);
+      setDeleting(true)
     }
   };
 
@@ -788,37 +781,18 @@ export default function AbsenceAAListPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer l'absence autorisée de{" "}
-              {absenceToDelete?.personnelName} ? Cette action ne peut pas être
-              annulée.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingAbsence}>
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={deletingAbsence}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deletingAbsence ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Suppression...
-                </>
-              ) : (
-                "Supprimer"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+  <CustomAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Confirmer la suppression"
+        description="Êtes-vous sûr de vouloir supprimer ce congé ? Cette action est irréversible."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

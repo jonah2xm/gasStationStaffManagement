@@ -26,7 +26,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -127,7 +126,7 @@ export default function NotificationsPage() {
   const [markAllReadDialogOpen, setMarkAllReadDialogOpen] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
   const [totalNotifications, setTotalNotifications] = useState(0);
-
+  const [user,setUser]=useState()
   const itemsPerPage = 10;
 
   const debouncedFetchNotifications = useCallback(
@@ -142,6 +141,37 @@ export default function NotificationsPage() {
     setSearchTerm(e.target.value);
     debouncedFetchNotifications();
   };
+
+    useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include", // 👈 IMPORTANT: needed to send cookies
+          }
+        );
+
+        if (!res.ok) {
+          // router.push("/login");
+          throw new Error("Not authenticated");
+        }
+
+        const data = await res.json();
+
+        setUser(data.user); // Adjust based on backend response structure
+      } catch (err) {
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -398,8 +428,8 @@ export default function NotificationsPage() {
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
       <AccountHeader
-        name="John Doe"
-        role="HR Manager"
+        name={user?.username || "Utilisateur"}
+        role={user?.role || "Invité"}
         avatarUrl="/placeholder.svg?height=40&width=40"
       />
 
@@ -437,7 +467,7 @@ export default function NotificationsPage() {
             placeholder="Rechercher dans les notifications..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="pl-10 pr-4 py-2 w-full rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            className="pl-10 pr-4 py-2 w-full rounded-full bg-white border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           />
           <Search
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"

@@ -73,7 +73,7 @@ export default function EditCongePage() {
   const [nombreJourRestant, setNombreJourRestant] = useState(0);
   const [selectedFile, setSelectedFile] = useState(null);
   const [existingDocument, setExistingDocument] = useState(null);
-  const [user, setUSer] = useState({});
+  const [user, setUser] = useState({});
   useEffect(() => {
     const checkAuth = async () => {
       try {

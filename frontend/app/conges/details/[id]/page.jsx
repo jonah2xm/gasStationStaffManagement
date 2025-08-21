@@ -12,7 +12,7 @@ import {
   Edit,
   Plane,
   User,
-  File,
+  FileText,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -43,6 +43,7 @@ export default function CongeDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState({});
+  const [normalizedDocument,setNormalizedDocument]=useState('')
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -91,8 +92,9 @@ export default function CongeDetailsPage() {
           throw new Error("Erreur lors du chargement des détails du congé");
         }
         const data = await response.json();
-
+        console.log('data',data)
         setConge(data);
+        setNormalizedDocument(data.documentPath.replace(/\\/g, "/"));
         setError(null);
       } catch (err) {
         console.error("Error fetching congé details:", err);
@@ -258,7 +260,7 @@ export default function CongeDetailsPage() {
                 </Label>
                 <div className="mt-1 flex items-center text-lg text-gray-800">
                   <Building className="mr-2 h-5 w-5 text-gray-500" />
-                  {conge.station?.name || "Non défini"}
+                  {conge.stationName || "Non défini"}
                 </div>
               </div>
 
@@ -319,41 +321,23 @@ export default function CongeDetailsPage() {
                   </div>
                 </div>
               )}
-
-              {/* Nombre de jours restant */}
-              <div className="border-b pb-4">
-                <Label className="block text-sm font-semibold text-gray-600">
-                  Nombre de jours restant
-                </Label>
-                <div className="mt-1 flex items-center text-lg">
-                  <Plane className="mr-2 h-5 w-5 text-blue-500" />
-                  <span className="font-medium text-blue-600">
-                    {remainingDays} jour{remainingDays > 1 ? "s" : ""}
-                  </span>
-                </div>
-              </div>
-
               {/* Documents */}
-              {conge.documents && conge.documents.length > 0 && (
+                      {conge.documentPath && (
                 <div className="border-b pb-4">
                   <Label className="block text-sm font-semibold text-gray-600">
-                    Documents
+                    Document justificatif
                   </Label>
-                  <ul className="mt-2 space-y-2">
-                    {conge.documents.map((document) => (
-                      <li key={document._id} className="flex items-center">
-                        <File className="mr-2 h-5 w-5 text-gray-500" />
-                        <a
-                          href={`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${document.filename}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {document.originalname}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                  <a
+                    href={`/document/${encodeURIComponent(
+                      normalizedDocument
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center text-lg text-blue-600 hover:underline"
+                  >
+                    <FileText className="mr-2 h-5 w-5" />
+                    Voir le document
+                  </a>
                 </div>
               )}
 
