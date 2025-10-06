@@ -427,11 +427,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div className="flex items-center gap-3">

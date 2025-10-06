@@ -33,7 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccountHeader } from "@/components/account-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -347,11 +346,7 @@ export default function EditCongePage() {
   if (initialLoading) {
     return (
       <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-        <AccountHeader
-          name={user?.username || "Utilisateur"}
-          role={user?.role || "Invité"}
-          avatarUrl="/placeholder.svg?height=40&width=40"
-        />
+
         <div className="flex justify-center items-center h-64">
           <Loader2 className="animate-spin h-8 w-8" />
           <span className="ml-2">Chargement des données...</span>
@@ -362,11 +357,7 @@ export default function EditCongePage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name="John Doe"
-        role="HR Manager"
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Modifier le Congé</h1>
@@ -376,7 +367,7 @@ export default function EditCongePage() {
         </Button>
       </div>
 
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto bg-white">
         <CardHeader>
           <CardTitle>Modifier le Congé</CardTitle>
           <CardDescription>
@@ -570,7 +561,7 @@ export default function EditCongePage() {
             </div>
 
             {/* Document Upload (Required) */}
-            <div className="space-y-2">
+          {!existingDocument && (   <div className="space-y-2">
               <Label htmlFor="document">Document justificatif*</Label>
               <Input
                 type="file"
@@ -587,7 +578,7 @@ export default function EditCongePage() {
               <p className="text-xs text-gray-500">
                 Un document justificatif est requis.
               </p>
-            </div>
+            </div>)}
 
             {/* Existing Document Display */}
             {existingDocument && (

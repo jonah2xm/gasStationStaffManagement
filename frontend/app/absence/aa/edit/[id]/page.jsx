@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AccountHeader } from "@/components/account-header";
+
 import {
   Popover,
   PopoverContent,
@@ -305,11 +305,7 @@ export default function ModifyAbsenceAAPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name="John Doe"
-        role="HR Manager"
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -320,7 +316,7 @@ export default function ModifyAbsenceAAPage() {
         </Button>
       </div>
 
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto bg-white">
         <CardHeader>
           <CardTitle>Modifier l'Absence Autorisée</CardTitle>
           <CardDescription>
@@ -341,7 +337,7 @@ export default function ModifyAbsenceAAPage() {
                     variant="outline"
                     role="combobox"
                     aria-expanded={openPersonnelCombobox}
-                    className={`w-full justify-between ${
+                    className={`w-full justify-between bg-gray-50 ${
                       errors.personnel ? "border-red-500" : ""
                     }`}
                     disabled={loading}

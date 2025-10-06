@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { AccountHeader } from "../../../components/account-header";
 import { AlertTriangle, Loader2, ArrowLeft, Save } from "lucide-react";
 import {
   AlertDialog,
@@ -313,11 +312,7 @@ export default function EditStation() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name="John Doe"
-        role="HR Manager"
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">
           Modifier la Station
@@ -329,7 +324,7 @@ export default function EditStation() {
       </div>
 
       {fetchingStation ? (
-        <div className="flex justify-center items-center h-64">
+        <div className="flex justify-center items-center h-64 ">
           <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
           <span className="ml-2 text-gray-500">
             Chargement des données de la station...
@@ -349,7 +344,7 @@ export default function EditStation() {
           </Button>
         </div>
       ) : (
-        <Card className="max-w-4xl mx-auto">
+        <Card className="max-w-4xl mx-auto bg-white">
           <CardHeader>
             <CardTitle>Détails de la Station</CardTitle>
             <CardDescription>

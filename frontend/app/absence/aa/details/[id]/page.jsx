@@ -8,7 +8,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { AccountHeader } from "@/components/account-header";
+
 
 export default function AbsenceAADetailsPage() {
   const router = useRouter();
@@ -91,12 +91,8 @@ export default function AbsenceAADetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Account header */}
-      <AccountHeader
-        name="John Doe"
-        role="HR Manager"
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
+  
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">

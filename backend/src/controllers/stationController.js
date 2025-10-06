@@ -7,17 +7,22 @@ const getStations = async (req, res) => {
       {
         $lookup: {
           from: "personnels", // Collection name in MongoDB
-          localField: "_id", // Station._id
+          localField: "_id",  // Station._id
           foreignField: "station", // employee.station_id
           as: "personnels",
         },
       },
+      {
+        $sort: { name: 1 } // 1 = ascending, -1 = descending
+      }
     ]);
+
     res.status(200).json(stations);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // Get a single station
 const getStationById = async (req, res) => {

@@ -8,7 +8,7 @@ exports.getMe = async (req, res) => {
   console.log("req.cookies:", req.session); // Debugging line to check cookies
   try {
     const user = req.session.user;
-
+    console.log('user',user)
     if (!user) {
       return res.status(404).json({ message: "Not authentificated" });
     }

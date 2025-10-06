@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AccountHeader } from "@/components/account-header";
+
 
 // Leave types with their display names and colors
 const leaveTypes = {
@@ -181,11 +181,7 @@ export default function CongeDetailsPage() {
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
       {/* Account header */}
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">

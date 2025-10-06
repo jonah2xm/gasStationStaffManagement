@@ -417,7 +417,7 @@ export default function DashboardPage() {
   ])
   const [loadingStatusChart, setLoadingStatusChart] = useState(true)
 
-  useEffect(() => {
+  /*useEffect(() => {
     const checkAuth = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`, {
@@ -442,7 +442,7 @@ export default function DashboardPage() {
     }
 
     checkAuth()
-  }, [router])
+  }, [router])*/
 
   // Fetch statistics data
   useEffect(() => {
@@ -560,6 +560,7 @@ export default function DashboardPage() {
         console.error("Error fetching data:", err)
       } finally {
         setLoadingAbsences(false)
+         setLoading(false)
       }
     }
 
@@ -662,11 +663,6 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto p-6 text-gray-800">
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
 
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Personnel Dashboard</h1>
 

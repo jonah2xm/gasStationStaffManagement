@@ -4,6 +4,46 @@ const Personnel = require("../models/personnelModel");
 const Users = require("../models/userModel");
 const Notification = require("../models/notificationModel");
 
+/**
+ * Helper: insert notifications and emit them via Socket.IO (per-user rooms)
+ * - req is used to get req.app.get('io')
+ * - notifications: array of objects matching Notification schema
+ */
+async function createAndEmitNotifications(req, notifications) {
+  if (!notifications || !notifications.length) return [];
+
+  // Insert into DB
+  const inserted = await Notification.insertMany(notifications);
+
+  // Emit via Socket.IO (per-user rooms)
+  try {
+    const io = req.app.get("io");
+    if (!io) return inserted;
+
+    inserted.forEach((n) => {
+      try {
+        const userRoom = `user:${String(n.personnel)}`;
+        io.to(userRoom).emit("notification:new", {
+          _id: n._id,
+          type: n.type,
+          reference: n.reference,
+          title: n.title || "Notification",
+          message: n.message,
+          detailsUrl: n.detailsUrl,
+          countIncrement: 1,
+          createdAt: n.date || n.createdAt || new Date(),
+        });
+      } catch (emitErr) {
+        console.warn("Emit for notification failed:", emitErr);
+      }
+    });
+  } catch (err) {
+    console.warn("Socket emit failed:", err);
+  }
+
+  return inserted;
+}
+
 exports.createAbsenceAI = async (req, res) => {
   try {
     const { operationType, personnelId, startDate, endDate } = req.body;
@@ -52,7 +92,7 @@ exports.createAbsenceAI = async (req, res) => {
       }
     }
 
-    // Prepare broadcast fn (unchanged)
+    // Prepare broadcast fn (uses helper)
     const broadcastNotification = async (createdId) => {
       const allUsers = await Users.find().select("_id").lean();
       const baseMsg =
@@ -70,11 +110,16 @@ exports.createAbsenceAI = async (req, res) => {
         personnel: u._id,
         type: "AbsenceAI",
         reference: createdId,
+        title:
+          operationType === "avisAbsence"
+            ? "Nouvel avis d'absence"
+            : "Avis de reprise",
         message: msg,
+        date: new Date(),
         detailsUrl: `/absences/ai/details/${createdId}`,
       }));
 
-      await Notification.insertMany(notifs);
+      await createAndEmitNotifications(req, notifs);
     };
 
     // 6a) If not in period → create only, then notify
@@ -89,6 +134,7 @@ exports.createAbsenceAI = async (req, res) => {
       const created = await AbsenceAI.create(aiData);
 
       await broadcastNotification(created._id);
+
       if (operationType === "avisAbsence") {
         console.log("new absence", created);
         // always set to Actif, except future start → "AI"
@@ -96,9 +142,12 @@ exports.createAbsenceAI = async (req, res) => {
         await Personnel.findByIdAndUpdate(personnelId, { status: newStatus });
         return res.status(201).json(created);
       }
+
+      // if avisReprise and not in period, just return created (already notified)
+      return res.status(201).json(created);
     }
 
-    // 6b) If in period → must be Actif
+    // 6b) If IN period → must be Actif
     if (personnel.status !== "Actif") {
       return res.status(400).json({ message: "L'employé n'est pas actif." });
     }
@@ -113,19 +162,20 @@ exports.createAbsenceAI = async (req, res) => {
     };
     const created = await AbsenceAI.create(aiData);
     console.log("created", created);
-    // ←─── UPDATED STATUS LOGIC ───→
+
+    // UPDATED STATUS LOGIC
     if (operationType === "avisAbsence") {
       console.log("new absence", created);
       // always set to Actif, except future start → "AI"
       const newStatus = newStart > today ? "AI" : "Actif";
       await Personnel.findByIdAndUpdate(personnelId, { status: newStatus });
     } else {
-      // avisReprise (unchanged)
+      // avisReprise
       await Personnel.findByIdAndUpdate(personnelId, { status: "AI" });
     }
-    // ←─────────────────────────────→
 
-    await broadcastNotification(created._id);
+    await broadcastNotification(created._1d ?? created._id);
+
     return res.status(201).json(created);
   } catch (err) {
     console.error("Erreur createAbsenceAI:", err);
@@ -205,12 +255,14 @@ exports.deleteAbsenceAI = async (req, res) => {
       personnel: u._id,
       type: "AbsenceAI",
       reference: entry._id,
+      title: "Suppression d'avis AI",
       message: baseMsg,
+      date: new Date(),
       detailsUrl: `/absences/ai`,
     }));
 
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      await createAndEmitNotifications(req, notifs);
     }
 
     return res.status(200).json({ message: "Suppression réussie." });
@@ -271,11 +323,13 @@ exports.updateEndDate = async (req, res) => {
       personnel: u._id,
       type: "AbsenceAI",
       reference: updated._id,
+      title: "Mise à jour avis AI",
       message: baseMsg,
+      date: new Date(),
       detailsUrl: `/absences/ai/details/${updated._id}`,
     }));
 
-    await Notification.insertMany(notifs);
+    await createAndEmitNotifications(req, notifs);
 
     return res.status(200).json({
       message:
@@ -308,6 +362,7 @@ exports.getAIAfter48h = async (req, res) => {
     return res.status(500).json({ success: false, message: "Erreur serveur" });
   }
 };
+
 // Get only avisAbsence records (with optional pagination)
 exports.getAvisAbsence = async (req, res) => {
   try {
@@ -324,12 +379,10 @@ exports.getAvisAbsence = async (req, res) => {
       operationType: "avisAbsence",
     }).populate("personnel").sort({ createdAt: -1 }); // remove .populate() if not needed
 
-    
     if (limit > 0) {
       const skip = (page - 1) * limit;
       query = query.skip(skip).limit(limit);
     }
-
 
     return res.status(200).json({
       success: true,

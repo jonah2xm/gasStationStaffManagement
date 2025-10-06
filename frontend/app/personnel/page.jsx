@@ -25,8 +25,8 @@ import {
   Trash2,
   MoreHorizontal,
   Download,
+  Eye
 } from "lucide-react";
-import { AccountHeader } from "../components/account-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +71,13 @@ const getStatusColor = (status) => {
   }
 };
 
+const getHolidaysLeftColor = (holidaysLeft) => {
+  if (holidaysLeft === null || holidaysLeft === undefined) return "bg-gray-100 text-gray-800";
+  if (holidaysLeft <= 5) return "bg-green-100 text-green-800"
+  if (holidaysLeft <= 15) return "bg-yellow-100 text-yellow-800";
+  return "bg-red-100 text-red-800"; 
+};
+
 export default function EmployeeListPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -93,35 +100,7 @@ export default function EmployeeListPage() {
   const [deleting,setDeleting]=useState(false)
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
-          {
-            method: "GET",
-            credentials: "include", // 👈 IMPORTANT: needed to send cookies
-          }
-        );
 
-        if (!res.ok) {
-          // router.push("/login");
-          throw new Error("Not authenticated");
-        }
-
-        const data = await res.json();
-        console.log("data", data);
-        setUser(data.user); // Adjust based on backend response structure
-      } catch (err) {
-        console.warn("User not logged in or error:", err.message);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
   useEffect(() => {
     fetchEmployees();
   }, [user]);
@@ -138,6 +117,7 @@ export default function EmployeeListPage() {
         P_NOMP: `${e.lastName.toUpperCase()} ${e.firstName}`,
         "poste sur fiche de paie": e.poste,
         Status: e.status || "Non défini",
+        "Congés Restants": e.holidaysLeft !== null && e.holidaysLeft !== undefined ? e.holidaysLeft : "Non défini",
       });
       return acc;
     }, {});
@@ -255,8 +235,14 @@ export default function EmployeeListPage() {
     const sortedList = [...filteredEmployees];
     if (sortConfig.key) {
       sortedList.sort((a, b) => {
-        const aValue = a[sortConfig.key] || "";
-        const bValue = b[sortConfig.key] || "";
+        let aValue = a[sortConfig.key] || "";
+        let bValue = b[sortConfig.key] || "";
+
+        // Special handling for holidaysLeft sorting
+        if (sortConfig.key === "holidaysLeft") {
+          aValue = a[sortConfig.key] !== null && a[sortConfig.key] !== undefined ? a[sortConfig.key] : -1;
+          bValue = b[sortConfig.key] !== null && b[sortConfig.key] !== undefined ? b[sortConfig.key] : -1;
+        }
 
         if (aValue < bValue) {
           return sortConfig.direction === "asc" ? -1 : 1;
@@ -376,11 +362,6 @@ export default function EmployeeListPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Liste du Personnel</h1>
@@ -460,6 +441,11 @@ export default function EmployeeListPage() {
                     <DropdownMenuRadioItem value="stationName">
                       Station{" "}
                       {sortConfig.key === "stationName" &&
+                        (sortConfig.direction === "asc" ? "↑" : "↓")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="holidaysLeft">
+                      Congés{" "}
+                      {sortConfig.key === "holidaysLeft" &&
                         (sortConfig.direction === "asc" ? "↑" : "↓")}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
@@ -549,6 +535,7 @@ export default function EmployeeListPage() {
           </DropdownMenu>
         </div>
       </div>
+
       <div className="flex flex-wrap gap-2 mb-4">
         {allStatuses.map((status) => (
           <TooltipProvider key={status}>
@@ -565,7 +552,7 @@ export default function EmployeeListPage() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Afficher uniquement les employés “{status}”</p>
+                <p>Afficher uniquement les employés "{status}"</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -668,26 +655,26 @@ export default function EmployeeListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Matricule</TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("lastName")}
-                      className="font-semibold"
-                    >
-                      Nom{" "}
-                      {sortConfig.key === "lastName" &&
-                        (sortConfig.direction === "asc" ? "↑" : "↓")}
-                    </Button>
-                  </TableHead>
+                  <TableHead  className="font-semibold">Matricule</TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"
                       onClick={() => handleSort("firstName")}
                       className="font-semibold"
                     >
-                      Prénom{" "}
+                      Nom{" "}
                       {sortConfig.key === "firstName" &&
+                        (sortConfig.direction === "asc" ? "↑" : "↓")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("lastName")}
+                      className="font-semibold"
+                    >
+                      Prénom{" "}
+                      {sortConfig.key === "lastName" &&
                         (sortConfig.direction === "asc" ? "↑" : "↓")}
                     </Button>
                   </TableHead>
@@ -724,6 +711,17 @@ export default function EmployeeListPage() {
                         (sortConfig.direction === "asc" ? "↑" : "↓")}
                     </Button>
                   </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("holidaysLeft")}
+                      className="font-semibold"
+                    >
+                      Congés{" "}
+                      {sortConfig.key === "holidaysLeft" &&
+                        (sortConfig.direction === "asc" ? "↑" : "↓")}
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -733,8 +731,8 @@ export default function EmployeeListPage() {
                     <TableCell className="font-medium">
                       {employee.matricule}
                     </TableCell>
-                    <TableCell>{employee.lastName}</TableCell>
                     <TableCell>{employee.firstName}</TableCell>
+                    <TableCell>{employee.lastName}</TableCell>
                     <TableCell>{employee.poste}</TableCell>
                     <TableCell>{employee.stationName}</TableCell>
                     <TableCell>
@@ -744,6 +742,17 @@ export default function EmployeeListPage() {
                         )} font-semibold`}
                       >
                         {employee.status || "Non défini"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`${getHolidaysLeftColor(
+                          employee.holidaysLeft
+                        )} font-semibold`}
+                      >
+                        {employee.holidaysLeft !== null && employee.holidaysLeft !== undefined 
+                          ? `${employee.holidaysLeft} jours` 
+                          : "Non défini"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -756,6 +765,15 @@ export default function EmployeeListPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                           <DropdownMenuItem
+                            onClick={() => (
+                              router.push(`personnel/details/${employee._id}`)
+                             
+                            )}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Voir
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleEditEmployee(employee)}
                           >
@@ -808,11 +826,12 @@ export default function EmployeeListPage() {
           </div>
         </div>
       )}
-  <CustomAlertDialog
+      
+      <CustomAlertDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Confirmer la suppression"
-        description="Êtes-vous sûr de vouloir supprimer ce congé ? Cette action est irréversible."
+        description="Êtes-vous sûr de vouloir supprimer ce personnel ? Cette action est irréversible."
         confirmText="Supprimer"
         cancelText="Annuler"
         variant="destructive"

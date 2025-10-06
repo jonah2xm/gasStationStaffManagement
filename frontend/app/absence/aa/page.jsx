@@ -27,7 +27,7 @@ import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { AccountHeader } from "@/components/account-header";
+
 import {
   Table,
   TableBody,
@@ -168,7 +168,7 @@ export default function AbsenceAAListPage() {
   };
 
   const handleViewDetails = (absence) => {
-    router.push(`/absence/aa/${absence._id}`);
+    router.push(`/absence/aa/details/${absence._id}`);
   };
   const handleEditAbsence = (absence) => {
     // In a real application, you would navigate to an edit page
@@ -299,11 +299,6 @@ export default function AbsenceAAListPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name="John Doe"
-        role="HR Manager"
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -725,7 +720,7 @@ export default function AbsenceAAListPage() {
                             onClick={() => handleViewDetails(absence)}
                           >
                             <Eye className="mr-2 h-4 w-4" />
-                            Voir détails
+                            Voir
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleEditAbsence(absence)}

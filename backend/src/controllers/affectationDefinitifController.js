@@ -4,6 +4,48 @@ const Personnel = require("../models/personnelModel");
 const Station = require("../models/stationModel");
 const Users = require("../models/userModel");
 const Notification = require("../models/notificationModel");
+const fs = require("fs");
+const path = require("path");
+
+/**
+ * Helper: insert notifications and emit them via Socket.IO (per-user rooms)
+ * - req is used to get req.app.get('io')
+ * - notifications: array of objects matching Notification schema
+ */
+async function createAndEmitNotifications(req, notifications) {
+  if (!notifications || !notifications.length) return [];
+
+  // Insert into DB
+  const inserted = await Notification.insertMany(notifications);
+
+  // Emit via Socket.IO (per-user rooms)
+  try {
+    const io = req.app && req.app.get && req.app.get("io");
+    if (!io) return inserted;
+
+    inserted.forEach((n) => {
+      try {
+        const userRoom = `user:${String(n.personnel)}`;
+        io.to(userRoom).emit("notification:new", {
+          _id: n._id,
+          type: n.type,
+          reference: n.reference,
+          title: n.title || "Notification",
+          message: n.message,
+          detailsUrl: n.detailsUrl,
+          countIncrement: 1,
+          createdAt: n.date || n.createdAt || new Date(),
+        });
+      } catch (emitErr) {
+        console.warn("Emit for notification failed:", emitErr);
+      }
+    });
+  } catch (err) {
+    console.warn("Socket emit failed:", err);
+  }
+
+  return inserted;
+}
 
 exports.createAffectationDefinitif = async (req, res) => {
   try {
@@ -24,6 +66,10 @@ exports.createAffectationDefinitif = async (req, res) => {
 
     // 2) Parse start date & fetch stations
     const parsedStart = new Date(startDate);
+    if (Number.isNaN(parsedStart.getTime())) {
+      return res.status(400).json({ message: "Date de début invalide." });
+    }
+
     const [originDoc, affectedDoc] = await Promise.all([
       Station.findById(originStation),
       Station.findById(affectedStation),
@@ -34,13 +80,20 @@ exports.createAffectationDefinitif = async (req, res) => {
         .json({ message: "Origine ou station cible introuvable." });
     }
 
-    // 3) Load personnel & ensure "Actif" if in-period
+    // 3) Load personnel & ensure "Actif" if in-period (compare times)
     const today = new Date();
     const perso = await Personnel.findById(personnelId);
     if (!perso) {
       return res.status(404).json({ message: "Personnel non trouvé." });
     }
-    if (today === parsedStart && perso.status !== "Actif") {
+
+    // If parsedStart is exactly today (same day), ensure Actif
+    const sameDay =
+      parsedStart.getFullYear() === today.getFullYear() &&
+      parsedStart.getMonth() === today.getMonth() &&
+      parsedStart.getDate() === today.getDate();
+
+    if (sameDay && perso.status !== "Actif") {
       return res.status(400).json({
         message:
           "L'employé n'est pas actif à la date de début de l’affectation.",
@@ -53,9 +106,10 @@ exports.createAffectationDefinitif = async (req, res) => {
     })
       .sort({ startDate: -1 })
       .lean();
+
     if (lastOther) {
       const oStart = new Date(lastOther.startDate);
-      if (parsedStart === oStart) {
+      if (parsedStart.getTime() === oStart.getTime()) {
         return res.status(409).json({
           message:
             "Cet employé a déjà une affectation définitive à partir de cette date.",
@@ -83,22 +137,27 @@ exports.createAffectationDefinitif = async (req, res) => {
       stationName: affectedDoc.name,
     });
 
-    // 7) Broadcast notification to all users
+    // 7) Broadcast notification to all users (use the helper so sockets get event)
     const allUsers = await Users.find().select("_id").lean();
-    const msg = `Affectation définitive : ${perso.firstName} ${
-      perso.lastName
-    } déplacé de "${originDoc.name}" à "${
-      affectedDoc.name
-    }" à partir du ${parsedStart.toLocaleDateString()}.`;
+    const msg = `Affectation définitive : ${perso.firstName} ${perso.lastName} déplacé de "${originDoc.name}" à "${affectedDoc.name}" à partir du ${parsedStart.toLocaleDateString()}.`;
+
     const notifs = allUsers.map((u) => ({
       personnel: u._id,
-      type: "AffectationTemporaire", // or use a new type if you like
+      type: "AffectationDefinitive",
       reference: savedAssign._id,
+      title: "Affectation définitive",
       message: msg,
+      date: new Date(),
       detailsUrl: `/affectations/definitives/details/${savedAssign._id}`,
     }));
+
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      try {
+        const inserted = await createAndEmitNotifications(req, notifs);
+        console.log("Notifications created & emitted:", inserted.length);
+      } catch (err) {
+        console.error("Failed to create/emit notifications:", err);
+      }
     }
 
     // 8) Return success
@@ -107,7 +166,7 @@ exports.createAffectationDefinitif = async (req, res) => {
       data: savedAssign,
     });
   } catch (err) {
-    console.error("Erreur création affectation définitive :", err);
+    console.error("Erreur création affectation définitive :", err);
     return res.status(500).json({
       message:
         err.message ||
@@ -179,6 +238,9 @@ exports.updateAffectationDefinitif = async (req, res) => {
     const newStart = startDate
       ? new Date(startDate)
       : new Date(existing.startDate);
+    if (Number.isNaN(newStart.getTime())) {
+      return res.status(400).json({ message: "Date de début invalide." });
+    }
     const today = new Date();
 
     // 3) If today >= newStart, enforce personnel.status === "Actif"
@@ -187,7 +249,7 @@ exports.updateAffectationDefinitif = async (req, res) => {
     if (!perso) {
       return res.status(404).json({ message: "Personnel non trouvé." });
     }
-    if (today >= newStart && perso.status !== "Actif") {
+    if (today.getTime() >= newStart.getTime() && perso.status !== "Actif") {
       return res.status(400).json({
         message:
           "L'employé n'est pas actif à la date de début de l’affectation.",
@@ -204,7 +266,7 @@ exports.updateAffectationDefinitif = async (req, res) => {
     if (other) {
       const oStart = new Date(other.startDate);
       // Since definitives have no endDate, just ensure newStart > oStart
-      if (newStart <= oStart) {
+      if (newStart.getTime() <= oStart.getTime()) {
         return res.status(409).json({
           message:
             "Cet employé a déjà une affectation définitive à partir du " +
@@ -224,7 +286,11 @@ exports.updateAffectationDefinitif = async (req, res) => {
     if (req.file) {
       // delete old PDF
       if (existing.document) {
-        fs.unlink(path.resolve(existing.document), () => {});
+        try {
+          fs.unlinkSync(path.resolve(existing.document));
+        } catch (e) {
+          // ignore
+        }
       }
       updates.document = req.file.path.replace(/\\/g, "/");
     }
@@ -264,10 +330,8 @@ exports.deleteAffectationDefinitif = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1) Delete the definitive assignment
-    const deleted = await AffectationDefinitif.findByIdAndDelete(id)
-      .lean()
-      .populate("personnel", "firstName,lastName");
+    // 1) Delete the definitive assignment (return deleted doc)
+    const deleted = await AffectationDefinitif.findByIdAndDelete(id).lean();
     if (!deleted) {
       return res
         .status(404)
@@ -285,20 +349,38 @@ exports.deleteAffectationDefinitif = async (req, res) => {
       stationResetMsg = `Station remise à "${originDoc.name}"`;
     }
 
-    // 3) Broadcast notification to all users
+    // 3) Broadcast notification to all users via helper
     const allUsers = await Users.find().select("_id").lean();
-    const msg = `Aff. définitive de ${
-      deleted.personnel.firstName + " " + deleted.personnel.lastName
-    } supprimée. ${stationResetMsg}.`;
+
+    // fetch personnel info for a nicer message
+    let persoInfo = null;
+    try {
+      persoInfo = await Personnel.findById(deleted.personnel).lean();
+    } catch (e) {
+      // ignore
+    }
+
+    const namePart = persoInfo
+      ? `${persoInfo.firstName || ""} ${persoInfo.lastName || ""}`.trim()
+      : "";
+
+    const msg = `Aff. définitive de ${namePart || "(employé)"} supprimée. ${stationResetMsg}.`;
     const notifs = allUsers.map((u) => ({
       personnel: u._id,
       type: "AffectationDefinitive",
       reference: deleted._id,
+      title: "Suppression affectation définitive",
       message: msg,
+      date: new Date(),
       detailsUrl: "/affectations/definitives",
     }));
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      try {
+        const inserted = await createAndEmitNotifications(req, notifs);
+        console.log("Deletion notifications created & emitted:", inserted.length);
+      } catch (err) {
+        console.error("Error creating/emitting deletion notifications:", err);
+      }
     }
 
     // 4) Respond

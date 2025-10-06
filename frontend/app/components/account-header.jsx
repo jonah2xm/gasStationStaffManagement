@@ -14,15 +14,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Bell, Settings, LogOut, User, ChevronDown, Check } from "lucide-react"
+import { Bell, Settings, LogOut, User, ChevronDown, Check, Building, MapPin } from "lucide-react"
+import { getSocket } from "@/utils/socket";
 
-export function AccountHeader({ name, role, avatarUrl }) {
+
+export function AccountHeader({ name, role, avatarUrl, district, structure }) {
   const router = useRouter()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const [user, setUser] = useState({ username: "", role: "" })
+  const [user, setUser] = useState({ username: "", role: "", district: "", structure: "" })
   const menuRef = useRef(null)
   const bellRef = useRef(null)
 
@@ -33,7 +35,7 @@ export function AccountHeader({ name, role, avatarUrl }) {
         credentials: "include",
       })
       const json = await res.json()
-      if (json.success) setUnreadCount(json.data.unread)
+      if (json.success && json.data) setUnreadCount(json.data.unread || 0)
     } catch (err) {
       console.error("Overview fetch error:", err)
     }
@@ -52,18 +54,22 @@ export function AccountHeader({ name, role, avatarUrl }) {
         })
 
         if (!res.ok) {
-          // router.push("/login");
+          router.push("/login");
           throw new Error("Not authenticated")
         }
 
         const data = await res.json()
-
-        setUser(data.user) // Adjust based on backend response structure
+        if (data.user) {
+          console.log('data',data)
+          // normalize id field so code can reference user.id or user._id
+          setUser({ ...data.user, id: data.user._id || data.user.id });
+        } else {
+          setUser({ username: "", role: "", district: "", structure: "" })
+        }
       } catch (err) {
         console.warn("User not logged in or error:", err.message)
-        setUser({ username: "", role: "" })
+        setUser({ username: "", role: "", district: "", structure: "" })
         router.push("/login")
-      } finally {
       }
     }
 
@@ -75,50 +81,181 @@ export function AccountHeader({ name, role, avatarUrl }) {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/latest`, {
         credentials: "include",
-      })
-      const json = await res.json()
-      console.log("Fetched notifications:", json)
+      });
+      const json = await res.json();
       if (json.success) {
-        
-        setNotifications(json.data || [])
+        // map backend 'seen' to frontend 'isRead' so UI logic stays consistent
+        const mapped = (json.data || []).map((n) => ({
+          ...n,
+          isRead: !!n.seen,
+          createdAt: n.createdAt || n.date || n.createdAt,
+        }));
+        setNotifications(mapped);
       }
     } catch (err) {
-      console.error("Notifications fetch error:", err)
+      console.error("Notifications fetch error:", err);
     }
-  }
+  };
 
-  // 3) Mark notification as read
+  // SOCKET: join user room and listen for events (new + read)
+  useEffect(() => {
+    const userId = user && (user._id || user.id);
+    if (!userId) return;
+
+    const socket = getSocket();
+
+    // connect if needed
+    if (!socket.connected) socket.connect?.();
+
+    socket.emit("join", userId);
+
+    // NEW notification
+    const onNewNotification = (payload) => {
+      try {
+        const inc = Number(payload.countIncrement || 1);
+
+        setUnreadCount((prev) => Math.max(0, prev + inc));
+
+        setNotifications((prev) => [
+          {
+            _id: payload._id || payload.reference || `socket-${Date.now()}`,
+            title: payload.title || "Nouvelle notification",
+            message: payload.message,
+            type: payload.type || "info",
+            createdAt: payload.createdAt || payload.date || new Date().toISOString(),
+            isRead: false,
+            detailsUrl: payload.detailsUrl,
+            reference: payload.reference,
+          },
+          ...prev,
+        ]);
+
+        // keep authoritative value in sync (useful for multi-tabs)
+        fetchOverview().catch((e) => console.warn("fetchOverview after new notif failed:", e));
+      } catch (err) {
+        console.error("onNewNotification handler error:", err);
+      }
+    };
+
+    // SINGLE notification marked read (payload: { id: "<notifId>" } or { _id: "..."} )
+    const onNotificationRead = (payload) => {
+      try {
+        const ids = payload && (payload.ids || payload.id || payload._id)
+          ? Array.isArray(payload.ids)
+            ? payload.ids
+            : [payload.id || payload._id]
+          : [];
+
+        if (ids.length === 0) {
+          // nothing to do; optional resync
+          fetchOverview().catch(() => {});
+          return;
+        }
+
+        // Update notifications and unreadCount
+        setNotifications((prev) => {
+          const idSet = new Set(ids.map(String));
+          let decremented = 0;
+          const next = prev.map((n) => {
+            if (idSet.has(String(n._id)) && !n.isRead) {
+              decremented++
+              return { ...n, isRead: true }
+            }
+            return n
+          })
+          // adjust unreadCount based on how many we flipped from unread -> read
+          setUnreadCount((prevCount) => Math.max(0, prevCount - decremented))
+          return next
+        });
+
+        // optional: re-sync authoritative unread count
+        fetchOverview().catch(() => {});
+      } catch (err) {
+        console.error("onNotificationRead handler error:", err);
+      }
+    };
+
+    // MARK ALL read event (payload may be { all: true } or no payload)
+    const onMarkAllRead = (payload) => {
+      try {
+        // mark all locally as read
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+        // re-sync just in case
+        fetchOverview().catch(() => {});
+      } catch (err) {
+        console.error("onMarkAllRead handler error:", err);
+      }
+    };
+
+    socket.on("notification:new", onNewNotification);
+    socket.on("notification:read", onNotificationRead);
+    socket.on("notification:markAllRead", onMarkAllRead);
+    socket.on("notification:allRead", onMarkAllRead); // alternate event name
+
+    return () => {
+      try {
+        socket.off("notification:new", onNewNotification);
+        socket.off("notification:read", onNotificationRead);
+        socket.off("notification:markAllRead", onMarkAllRead);
+        socket.off("notification:allRead", onMarkAllRead);
+        socket.emit("leave", userId);
+      } catch (err) {
+        console.warn("Socket cleanup error:", err);
+      }
+    };
+  }, [user, fetchOverview]);
+
+
+  // 3) Mark notification as read (client -> server)
   const markAsRead = async (notificationId) => {
     try {
+      // optimistic update: mark locally
+      setNotifications((prev) => prev.map((notif) => (notif._id === notificationId ? { ...notif, isRead: true } : notif)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/${notificationId}/mark-read`, {
         method: "PATCH",
         credentials: "include",
       })
-      if (res.ok) {
-        // Update local state
-        setNotifications((prev) =>
-          prev.map((notif) => (notif._id === notificationId ? { ...notif, isRead: true } : notif)),
-        )
-        setUnreadCount((prev) => Math.max(0, prev - 1))
+      if (!res.ok) {
+        // rollback if server failed - re-fetch state
+        console.warn("Mark as read server returned", res.status);
+        await fetchOverview();
+        await fetchNotifications();
+      } else {
+        // server may broadcast a notification:read event — if it doesn't, the optimistic update keeps UI correct
       }
     } catch (err) {
       console.error("Mark as read error:", err)
+      // fallback resync
+      await fetchOverview().catch(()=>{})
+      await fetchNotifications().catch(()=>{})
     }
   }
 
   // 4) Mark all notifications as read
   const markAllAsRead = async () => {
     try {
+      // optimistic local change
+      setNotifications((prev) => prev.map((notif) => ({ ...notif, isRead: true })));
+      setUnreadCount(0);
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/notifications/mark-all-read`, {
         method: "PATCH",
         credentials: "include",
       })
-      if (res.ok) {
-        setNotifications((prev) => prev.map((notif) => ({ ...notif, isRead: true })))
-        setUnreadCount(0)
+      if (!res.ok) {
+        console.warn("Mark all as read server returned", res.status);
+        await fetchOverview();
+        await fetchNotifications();
+      } else {
+        // server should broadcast notification:markAllRead to notify other tabs/devices
       }
     } catch (err) {
       console.error("Mark all as read error:", err)
+      await fetchOverview().catch(()=>{})
+      await fetchNotifications().catch(()=>{})
     }
   }
 
@@ -144,7 +281,7 @@ export function AccountHeader({ name, role, avatarUrl }) {
     setShowNotifications(!showNotifications)
   }
 
-  // 7) Get user initials
+  // small helpers
   const getInitials = (name) => {
     if (!name) return "U"
     return name
@@ -154,7 +291,6 @@ export function AccountHeader({ name, role, avatarUrl }) {
       .toUpperCase()
   }
 
-  // 8) Format notification date
   const formatNotificationDate = (dateString) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -169,7 +305,6 @@ export function AccountHeader({ name, role, avatarUrl }) {
     return date.toLocaleDateString("fr-FR")
   }
 
-  // 9) Get notification type color
   const getNotificationTypeColor = (type) => {
     const colors = {
       info: "bg-blue-100 text-blue-800",
@@ -182,6 +317,8 @@ export function AccountHeader({ name, role, avatarUrl }) {
 
   const displayName = name || user.username || "Utilisateur"
   const displayRole = role || user.role || "Invité"
+  const displayDistrict = district || user.district || ""
+  const displayStructure = structure || user.structure || ""
 
   return (
     <div className="flex items-center justify-between p-4 bg-white shadow-sm border-b border-gray-200 mb-6 rounded-lg">
@@ -194,6 +331,22 @@ export function AccountHeader({ name, role, avatarUrl }) {
           <div>
             <h2 className="text-lg font-semibold text-gray-800">{displayName}</h2>
             <p className="text-sm text-gray-600">{displayRole}</p>
+            {(displayDistrict || displayStructure) && (
+              <div className="flex items-center space-x-3 mt-1">
+                {displayDistrict && (
+                  <div className="flex items-center space-x-1">
+                    <MapPin className="h-3 w-3 text-gray-500" />
+                    <span className="text-xs text-gray-500">{displayDistrict}</span>
+                  </div>
+                )}
+                {displayStructure && (
+                  <div className="flex items-center space-x-1">
+                    <Building className="h-3 w-3 text-gray-500" />
+                    <span className="text-xs text-gray-500">{displayStructure}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -276,11 +429,11 @@ export function AccountHeader({ name, role, avatarUrl }) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/profile")}>
               <User className="mr-2 h-4 w-4" />
               <span>Profil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem  onClick={() => router.push("/settings")}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Paramètres</span>
             </DropdownMenuItem>

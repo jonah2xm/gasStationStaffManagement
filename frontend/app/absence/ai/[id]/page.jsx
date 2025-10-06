@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AccountHeader } from "@/components/account-header";
+
 
 // Operation types with their display names and colors
 const operationTypes = {
@@ -108,12 +108,7 @@ export default function AbsenceAIDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Account header */}
-      <AccountHeader
-        name="John Doe"
-        role="HR Manager"
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+   
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">

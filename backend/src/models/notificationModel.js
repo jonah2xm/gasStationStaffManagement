@@ -17,12 +17,13 @@ const notificationSchema = new mongoose.Schema({
       "CongeDays",
       "AffectationDefinitive",
       "Recuperation",
+      "MonthlyAccrual",
     ],
     required: true,
   },
   reference: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true, // _id of the source document
+   
   },
   message: {
     type: String,

@@ -36,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccountHeader } from "@/components/account-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -432,11 +431,7 @@ export default function AddRecuperationPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -448,7 +443,7 @@ export default function AddRecuperationPage() {
         </Button>
       </div>
 
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto bg-white">
         <CardHeader>
           <CardTitle>Enregistrer une Récupération</CardTitle>
           <CardDescription>
@@ -458,11 +453,12 @@ export default function AddRecuperationPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personnel Selection */}
-            <div className="space-y-2">
+            <div className="space-y-2 ">
               <Label htmlFor="personnel">Employé*</Label>
               <Popover
                 open={openPersonnelCombobox}
                 onOpenChange={setOpenPersonnelCombobox}
+                
               >
                 <PopoverTrigger asChild>
                   <Button
@@ -483,7 +479,7 @@ export default function AddRecuperationPage() {
                             )}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-col items-start text-left">
+                        <div className="flex flex-col items-start text-left ">
                           <span className="font-medium text-gray-800">
                             {selectedPersonnel.firstName}{" "}
                             {selectedPersonnel.lastName}
@@ -494,7 +490,7 @@ export default function AddRecuperationPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center text-muted-foreground">
+                      <div className="flex items-center text-muted-foreground ">
                         <Search className="mr-2 h-4 w-4" />
                         Rechercher un employé...
                       </div>

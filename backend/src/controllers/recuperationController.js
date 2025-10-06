@@ -3,10 +3,50 @@ const Recuperation = require("../models/recuperationModel");
 const Personnel = require("../models/personnelModel");
 const fs = require("fs");
 const path = require("path");
-// Create a new recuperation record
 const Notification = require("../models/notificationModel");
 const Users = require("../models/userModel");
 
+/**
+ * Helper: insert notifications and emit them via Socket.IO (per-user rooms)
+ * - req is used to get req.app.get('io')
+ * - notifications: array of objects matching Notification schema
+ */
+async function createAndEmitNotifications(req, notifications) {
+  if (!notifications || !notifications.length) return [];
+
+  // Insert into DB
+  const inserted = await Notification.insertMany(notifications);
+
+  // Emit via Socket.IO (per-user rooms)
+  try {
+    const io = req.app && req.app.get && req.app.get("io");
+    if (!io) return inserted;
+
+    inserted.forEach((n) => {
+      try {
+        const userRoom = `user:${String(n.personnel)}`;
+        io.to(userRoom).emit("notification:new", {
+          _id: n._id,
+          type: n.type,
+          reference: n.reference,
+          title: n.title || "Notification",
+          message: n.message,
+          detailsUrl: n.detailsUrl,
+          countIncrement: 1,
+          createdAt: n.date || n.createdAt || new Date(),
+        });
+      } catch (emitErr) {
+        console.warn("Emit for notification failed:", emitErr);
+      }
+    });
+  } catch (err) {
+    console.warn("Socket emit failed:", err);
+  }
+
+  return inserted;
+}
+
+// Create a new recuperation record
 exports.createRecuperation = async (req, res) => {
   const { personnelId, stationName, dureeRecuperation, dateDebut, dateRetour } =
     req.body;
@@ -50,14 +90,15 @@ exports.createRecuperation = async (req, res) => {
       }
     }
 
-    // 5) Création de l'objet Recuperation
+    // 5) Création de l'objet Recuperation (normalise le path)
+    const normalizedPath = req.file.path.replace(/\\/g, "/");
     const recup = new Recuperation({
       personnelId,
       stationName,
       dureeRecuperation,
       dateDebut,
       dateRetour,
-      documentPath: req.file.path,
+      documentPath: normalizedPath,
     });
     const saved = await recup.save();
 
@@ -68,11 +109,10 @@ exports.createRecuperation = async (req, res) => {
       });
     }
 
-    // 7) Envoi des notifications à tous les utilisateurs
+    // 7) Envoi des notifications à tous les utilisateurs (DB + socket)
     const allUsers = await Users.find().select("_id").lean();
-    const message = `Récupération de ${personnel.firstName} ${
-      personnel.lastName
-    } du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}.`;
+    const message = `Récupération de ${personnel.firstName} ${personnel.lastName} du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}.`;
+
     const notifs = allUsers.map((user) => ({
       personnel: user._id,
       type: "Recuperation",
@@ -84,7 +124,12 @@ exports.createRecuperation = async (req, res) => {
     }));
 
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      try {
+        const inserted = await createAndEmitNotifications(req, notifs);
+        console.log("Recuperation notifications created & emitted:", inserted.length);
+      } catch (e) {
+        console.error("Failed to create/emit recuperation notifications:", e);
+      }
     }
 
     return res.status(201).json({
@@ -166,7 +211,7 @@ exports.updateRecuperation = async (req, res) => {
           if (err) console.warn("Échec suppression ancien PDF:", err);
         });
       }
-      recup.documentPath = req.file.path;
+      recup.documentPath = req.file.path.replace(/\\/g, "/");
     }
 
     // 4) Mettre à jour les champs
@@ -174,7 +219,6 @@ exports.updateRecuperation = async (req, res) => {
     recup.dateDebut = dateDebut;
     recup.dateRetour = dateRetour;
     recup.dureeRecuperation = req.body.dureeRecuperation;
-    // … ajoutez tout autre champ modifiable ici …
 
     // 5) Sauvegarder
     await recup.save();
@@ -196,12 +240,31 @@ exports.updateRecuperation = async (req, res) => {
       await Personnel.findByIdAndUpdate(personnelId, { status: "Actif" });
     }
 
+    // 7) Optionally notify users about the update (you can remove if not needed)
+    try {
+      const allUsers = await Users.find().select("_id").lean();
+      const msg = `Récupération mise à jour pour ${personnel.firstName} ${personnel.lastName} : du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}.`;
+      const notifs = allUsers.map((u) => ({
+        personnel: u._id,
+        type: "Recuperation",
+        reference: recup._id,
+        title: "Mise à jour récupération",
+        message: msg,
+        date: new Date(),
+        detailsUrl: "/recuperations/" + recup._id,
+      }));
+      if (notifs.length) await createAndEmitNotifications(req, notifs);
+    } catch (notifyErr) {
+      console.warn("Failed to notify about recuperation update:", notifyErr);
+    }
+
     return res.json(recup);
   } catch (err) {
     console.error("Erreur updateRecuperation:", err);
     return res.status(400).json({ error: err.message });
   }
 };
+
 // Delete a record
 exports.deleteRecuperation = async (req, res) => {
   console.log("deleteRecuperation called with id:", req.params.id);
@@ -231,13 +294,11 @@ exports.deleteRecuperation = async (req, res) => {
       await Personnel.findByIdAndUpdate(recup.personnelId, { status: "Actif" });
     }
 
-    // 5) Notification à tous les utilisateurs
+    // 5) Notification à tous les utilisateurs (DB + socket)
     const personnel = await Personnel.findById(recup.personnelId).lean();
     if (personnel) {
       const allUsers = await Users.find().select("_id").lean();
-      const message = `La récupération de ${personnel.firstName} ${
-        personnel.lastName
-      } du ${start.toLocaleDateString()} au ${end.toLocaleDateString()} a été annulée.`;
+      const message = `La récupération de ${personnel.firstName} ${personnel.lastName} du ${start.toLocaleDateString()} au ${end.toLocaleDateString()} a été annulée.`;
 
       const notifs = allUsers.map((user) => ({
         personnel: user._id,
@@ -250,7 +311,12 @@ exports.deleteRecuperation = async (req, res) => {
       }));
 
       if (notifs.length) {
-        await Notification.insertMany(notifs);
+        try {
+          const inserted = await createAndEmitNotifications(req, notifs);
+          console.log("Recuperation deletion notifications created & emitted:", inserted.length);
+        } catch (e) {
+          console.error("Failed to create/emit deletion notifications:", e);
+        }
       }
     }
 

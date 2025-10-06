@@ -21,8 +21,11 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["administrateur", "consultant", "chef station"],
+      enum: ["administrateur", "gestionnaire", "chef station"],
     },
+    createdAt:{
+      
+    }
   },
   { timestamps: true }
 );

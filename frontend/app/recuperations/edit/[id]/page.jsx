@@ -31,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccountHeader } from "@/components/account-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -379,11 +378,7 @@ export default function EditRecuperationPage() {
   if (initialLoading) {
     return (
       <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-        <AccountHeader
-          name="John Doe"
-          role="HR Manager"
-          avatarUrl="/placeholder.svg?height=40&width=40"
-        />
+
         <div className="flex justify-center items-center h-64">
           <Loader2 className="animate-spin h-8 w-8" />
           <span className="ml-2">Chargement des données...</span>
@@ -394,11 +389,8 @@ export default function EditRecuperationPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+  
+  
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -410,7 +402,7 @@ export default function EditRecuperationPage() {
         </Button>
       </div>
 
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto bg-white">
         <CardHeader>
           <CardTitle>Modifier la Récupération</CardTitle>
           <CardDescription>

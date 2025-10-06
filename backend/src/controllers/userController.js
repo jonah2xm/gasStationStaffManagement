@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
-
+const mongoose = require("mongoose");
 // Helper function to generate a JWT token
 const generateToken = (id, username, email, role) => {
   return jwt.sign({ id, username, email, role }, process.env.JWT_SECRET, {
@@ -9,29 +9,43 @@ const generateToken = (id, username, email, role) => {
 };
 
 /**
- * @desc    Register a new user
- * @route   POST /api/users/register
- * @access  Public
+ * @desc    Create a new user (simple)
+ * @route   POST /api/users
+ * @access  Public (make private/admin if needed)
  */
-exports.registerUser = async (req, res) => {
+exports.registerNewUser = async (req, res) => {
+  
   try {
     const { username, email, password, role } = req.body;
 
-    // Check if a user with the given email already exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    // Basic validation
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Prevent duplicates by email or username
+    const existing = await User.findOne({
+      $or: [{ email: email }, { username: username }],
+    });
+    if (existing) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Create the new user (the pre-save hook in the model will hash the password)
-    const user = await User.create({ username, email, password, role });
+    // Create user (password will be hashed by model pre-save hook)
+    const user = await User.create({
+      username,
+      email,
+      password,
+      role: role || "user",
+    });
 
+    // Return created user (exclude password)
     res.status(201).json({
       _id: user._id,
       username: user.username,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id, username, email, role),
+      createdAt: user.createdAt,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -54,6 +68,9 @@ exports.loginUser = async (req, res) => {
         id: user._id,
         username: user.username,
         role: user.role,
+        email:user.email,
+        createdAt:user.createdAt,
+        updatedAt:user.updatedAt
       };
       console.log(req.session.user, "req req");
       res.json({
@@ -61,6 +78,9 @@ exports.loginUser = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        district:user.discrict,
+        structure:user.structure,
+      
         token: generateToken(user._id),
       });
     } else {
@@ -78,25 +98,38 @@ exports.loginUser = async (req, res) => {
  *
  * Expected body: { email, oldPassword, newPassword }
  */
+
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, oldPassword, newPassword } = req.body;
+    // Log both params and body for debugging
+    console.log("resetPassword - params:", req.params, "body:", req.body);
 
-    // Find the user by email
-    const user = await User.findOne({ email });
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    // Basic validation
+    if (!id) return res.status(400).json({ message: "Missing user id in params" });
+    if (!newPassword) return res.status(400).json({ message: "Missing newPassword in body" });
+
+    // Validate id format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user id format" });
+    }
+
+    // Find by _id (use findById to ensure correct lookup)
+    const user = await User.findById(id);
     if (!user) {
+      console.log("resetPassword - user not found for id:", id);
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if the old password is correct
-    if (await user.matchPassword(oldPassword)) {
-      user.password = newPassword; // This will be hashed by the pre-save hook
-      await user.save();
-      res.json({ message: "Password reset successfully" });
-    } else {
-      res.status(401).json({ message: "Invalid old password" });
-    }
+    // Update password (pre("save") hook on the model will hash it)
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: "Password reset successfully" });
   } catch (error) {
+    console.error("resetPassword error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -171,5 +204,15 @@ exports.updatePassword = async (req, res) => {
   } catch (err) {
     console.error("Erreur updatePassword:", err);
     res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+exports.getUsers = async (req, res) => {
+  try {
+    // Fetch all users, exclude password and mongoose __v field
+    const users = await User.find().select("-password -__v");
+    return res.json(users);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };

@@ -21,17 +21,25 @@ const recuperationRoutes = require("./routes/recuperationRoutes");
 const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 const notificationRoutes = require("./routes/notificationRouter");
+const fs = require("fs"); // <- needed by your debug endpoint below
+
+// Socket.IO / http
+const http = require("http");
+const { Server } = require("socket.io");//tets
+
 // 2. Load environment variables
 dotenv.config();
 
 // 3. Create an Express app
 const app = express();
-const allowedOrigin = ["http://10.34.6.42:3000", "http://localhost:3000"];
+const allowedOrigin = ["http://10.34.6.33:3000", "http://localhost:3000"];
+
 // 4. Middleware
-app.use(cors({ credentials: true, origin: allowedOrigin })); // Adjust frontend origin
+app.use(cors({ credentials: true, origin: allowedOrigin }));
 app.use(express.json());
 app.use(morgan("dev"));
 require("./cronjobs/statusCronjobs");
+
 // 5. Session middleware (must come before routes)
 app.use(
   session({
@@ -43,7 +51,7 @@ app.use(
     }),
     cookie: {
       httpOnly: true,
-      secure: false, // Set to true if using HTTPS
+      secure: false, // Set to true if using HTTPS in production
       maxAge: 1000 * 60 * 60 * 24,
     },
   })
@@ -65,23 +73,6 @@ app.get("/debug/list-uploads", (req, res) => {
   fs.readdir(uploadsDir, (err, files) => {
     if (err) return res.status(500).json({ err: err.message, uploadsDir, cwd: process.cwd() });
     res.json({ uploadsDir, cwd: process.cwd(), files });
-  });
-});
-
-
-
-// Close server properly on restart/exit
-process.on("SIGINT", () => {
-  server.close(() => {
-    console.log("Server closed");
-    process.exit(0);
-  });
-});
-
-process.on("SIGTERM", () => {
-  server.close(() => {
-    console.log("Server terminated");
-    process.exit(0);
   });
 });
 
@@ -109,13 +100,44 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Something went wrong!" });
 });
 
-// 10. Start server
+// 10. Create HTTP server and attach Socket.IO
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigin,
+    credentials: true,
+  },
+});
+
+// Simple socket handlers: allow clients to join per-user rooms
+io.on("connection", (socket) => {
+  console.log("Socket connected:", socket.id);
+
+  // Client should emit 'join' with their user id after authentication
+  socket.on("join", (userId) => {
+    if (!userId) return;
+    socket.join(`user:${userId}`);
+    console.log(`Socket ${socket.id} joined room user:${userId}`);
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log("Socket disconnected:", socket.id, reason);
+  });
+});
+
+// make io accessible in request handlers/controllers
+app.set("io", io);
+
+// 11. Start server (use http server, not app.listen)
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
 // Close server properly on restart/exit
 process.on("SIGINT", () => {
+  console.log("SIGINT received — closing server...");
   server.close(() => {
     console.log("Server closed");
     process.exit(0);
@@ -123,6 +145,7 @@ process.on("SIGINT", () => {
 });
 
 process.on("SIGTERM", () => {
+  console.log("SIGTERM received — terminating server...");
   server.close(() => {
     console.log("Server terminated");
     process.exit(0);

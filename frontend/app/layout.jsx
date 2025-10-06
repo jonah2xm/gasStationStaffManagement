@@ -16,6 +16,7 @@ import {
   Bed,
 } from "lucide-react";
 import { useState,useEffect } from "react";
+import { AccountHeader } from "./components/account-header";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -274,7 +275,7 @@ function Sidebar() {
               title={collapsed ? "Settings" : undefined}
             >
               <Settings className="w-5 h-5" style={pathname === "/settings" ? { color: SELECTED_COLOR } : undefined} />
-              {!collapsed && <span>Settings</span>}
+              {!collapsed && <span>Paramétres</span>}
             </Link>
           </li>
         </ul>
@@ -297,11 +298,13 @@ export default function RootLayout({ children }) {
           className={`flex h-screen bg-gray-100 ${isLoginPage ? "" : "flex"}`}
         >
           {!isLoginPage && <Sidebar />}
+          
           <main
             className={`${
               isLoginPage ? "w-full" : "flex-1"
             } overflow-y-auto bg-gray-50`}
           >
+             {!isLoginPage && <div className="container mx-auto p-6 text-gray-800"> <AccountHeader  /> </div>}
             {children}
           </main>
         </div>

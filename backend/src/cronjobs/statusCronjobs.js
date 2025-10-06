@@ -10,12 +10,14 @@ const Notification = require("../models/notificationModel");
 const Users = require("../models/userModel");
 
 // Run every day at 12:05 AM
-cron.schedule("26 09 * * *", async () => {
+cron.schedule("53 13 * * *", async () => {
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   // 0. Monthly holiday accrual on the 1st
   if (today.getDate() === 1) {
+   
     await Personnel.updateMany({}, { $inc: { holidaysLeft: 2.5 } });
     const allUsers = await Users.find().select("_id").lean();
     const accrualNotifs = allUsers.map((u) => ({

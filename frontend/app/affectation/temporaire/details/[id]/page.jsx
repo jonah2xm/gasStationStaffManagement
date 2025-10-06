@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AccountHeader } from "@/components/account-header";
+
 
 // Status types with their display names and colors
 const statusTypes = {
@@ -133,7 +133,7 @@ export default function AffectationTemporaireDetailsPage() {
       <div className="flex flex-col items-center justify-center h-screen text-red-500">
         <p className="text-xl mb-4">{error}</p>
         <Button
-          onClick={() => router.push("/affectation-temporaire")}
+          onClick={() => router.push("/affectation/temporaire")}
           className="flex items-center"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la liste
@@ -154,18 +154,13 @@ export default function AffectationTemporaireDetailsPage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      {/* Account header */}
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <Button
             variant="outline"
-            onClick={() => router.push("/affectation-temporaire")}
+            onClick={() => router.push("/affectatio/temporaire")}
             className="flex items-center"
           >
             <ArrowLeft className="mr-2 h-5 w-5" /> Retour
@@ -276,7 +271,7 @@ export default function AffectationTemporaireDetailsPage() {
                     Document justificatif
                   </Label>
                   <a
-                    href={`/affectation-temporaire/document/${encodeURIComponent(
+                    href={`/document/${encodeURIComponent(
                       affectation.document
                     )}`}
                     target="_blank"
@@ -334,7 +329,7 @@ export default function AffectationTemporaireDetailsPage() {
               <Button
                 variant="outline"
                 onClick={() =>
-                  router.push(`/affectation-temporaire/edit/${affectation._id}`)
+                  router.push(`/affectation/temporaire/edit/${affectation._id}`)
                 }
                 className="flex items-center"
               >
@@ -342,7 +337,7 @@ export default function AffectationTemporaireDetailsPage() {
                 Modifier
               </Button>
               <Button
-                onClick={() => router.push("/affectation-temporaire")}
+                onClick={() => router.push("/affectation/temporaire")}
                 className="bg-blue-500 hover:bg-blue-600 text-white"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />

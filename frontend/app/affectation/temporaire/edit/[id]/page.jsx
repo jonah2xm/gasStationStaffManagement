@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AccountHeader } from "@/components/account-header";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -481,7 +481,7 @@ export default function EditAffectationTemporairePage() {
 
   const handleSuccessConfirm = () => {
     setShowSuccessDialog(false);
-    router.push("/affectation-temporaire");
+    router.push("/affectation/temporaire");
   };
 
   const getInitials = (name) => {
@@ -522,7 +522,7 @@ export default function EditAffectationTemporairePage() {
           L'affectation que vous recherchez n'existe pas ou a été supprimée.
         </p>
         <Button
-          onClick={() => router.push("/affectation-temporaire")}
+          onClick={() => router.push("/affectation/temporaire")}
           className="bg-blue-500 hover:bg-blue-600 text-white"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -534,11 +534,7 @@ export default function EditAffectationTemporairePage() {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -546,14 +542,14 @@ export default function EditAffectationTemporairePage() {
         </h1>
         <Button
           variant="outline"
-          onClick={() => router.push("/affectation-temporaire")}
+          onClick={() => router.push("/affectation/temporaire")}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour à la liste
         </Button>
       </div>
 
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto bg-white">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
@@ -580,13 +576,13 @@ export default function EditAffectationTemporairePage() {
                     variant="outline"
                     role="combobox"
                     aria-expanded={openPersonnelCombobox}
-                    className={`w-full justify-between ${
+                    className={`w-full justify-between bg-gray-50 ${
                       errors.personnel ? "border-red-500" : ""
                     }`}
                     disabled={loading} // No longer disabled in edit mode
                   >
                     {selectedPersonnel ? (
-                      <div className="flex items-center bg-gray-50">
+                      <div className="flex items-center ">
                         <Avatar className="h-6 w-6 mr-2">
                           <AvatarFallback className="bg-blue-100 text-blue-800 text-xs">
                             {getInitials(
@@ -875,7 +871,7 @@ export default function EditAffectationTemporairePage() {
                       Document existant
                     </span>
                     <a
-                      href={`/affectation-temporaire/document/${encodeURIComponent(
+                      href={`/document/${encodeURIComponent(
                         existingDocument
                       )}`}
                       target="_blank"
@@ -905,7 +901,7 @@ export default function EditAffectationTemporairePage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/affectation-temporaire")}
+                onClick={() => router.push("/affectation/temporaire")}
                 disabled={loading}
               >
                 Annuler

@@ -1,11 +1,46 @@
-// controllers/congeController.js
-
 const Conge = require("../models/congeModel");
 const Personnel = require("../models/personnelModel");
 const fs = require("fs");
 const path = require("path");
 const Users = require("../models/userModel");
 const Notification = require("../models/notificationModel");
+
+// Helper: insert notifications and emit them via Socket.IO (per-user rooms)
+async function createAndEmitNotifications(req, notifications) {
+  if (!notifications || !notifications.length) return [];
+
+  // Insert into DB first
+  const inserted = await Notification.insertMany(notifications);
+
+  // Emit via Socket.IO (per-user rooms)
+  try {
+    const io = req.app.get("io");
+    if (!io) return inserted;
+
+    inserted.forEach((n) => {
+      try {
+        // Use string cast to be safe with ObjectId
+        const userRoom = `user:${String(n.personnel)}`;
+        io.to(userRoom).emit("notification:new", {
+          _id: n._id,
+          type: n.type,
+          reference: n.reference,
+          title: n.title,
+          message: n.message,
+          detailsUrl: n.detailsUrl,
+          countIncrement: 1,
+          createdAt: n.date || n.createdAt || new Date(),
+        });
+      } catch (emitErr) {
+        console.warn("Emit for notification failed:", emitErr);
+      }
+    });
+  } catch (err) {
+    console.warn("Socket emit failed:", err);
+  }
+
+  return inserted;
+}
 
 // POST /api/conges
 exports.addConge = async (req, res) => {
@@ -92,6 +127,18 @@ exports.addConge = async (req, res) => {
     });
 
     // 7) Notification au salarié concerné
+    // (optional: create a direct notification only for the employee)
+    const personalNotif = {
+      personnel: personnelId,
+      type: "Conge",
+      reference: savedConge._id,
+      title: "Votre congé a été enregistré",
+      message: `Votre congé (${typeConge}) du ${start.toLocaleDateString()} au ${end.toLocaleDateString()} a été enregistré.`,
+      date: new Date(),
+      detailsUrl: `/conges/details/${savedConge._id}`,
+    };
+    // create personal notification and emit
+    await createAndEmitNotifications(req, [personalNotif]);
 
     // 8) Broadcast notification à tous les utilisateurs
     const allUsers = await Users.find().select("_id").lean();
@@ -110,7 +157,7 @@ exports.addConge = async (req, res) => {
     }));
 
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      await createAndEmitNotifications(req, notifs);
     }
 
     // 9) Réponse
@@ -232,6 +279,16 @@ exports.deleteConge = async (req, res) => {
       });
 
       // 4) Notification privée à l’employé
+      const personalCancelNotif = {
+        personnel: conge.personnelId,
+        type: "Conge",
+        reference: conge._id,
+        title: "Votre congé a été annulé",
+        message: `Votre congé du ${new Date(conge.dateDebut).toLocaleDateString()} au ${new Date(conge.dateRetour).toLocaleDateString()} a été annulé.`,
+        date: new Date(),
+        detailsUrl: `/conges/archives/${conge._id}`,
+      };
+      await createAndEmitNotifications(req, [personalCancelNotif]);
     }
 
     // 5) Notification broadcast à TOUS les utilisateurs
@@ -257,7 +314,7 @@ exports.deleteConge = async (req, res) => {
     }));
 
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      await createAndEmitNotifications(req, notifs);
     }
 
     return res.json({ message: "Congé supprimé avec succès" });
@@ -266,6 +323,7 @@ exports.deleteConge = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
+
 // PUT /api/conges/:id
 exports.updateConge = async (req, res) => {
   try {

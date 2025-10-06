@@ -3,9 +3,46 @@ const Personnel = require("../models/personnelModel");
 const Station = require("../models/stationModel");
 const Users = require("../models/userModel");
 const Notification = require("../models/notificationModel");
-
 const fs = require("fs");
 const path = require("path");
+
+/**
+ * Helper: insert notifications and emit them via Socket.IO (per-user rooms)
+ * - req is used to get req.app.get('io')
+ * - notifications: array of objects matching Notification schema
+ */
+async function createAndEmitNotifications(req, notifications) {
+  if (!notifications || !notifications.length) return [];
+
+  const inserted = await Notification.insertMany(notifications);
+
+  try {
+    const io = req.app.get("io");
+    if (!io) return inserted;
+
+    inserted.forEach((n) => {
+      try {
+        const userRoom = `user:${String(n.personnel)}`;
+        io.to(userRoom).emit("notification:new", {
+          _id: n._id,
+          type: n.type,
+          reference: n.reference,
+          title: n.title || "Notification",
+          message: n.message,
+          detailsUrl: n.detailsUrl,
+          countIncrement: 1,
+          createdAt: n.date || n.createdAt || new Date(),
+        });
+      } catch (emitErr) {
+        console.warn("Emit for notification failed:", emitErr);
+      }
+    });
+  } catch (err) {
+    console.warn("Socket emit failed:", err);
+  }
+
+  return inserted;
+}
 
 exports.createAffectation = async (req, res) => {
   try {
@@ -18,7 +55,6 @@ exports.createAffectation = async (req, res) => {
       description,
     } = req.body;
 
-    // 1) Validate required fields
     if (
       !personnelId ||
       !startDate ||
@@ -31,25 +67,21 @@ exports.createAffectation = async (req, res) => {
         .json({ message: "Champs requis manquants pour l’affectation." });
     }
 
-    // 2) Parse dates
     const start = new Date(startDate);
     const end = new Date(endDate);
     const today = new Date();
 
-    // 3) Load personnel
     const personnel = await Personnel.findById(personnelId);
     if (!personnel) {
       return res.status(404).json({ message: "Personnel non trouvé." });
     }
 
-    // 4) In‑period must be Actif
     if (today >= start && today <= end && personnel.status !== "Actif") {
       return res
         .status(400)
         .json({ message: "L'employé n'est pas actif pendant cette période." });
     }
 
-    // 5) Overlap check
     const last = await AffectationTemporaire.findOne({ personnel: personnelId })
       .sort({ startDate: -1 })
       .lean();
@@ -68,7 +100,6 @@ exports.createAffectation = async (req, res) => {
       }
     }
 
-    // 6) Verify stations exist
     const [originDoc, affectedDoc] = await Promise.all([
       Station.findById(originStation),
       Station.findById(affectedStation),
@@ -79,7 +110,6 @@ exports.createAffectation = async (req, res) => {
         .json({ message: "Origine ou destination introuvable." });
     }
 
-    // 7) Build and save the assignment
     const assignData = {
       personnel: personnelId,
       startDate: start,
@@ -95,13 +125,11 @@ exports.createAffectation = async (req, res) => {
     const newAssign = new AffectationTemporaire(assignData);
     const savedAssign = await newAssign.save();
 
-    // 8) Update Personnel’s current station
     await Personnel.findByIdAndUpdate(personnelId, {
       station: affectedDoc._id,
       stationName: affectedDoc.name,
     });
 
-    // 9) Broadcast notification to all users
     const allUsers = await Users.find().select("_id").lean();
     const msg = `Affectation temporaire: ${personnel.firstName} ${
       personnel.lastName
@@ -113,15 +141,21 @@ exports.createAffectation = async (req, res) => {
       personnel: u._id,
       type: "AffectationTemporaire",
       reference: savedAssign._id,
+      title: "Affectation temporaire",
       message: msg,
       detailsUrl: `/affectations/temporaire/details/${savedAssign._id}`,
+      date: new Date(),
     }));
 
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      try {
+        await createAndEmitNotifications(req, notifs);
+        console.log("Affectation temp notifications created & emitted:", notifs.length);
+      } catch (err) {
+        console.error("Error creating/emitting affectation temp notifs:", err);
+      }
     }
 
-    // 10) Return success
     return res.status(201).json({
       message: "Affectation temporaire créée avec succès",
       data: savedAssign,
@@ -134,13 +168,13 @@ exports.createAffectation = async (req, res) => {
     });
   }
 };
+
 exports.getAbsenceTemp = async (req, res) => {
   try {
     const affectations = await AffectationTemporaire.find()
-
       .populate("personnel", "firstName lastName matricule")
       .populate("originStation", "_id name")
-      .populate("affectedStation", "_id name") // optional
+      .populate("affectedStation", "_id name")
       .sort({ startDate: -1 });
 
     res.status(200).json(affectations);
@@ -151,6 +185,7 @@ exports.getAbsenceTemp = async (req, res) => {
     });
   }
 };
+
 exports.getAffectationTemporaireById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -173,6 +208,7 @@ exports.getAffectationTemporaireById = async (req, res) => {
       .json({ message: "Erreur lors de la récupération de l'affectation." });
   }
 };
+
 exports.updateAffectationTemporaire = async (req, res) => {
   try {
     const { id } = req.params;
@@ -185,7 +221,6 @@ exports.updateAffectationTemporaire = async (req, res) => {
       description,
     } = req.body;
 
-    // 1) Fetch the existing assignment
     const existing = await AffectationTemporaire.findById(id).lean();
     if (!existing) {
       return res
@@ -193,14 +228,12 @@ exports.updateAffectationTemporaire = async (req, res) => {
         .json({ message: "Affectation temporaire introuvable." });
     }
 
-    // 2) Parse new dates (or fall back to old ones)
     const newStart = startDate
       ? new Date(startDate)
       : new Date(existing.startDate);
     const newEnd = endDate ? new Date(endDate) : new Date(existing.endDate);
     const today = new Date();
 
-    // 3) If today ∈ [newStart, newEnd], ensure personnel is Actif
     const personnel = await Personnel.findById(
       personnelId || existing.personnel
     );
@@ -213,7 +246,6 @@ exports.updateAffectationTemporaire = async (req, res) => {
       });
     }
 
-    // 4) Overlap check against *other* assignments for this person
     const lastOther = await AffectationTemporaire.findOne({
       personnel: personnel._id,
       _id: { $ne: id },
@@ -235,7 +267,6 @@ exports.updateAffectationTemporaire = async (req, res) => {
       }
     }
 
-    // 5) Build update object
     const updates = {};
     if (startDate) updates.startDate = newStart;
     if (endDate) updates.endDate = newEnd;
@@ -244,10 +275,8 @@ exports.updateAffectationTemporaire = async (req, res) => {
     if (description !== undefined) updates.description = description;
     if (req.file) {
       updates.document = req.file.path.replace(/\\/g, "/");
-      // (optional) unlink existing.document file here
     }
 
-    // 6) Perform the update
     const updated = await AffectationTemporaire.findByIdAndUpdate(
       id,
       { $set: updates },
@@ -257,7 +286,6 @@ exports.updateAffectationTemporaire = async (req, res) => {
       .populate("originStation", "name")
       .populate("affectedStation", "name");
 
-    // 7) If affectedStation changed, update Personnel.station
     if (updates.affectedStation) {
       await Personnel.findByIdAndUpdate(personnel._id, {
         station: updated.affectedStation._id,
@@ -278,11 +306,11 @@ exports.updateAffectationTemporaire = async (req, res) => {
     });
   }
 };
+
 exports.deleteAffectationTemporaire = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1) Find the assignment
     const assign = await AffectationTemporaire.findById(id)
       .lean()
       .populate("personnel", "firstName lastName");
@@ -292,24 +320,20 @@ exports.deleteAffectationTemporaire = async (req, res) => {
         .json({ message: "Affectation temporaire non trouvée." });
     }
 
-    // 2) Delete the PDF file if present
     if (assign.document) {
       const fullPath = path.resolve(assign.document);
       fs.unlink(fullPath, (err) => {
         if (err && err.code !== "ENOENT") {
-          console.warn("Impossible de supprimer le fichier PDF :", err);
+          console.warn("Impossible de supprimer le fichier PDF :", err);
         }
       });
     }
 
-    // 3) Remove the DB record
     await AffectationTemporaire.findByIdAndDelete(id);
 
-    // 4) Load the origin station document to get its name
     const originDoc = await Station.findById(assign.originStation).lean();
     let stationResetMsg = "";
     if (originDoc) {
-      // 5) Update Personnel back to originStation
       await Personnel.findByIdAndUpdate(assign.personnel, {
         station: originDoc._id,
         stationName: originDoc.name,
@@ -317,9 +341,8 @@ exports.deleteAffectationTemporaire = async (req, res) => {
       stationResetMsg = `Station remise à "${originDoc.name}"`;
     }
 
-    // 6) Broadcast notification to all users
     const allUsers = await Users.find().select("_id").lean();
-    const msg = `Affectation temporaire  pour le personnel ${
+    const msg = `Affectation temporaire pour le personnel ${
       assign.personnel.firstName + " " + assign.personnel.lastName
     } a ete supprimée. ${stationResetMsg}.`;
 
@@ -327,15 +350,20 @@ exports.deleteAffectationTemporaire = async (req, res) => {
       personnel: u._id,
       type: "AffectationTemporaire",
       reference: assign._id,
+      title: "Suppression affectation temporaire",
       message: msg,
-      detailsUrl: "/affectations/temporaire", // link back to listing
+      detailsUrl: "/affectations/temporaire",
+      date: new Date(),
     }));
 
     if (notifs.length) {
-      await Notification.insertMany(notifs);
+      try {
+        await createAndEmitNotifications(req, notifs);
+      } catch (err) {
+        console.error("Error creating/emitting deletion notifications:", err);
+      }
     }
 
-    // 7) Respond
     return res.status(200).json({
       message: "Affectation temporaire supprimée et notifications envoyées.",
     });

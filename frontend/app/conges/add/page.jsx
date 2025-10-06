@@ -37,7 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccountHeader } from "@/components/account-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -482,11 +481,7 @@ useEffect(() => {
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <AccountHeader
-        name={user?.username || "Utilisateur"}
-        role={user?.role || "Invité"}
-        avatarUrl="/placeholder.svg?height=40&width=40"
-      />
+
 
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Ajouter un Congé</h1>
@@ -496,7 +491,7 @@ useEffect(() => {
         </Button>
       </div>
 
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto bg-white">
         <CardHeader>
           <CardTitle>Enregistrer un Congé</CardTitle>
           <CardDescription>
