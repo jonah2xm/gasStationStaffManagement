@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -17,14 +17,26 @@ import {
   RotateCcw,
   Plus,
   Search,
-} from "lucide-react"
-import toast, { Toaster } from "react-hot-toast"
+} from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   AlertDialog,
@@ -36,28 +48,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function SettingsPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
-  const [showErrorDialog, setShowErrorDialog] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
-  const [user, setUser] = useState({})
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [user, setUser] = useState({});
 
   // User management state
-  const [users, setUsers] = useState([])
-  const [usersLoading, setUsersLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedRole, setSelectedRole] = useState("all")
-  const [showAddUser, setShowAddUser] = useState(false)
-  const [showPasswordField, setShowPasswordField] = useState(false)
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRole, setSelectedRole] = useState("all");
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showPasswordField, setShowPasswordField] = useState(false);
 
   // Add user form state
   const [newUser, setNewUser] = useState({
@@ -65,89 +84,107 @@ export default function SettingsPage() {
     email: "",
     password: process.env.NEXT_PUBLIC_DEFAULT_PASSWORD,
     role: "gestionnaire",
-  })
-  const [addingUser, setAddingUser] = useState(false)
-  const [errors, setErrors] = useState({})
+  });
+  const [addingUser, setAddingUser] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Reset password state
-  const [resetPasswordUser, setResetPasswordUser] = useState(null)
-  const [newPassword, setNewPassword] = useState("")
-  const [resettingPassword, setResettingPassword] = useState(false)
+  const [resetPasswordUser, setResetPasswordUser] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   // Password form state
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-  })
-  const [passwordErrors, setPasswordErrors] = useState({})
-  const [passwordTouched, setPasswordTouched] = useState({})
+  });
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [passwordTouched, setPasswordTouched] = useState({});
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`, {
-          method: "GET",
-          credentials: "include",
-        })
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (!res.ok) {
-          throw new Error("Not authenticated")
+          throw new Error("Not authenticated");
         }
 
-        const data = await res.json()
-        setUser(data.user)
+        const data = await res.json();
+        setUser(data.user);
       } catch (err) {
-        console.warn("User not logged in or error:", err.message)
-        setUser(null)
-        router.push("/login")
+        console.warn("User not logged in or error:", err.message);
+        setUser(null);
+        router.push("/login");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    checkAuth()
-  }, [router])
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!user || user.role !== "administrateur") return
+      if (!user || user.role !== "administrateur") return;
 
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/`, {
-          method: "GET",
-          credentials: "include",
-        })
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (!res.ok) {
-          throw new Error("Failed to fetch users")
+          throw new Error("Failed to fetch users");
         }
-        
-        const data = await res.json()
-        setUsers(data || [])
+
+        const data = await res.json();
+        setUsers(data || []);
       } catch (err) {
-        console.error("Error fetching users:", err)
-        toast.error("Erreur lors du chargement des utilisateurs")
+        console.error("Error fetching users:", err);
+        toast.error("Erreur lors du chargement des utilisateurs");
       } finally {
-        setUsersLoading(false)
+        setUsersLoading(false);
       }
-    }
+    };
 
     if (user) {
-      fetchUsers()
+      fetchUsers();
     }
-  }, [user])
+  }, [user]);
 
   const getRoleBadge = (role) => {
     const roleConfig = {
-      administrateur: { label: "Administrateur", color: "bg-red-100 text-red-800" },
-      gestionnaire: { label: "gestionnaire", color: "bg-blue-100 text-blue-800" },
-      "chef station": { label: "Chef Station", color: "bg-green-100 text-green-800" },
-    }
+      administrateur: {
+        label: "Administrateur",
+        color: "bg-red-100 text-red-800",
+      },
+      gestionnaire: {
+        label: "gestionnaire",
+        color: "bg-blue-100 text-blue-800",
+      },
+      "chef station": {
+        label: "Chef Station",
+        color: "bg-green-100 text-green-800",
+      },
+    };
 
-    const config = roleConfig[role] || { label: role, color: "bg-gray-100 text-gray-800" }
-    return <Badge className={config.color}>{config.label}</Badge>
-  }
+    const config = roleConfig[role] || {
+      label: role,
+      color: "bg-gray-100 text-gray-800",
+    };
+    return <Badge className={config.color}>{config.label}</Badge>;
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("fr-FR", {
@@ -156,10 +193,10 @@ export default function SettingsPage() {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
-  const filteredUsers = users/*.filter((user) => {
+  const filteredUsers = users; /*.filter((user) => {
     const matchesSearch =
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -168,78 +205,90 @@ export default function SettingsPage() {
   })*/
 
   const validateNewUser = () => {
-    const newErrors = {}
+    const newErrors = {};
 
     if (!newUser.username.trim()) {
-      newErrors.username = "Le nom d'utilisateur est requis"
+      newErrors.username = "Le nom d'utilisateur est requis";
     } else if (newUser.username.length < 3) {
-      newErrors.username = "Le nom d'utilisateur doit contenir au moins 3 caractères"
+      newErrors.username =
+        "Le nom d'utilisateur doit contenir au moins 3 caractères";
     }
 
     if (!newUser.email.trim()) {
-      newErrors.email = "L'email est requis"
+      newErrors.email = "L'email est requis";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newUser.email)) {
-      newErrors.email = "Format d'email invalide"
+      newErrors.email = "Format d'email invalide";
     }
 
-    if (!newUser.password) {
+    /* if (!newUser.password) {
       newErrors.password = "Le mot de passe est requis"
     } else if (newUser.password.length < 6) {
       newErrors.password = "Le mot de passe doit contenir au moins 6 caractères"
-    }
+    }*/
+    newUser.password = process.env.NEXT_PUBLIC_DEFAULT_PASSWORD+'_'+newUser.username;
 
     if (!newUser.role) {
-      newErrors.role = "Le rôle est requis"
+      newErrors.role = "Le rôle est requis";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleAddUser = async () => {
     if (!validateNewUser()) {
-      toast.error("Veuillez corriger les erreurs dans le formulaire")
-      return
+      toast.error("Veuillez corriger les erreurs dans le formulaire");
+      return;
     }
 
-    setAddingUser(true)
+    setAddingUser(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(newUser),
-      })
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(newUser),
+        }
+      );
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.message || "Erreur lors de la création de l'utilisateur")
+        const errorData = await res.json();
+        throw new Error(
+          errorData.message || "Erreur lors de la création de l'utilisateur"
+        );
       }
 
-      const data = await res.json()
-      setUsers([...users, data.user])
-      setNewUser({ username: "", email: "", password: "", role: "gestionnaire" })
-      setShowAddUser(false)
-      setErrors({})
-      toast.success("Utilisateur créé avec succès!")
+      const data = await res.json();
+      setUsers([...users, data.user]);
+      setNewUser({
+        username: "",
+        email: "",
+        password: "",
+        role: "gestionnaire",
+      });
+      setShowAddUser(false);
+      setErrors({});
+      toast.success("Utilisateur créé avec succès!");
     } catch (err) {
-      console.error("Error adding user:", err)
-      toast.error(err.message || "Erreur lors de la création de l'utilisateur")
+      console.error("Error adding user:", err);
+      toast.error(err.message || "Erreur lors de la création de l'utilisateur");
     } finally {
-      setAddingUser(false)
+      setAddingUser(false);
     }
-  }
+  };
 
   const handleResetPassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      toast.error("Le mot de passe doit contenir au moins 6 caractères")
-      return
+      toast.error("Le mot de passe doit contenir au moins 6 caractères");
+      return;
     }
 
-    setResettingPassword(true)
+    setResettingPassword(true);
 
     try {
       const res = await fetch(
@@ -251,207 +300,236 @@ export default function SettingsPage() {
           },
           credentials: "include",
           body: JSON.stringify({ newPassword }),
-        },
-      )
+        }
+      );
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.message || "Erreur lors de la réinitialisation du mot de passe")
+        const errorData = await res.json();
+        throw new Error(
+          errorData.message ||
+            "Erreur lors de la réinitialisation du mot de passe"
+        );
       }
 
-      setResetPasswordUser(null)
-      setNewPassword("")
-      toast.success("Mot de passe réinitialisé avec succès!")
+      setResetPasswordUser(null);
+      setNewPassword("");
+      toast.success("Mot de passe réinitialisé avec succès!");
     } catch (err) {
-      console.error("Error resetting password:", err)
-      toast.error(err.message || "Erreur lors de la réinitialisation du mot de passe")
+      console.error("Error resetting password:", err);
+      toast.error(
+        err.message || "Erreur lors de la réinitialisation du mot de passe"
+      );
     } finally {
-      setResettingPassword(false)
+      setResettingPassword(false);
     }
-  }
+  };
 
   const handleDeleteUser = async (userId) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${userId}`, {
-        method: "DELETE",
-        credentials: "include",
-      })
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${userId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.message || "Erreur lors de la suppression de l'utilisateur")
+        const errorData = await res.json();
+        throw new Error(
+          errorData.message || "Erreur lors de la suppression de l'utilisateur"
+        );
       }
 
-      setUsers(users.filter((user) => user._id !== userId))
-      toast.success("Utilisateur supprimé avec succès!")
+      setUsers(users.filter((user) => user._id !== userId));
+      toast.success("Utilisateur supprimé avec succès!");
     } catch (err) {
-      console.error("Error deleting user:", err)
-      toast.error(err.message || "Erreur lors de la suppression de l'utilisateur")
+      console.error("Error deleting user:", err);
+      toast.error(
+        err.message || "Erreur lors de la suppression de l'utilisateur"
+      );
     }
-  }
+  };
 
   const handlePasswordInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setPasswordData((prev) => ({
       ...prev,
       [name]: value,
-    }))
+    }));
 
     if (!passwordTouched[name]) {
-      setPasswordTouched((prev) => ({ ...prev, [name]: true }))
+      setPasswordTouched((prev) => ({ ...prev, [name]: true }));
     }
 
     if (passwordErrors[name]) {
-      setPasswordErrors((prev) => ({ ...prev, [name]: "" }))
+      setPasswordErrors((prev) => ({ ...prev, [name]: "" }));
     }
-  }
+  };
 
   const validatePasswordField = (field) => {
-    const newErrors = { ...passwordErrors }
+    const newErrors = { ...passwordErrors };
 
     switch (field) {
       case "currentPassword":
         if (!passwordData.currentPassword) {
-          newErrors.currentPassword = "Le mot de passe actuel est requis"
+          newErrors.currentPassword = "Le mot de passe actuel est requis";
         } else {
-          delete newErrors.currentPassword
+          delete newErrors.currentPassword;
         }
-        break
+        break;
       case "newPassword":
         if (!passwordData.newPassword) {
-          newErrors.newPassword = "Le nouveau mot de passe est requis"
+          newErrors.newPassword = "Le nouveau mot de passe est requis";
         } else if (passwordData.newPassword.length < 8) {
-          newErrors.newPassword = "Le mot de passe doit contenir au moins 8 caractères"
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passwordData.newPassword)) {
-          newErrors.newPassword = "Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre"
+          newErrors.newPassword =
+            "Le mot de passe doit contenir au moins 8 caractères";
+        } else if (
+          !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passwordData.newPassword)
+        ) {
+          newErrors.newPassword =
+            "Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre";
         } else if (passwordData.newPassword === passwordData.currentPassword) {
-          newErrors.newPassword = "Le nouveau mot de passe doit être différent de l'ancien"
+          newErrors.newPassword =
+            "Le nouveau mot de passe doit être différent de l'ancien";
         } else {
-          delete newErrors.newPassword
+          delete newErrors.newPassword;
         }
-        break
+        break;
       case "confirmPassword":
         if (!passwordData.confirmPassword) {
-          newErrors.confirmPassword = "La confirmation du mot de passe est requise"
+          newErrors.confirmPassword =
+            "La confirmation du mot de passe est requise";
         } else if (passwordData.confirmPassword !== passwordData.newPassword) {
-          newErrors.confirmPassword = "Les mots de passe ne correspondent pas"
+          newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
         } else {
-          delete newErrors.confirmPassword
+          delete newErrors.confirmPassword;
         }
-        break
+        break;
       default:
-        break
+        break;
     }
 
-    setPasswordErrors(newErrors)
-    return !newErrors[field]
-  }
+    setPasswordErrors(newErrors);
+    return !newErrors[field];
+  };
 
   const validatePasswordForm = () => {
-    const fields = ["currentPassword", "newPassword", "confirmPassword"]
-    const newTouched = {}
+    const fields = ["currentPassword", "newPassword", "confirmPassword"];
+    const newTouched = {};
     fields.forEach((field) => {
-      newTouched[field] = true
-    })
-    setPasswordTouched(newTouched)
+      newTouched[field] = true;
+    });
+    setPasswordTouched(newTouched);
 
-    let isValid = true
+    let isValid = true;
     fields.forEach((field) => {
       if (!validatePasswordField(field)) {
-        isValid = false
+        isValid = false;
       }
-    })
+    });
 
-    return isValid
-  }
+    return isValid;
+  };
 
   const getPasswordStrength = (password) => {
-    if (!password) return { strength: 0, label: "", color: "" }
+    if (!password) return { strength: 0, label: "", color: "" };
 
-    let strength = 0
+    let strength = 0;
     const checks = [
       password.length >= 8,
       /[a-z]/.test(password),
       /[A-Z]/.test(password),
       /\d/.test(password),
       /[!@#$%^&*(),.?":{}|<>]/.test(password),
-    ]
+    ];
 
-    strength = checks.filter(Boolean).length
+    strength = checks.filter(Boolean).length;
 
-    if (strength <= 2) return { strength, label: "Faible", color: "text-red-500" }
-    if (strength <= 3) return { strength, label: "Moyen", color: "text-yellow-500" }
-    if (strength <= 4) return { strength, label: "Fort", color: "text-green-500" }
-    return { strength, label: "Très fort", color: "text-green-600" }
-  }
+    if (strength <= 2)
+      return { strength, label: "Faible", color: "text-red-500" };
+    if (strength <= 3)
+      return { strength, label: "Moyen", color: "text-yellow-500" };
+    if (strength <= 4)
+      return { strength, label: "Fort", color: "text-green-500" };
+    return { strength, label: "Très fort", color: "text-green-600" };
+  };
 
   const handlePasswordSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validatePasswordForm()) {
       toast.error("Veuillez corriger les erreurs dans le formulaire", {
         duration: 3000,
         position: "bottom-left",
-      })
-      return
+      });
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/updatePassword`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        }),
-        credentials: "include",
-      })
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/updatePassword`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentPassword: passwordData.currentPassword,
+            newPassword: passwordData.newPassword,
+          }),
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || "Erreur lors du changement de mot de passe")
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || "Erreur lors du changement de mot de passe"
+        );
       }
 
-      setShowSuccessDialog(true)
+      setShowSuccessDialog(true);
 
       setPasswordData({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
-      })
-      setPasswordTouched({})
-      setPasswordErrors({})
+      });
+      setPasswordTouched({});
+      setPasswordErrors({});
     } catch (error) {
-      console.error("Error changing password:", error.message)
-      setErrorMessage(error.message || "Erreur lors du changement de mot de passe")
-      setShowErrorDialog(true)
-      toast.error(error.message || "Erreur lors du changement de mot de passe", {
-        duration: 3000,
-        position: "bottom-left",
-      })
+      console.error("Error changing password:", error.message);
+      setErrorMessage(
+        error.message || "Erreur lors du changement de mot de passe"
+      );
+      setShowErrorDialog(true);
+      toast.error(
+        error.message || "Erreur lors du changement de mot de passe",
+        {
+          duration: 3000,
+          position: "bottom-left",
+        }
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const passwordStrength = getPasswordStrength(passwordData.newPassword)
+  const passwordStrength = getPasswordStrength(passwordData.newPassword);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
-    )
+    );
   }
 
   return (
     <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-
-
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Paramètres</h1>
         <Button variant="outline" onClick={() => router.back()}>
@@ -469,12 +547,17 @@ export default function SettingsPage() {
                   <Users className="mr-2 h-5 w-5" />
                   Gestion des Utilisateurs
                 </CardTitle>
-                <Button onClick={() => setShowAddUser(true)} className="flex items-center space-x-2">
+                <Button
+                  onClick={() => setShowAddUser(true)}
+                  className="flex items-center space-x-2"
+                >
                   <Plus className="h-4 w-4" />
                   <span>Ajouter Utilisateur</span>
                 </Button>
               </div>
-              <CardDescription>Gérer les utilisateurs du système</CardDescription>
+              <CardDescription>
+                Gérer les utilisateurs du système
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {/* Search and Filter */}
@@ -496,7 +579,9 @@ export default function SettingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les rôles</SelectItem>
-                    <SelectItem value="administrateur">Administrateur</SelectItem>
+                    <SelectItem value="administrateur">
+                      Administrateur
+                    </SelectItem>
                     <SelectItem value="gestionnaire">gestionnaire</SelectItem>
                     <SelectItem value="chef station">Chef Station</SelectItem>
                   </SelectContent>
@@ -528,20 +613,24 @@ export default function SettingsPage() {
                               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                 <User className="h-4 w-4 text-blue-600" />
                               </div>
-                              <span className="font-medium">{userItem.username}</span>
+                              <span className="font-medium">
+                                {userItem.username}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>{userItem.email}</TableCell>
                           <TableCell>{getRoleBadge(userItem.role)}</TableCell>
-                          <TableCell className="text-sm text-gray-500">{formatDate(userItem.createdAt)}</TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {formatDate(userItem.createdAt)}
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => {
-                                  setResetPasswordUser(userItem)
-                                  setNewPassword("")
+                                  setResetPasswordUser(userItem);
+                                  setNewPassword("");
                                 }}
                                 className="flex items-center space-x-1"
                               >
@@ -551,23 +640,34 @@ export default function SettingsPage() {
                               {userItem._id !== user._id && (
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="destructive" className="flex items-center space-x-1">
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="flex items-center space-x-1"
+                                    >
                                       <Trash2 className="h-3 w-3" />
                                       <span>Supprimer</span>
                                     </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                      <AlertDialogTitle>
+                                        Confirmer la suppression
+                                      </AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Êtes-vous sûr de vouloir supprimer l'utilisateur "{userItem.username}" ? Cette
-                                        action est irréversible.
+                                        Êtes-vous sûr de vouloir supprimer
+                                        l'utilisateur "{userItem.username}" ?
+                                        Cette action est irréversible.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogCancel>
+                                        Annuler
+                                      </AlertDialogCancel>
                                       <AlertDialogAction
-                                        onClick={() => handleDeleteUser(userItem._id)}
+                                        onClick={() =>
+                                          handleDeleteUser(userItem._id)
+                                        }
                                         className="bg-red-600 hover:bg-red-700"
                                       >
                                         Supprimer
@@ -583,7 +683,9 @@ export default function SettingsPage() {
                     </TableBody>
                   </Table>
                   {filteredUsers.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">Aucun utilisateur trouvé</div>
+                    <div className="text-center py-8 text-gray-500">
+                      Aucun utilisateur trouvé
+                    </div>
                   )}
                 </div>
               )}
@@ -598,7 +700,9 @@ export default function SettingsPage() {
               <Lock className="h-5 w-5" />
               Changer le mot de passe
             </CardTitle>
-            <CardDescription>Modifiez votre mot de passe pour sécuriser votre compte</CardDescription>
+            <CardDescription>
+              Modifiez votre mot de passe pour sécuriser votre compte
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
@@ -615,21 +719,34 @@ export default function SettingsPage() {
                     onBlur={() => validatePasswordField("currentPassword")}
                     disabled={loading}
                     className={`pl-10 pr-10 ${
-                      passwordTouched.currentPassword && passwordErrors.currentPassword ? "border-red-500" : ""
+                      passwordTouched.currentPassword &&
+                      passwordErrors.currentPassword
+                        ? "border-red-500"
+                        : ""
                     }`}
                   />
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  <Lock
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showCurrentPassword ? (
+                      <EyeOff size={16} />
+                    ) : (
+                      <Eye size={16} />
+                    )}
                   </button>
                 </div>
-                {passwordTouched.currentPassword && passwordErrors.currentPassword && (
-                  <p className="text-red-500 text-sm">{passwordErrors.currentPassword}</p>
-                )}
+                {passwordTouched.currentPassword &&
+                  passwordErrors.currentPassword && (
+                    <p className="text-red-500 text-sm">
+                      {passwordErrors.currentPassword}
+                    </p>
+                  )}
               </div>
 
               {/* New Password */}
@@ -645,10 +762,15 @@ export default function SettingsPage() {
                     onBlur={() => validatePasswordField("newPassword")}
                     disabled={loading}
                     className={`pl-10 pr-10 ${
-                      passwordTouched.newPassword && passwordErrors.newPassword ? "border-red-500" : ""
+                      passwordTouched.newPassword && passwordErrors.newPassword
+                        ? "border-red-500"
+                        : ""
                     }`}
                   />
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  <Lock
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
@@ -662,8 +784,14 @@ export default function SettingsPage() {
                 {passwordData.newPassword && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Force du mot de passe:</span>
-                      <span className={`text-sm font-medium ${passwordStrength.color}`}>{passwordStrength.label}</span>
+                      <span className="text-sm text-gray-600">
+                        Force du mot de passe:
+                      </span>
+                      <span
+                        className={`text-sm font-medium ${passwordStrength.color}`}
+                      >
+                        {passwordStrength.label}
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
@@ -671,10 +799,10 @@ export default function SettingsPage() {
                           passwordStrength.strength <= 2
                             ? "bg-red-500"
                             : passwordStrength.strength <= 3
-                              ? "bg-yellow-500"
-                              : passwordStrength.strength <= 4
-                                ? "bg-green-500"
-                                : "bg-green-600"
+                            ? "bg-yellow-500"
+                            : passwordStrength.strength <= 4
+                            ? "bg-green-500"
+                            : "bg-green-600"
                         }`}
                         style={{
                           width: `${(passwordStrength.strength / 5) * 100}%`,
@@ -719,13 +847,17 @@ export default function SettingsPage() {
                 )}
 
                 {passwordTouched.newPassword && passwordErrors.newPassword && (
-                  <p className="text-red-500 text-sm">{passwordErrors.newPassword}</p>
+                  <p className="text-red-500 text-sm">
+                    {passwordErrors.newPassword}
+                  </p>
                 )}
               </div>
 
               {/* Confirm Password */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmer le nouveau mot de passe*</Label>
+                <Label htmlFor="confirmPassword">
+                  Confirmer le nouveau mot de passe*
+                </Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -736,24 +868,41 @@ export default function SettingsPage() {
                     onBlur={() => validatePasswordField("confirmPassword")}
                     disabled={loading}
                     className={`pl-10 pr-10 ${
-                      passwordTouched.confirmPassword && passwordErrors.confirmPassword ? "border-red-500" : ""
+                      passwordTouched.confirmPassword &&
+                      passwordErrors.confirmPassword
+                        ? "border-red-500"
+                        : ""
                     }`}
                   />
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  <Lock
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showConfirmPassword ? (
+                      <EyeOff size={16} />
+                    ) : (
+                      <Eye size={16} />
+                    )}
                   </button>
                 </div>
-                {passwordTouched.confirmPassword && passwordErrors.confirmPassword && (
-                  <p className="text-red-500 text-sm">{passwordErrors.confirmPassword}</p>
-                )}
+                {passwordTouched.confirmPassword &&
+                  passwordErrors.confirmPassword && (
+                    <p className="text-red-500 text-sm">
+                      {passwordErrors.confirmPassword}
+                    </p>
+                  )}
               </div>
 
-              <Button type="submit" disabled={loading} className="bg-blue-500 hover:bg-blue-600">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-500 hover:bg-blue-600"
+              >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -782,7 +931,8 @@ export default function SettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Ajouter un nouvel utilisateur</AlertDialogTitle>
             <AlertDialogDescription>
-              Remplissez les informations pour créer un nouveau compte utilisateur.
+              Remplissez les informations pour créer un nouveau compte
+              utilisateur.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">
@@ -791,11 +941,15 @@ export default function SettingsPage() {
               <Input
                 id="username"
                 value={newUser.username}
-                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, username: e.target.value })
+                }
                 className={errors.username ? "border-red-500" : ""}
                 disabled={addingUser}
               />
-              {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
+              {errors.username && (
+                <p className="text-sm text-red-500">{errors.username}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -803,18 +957,24 @@ export default function SettingsPage() {
                 id="email"
                 type="email"
                 value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, email: e.target.value })
+                }
                 className={errors.email ? "border-red-500" : ""}
                 disabled={addingUser}
               />
-              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="role">Rôle</Label>
               <Select
                 value={newUser.role}
-                onValueChange={(value) => setNewUser({ ...newUser, role: value })}
+                onValueChange={(value) =>
+                  setNewUser({ ...newUser, role: value })
+                }
                 disabled={addingUser}
               >
                 <SelectTrigger className={errors.role ? "border-red-500" : ""}>
@@ -826,13 +986,17 @@ export default function SettingsPage() {
                   <SelectItem value="administrateur">Administrateur</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.role && <p className="text-sm text-red-500">{errors.role}</p>}
+              {errors.role && (
+                <p className="text-sm text-red-500">{errors.role}</p>
+              )}
             </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={addingUser}>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={handleAddUser} disabled={addingUser}>
-              {addingUser ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {addingUser ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
               {addingUser ? "Création..." : "Créer"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -840,7 +1004,10 @@ export default function SettingsPage() {
       </AlertDialog>
 
       {/* Reset Password Dialog */}
-      <AlertDialog open={!!resetPasswordUser} onOpenChange={() => setResetPasswordUser(null)}>
+      <AlertDialog
+        open={!!resetPasswordUser}
+        onOpenChange={() => setResetPasswordUser(null)}
+      >
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Réinitialiser le mot de passe</AlertDialogTitle>
@@ -862,9 +1029,16 @@ export default function SettingsPage() {
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={resettingPassword}>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetPassword} disabled={resettingPassword}>
-              {resettingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            <AlertDialogCancel disabled={resettingPassword}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetPassword}
+              disabled={resettingPassword}
+            >
+              {resettingPassword ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
               {resettingPassword ? "Réinitialisation..." : "Réinitialiser"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -880,12 +1054,15 @@ export default function SettingsPage() {
               Mot de passe changé avec succès
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Votre mot de passe a été modifié avec succès. Vous pouvez maintenant utiliser votre nouveau mot de passe
-              pour vous connecter.
+              Votre mot de passe a été modifié avec succès. Vous pouvez
+              maintenant utiliser votre nouveau mot de passe pour vous
+              connecter.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowSuccessDialog(false)}>OK</AlertDialogAction>
+            <AlertDialogAction onClick={() => setShowSuccessDialog(false)}>
+              OK
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -901,12 +1078,14 @@ export default function SettingsPage() {
             <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>Fermer</AlertDialogAction>
+            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
+              Fermer
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Toaster position="bottom-left" />
     </div>
-  )
+  );
 }

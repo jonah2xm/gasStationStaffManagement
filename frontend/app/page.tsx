@@ -60,7 +60,7 @@ export default function AlertDialogDemo() {
           <CardContent>
             <p className="text-sm text-gray-500 mb-4">
               Use this pattern when you need the user to confirm an action that
-              doesn't have serious consequences.
+              doesn&apos;t have serious consequences.
             </p>
           </CardContent>
           <CardFooter>
@@ -73,7 +73,7 @@ export default function AlertDialogDemo() {
                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently perform
-                    the action you've requested.
+                    the action you&apos;ve requested.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -298,7 +298,7 @@ export default function AlertDialogDemo() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-gray-500 mb-4">
-              You can programmatically control the dialog's open state using
+              You can programmatically control the dialog&apos;s open state using
               React state.
             </p>
           </CardContent>
