@@ -39,7 +39,7 @@ app.use(cors({ credentials: true, origin: allowedOrigin }));
 app.use(express.json());
 app.use(morgan("dev"));
 require("./cronjobs/statusCronjobs");
-
+console.log('allowed origins:', allowedOrigin);
 // 5. Session middleware (must come before routes)
 app.use(
   session({
