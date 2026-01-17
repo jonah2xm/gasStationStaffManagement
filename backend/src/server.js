@@ -32,7 +32,7 @@ dotenv.config();
 
 // 3. Create an Express app
 const app = express();
-const allowedOrigin = ["http://10.34.6.33:3000", "http://localhost:3000",process.env.VERCEL_URL];
+const allowedOrigin = ["http://10.34.6.33:3000", "http://localhost:3000",process.env.FRONTEND_URL];
 
 // 4. Middleware
 app.use(cors({ credentials: true, origin: allowedOrigin }));
