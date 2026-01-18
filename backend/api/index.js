@@ -1,4 +1,4 @@
-// server.js
+// api/index.js - Vercel serverless function
 
 // 1. Import required modules
 const express = require("express");
@@ -21,30 +21,78 @@ const recuperationRoutes = require("../src/routes/recuperationRoutes");
 const path = require("path");
 const authRoutes = require("../src/routes/authRoutes");
 const notificationRoutes = require("../src/routes/notificationRouter");
-const fs = require("fs"); // <- needed by your debug endpoint below
+const fs = require("fs");
 
 // Socket.IO / http
 const http = require("http");
-const { Server } = require("socket.io"); //tets
+const { Server } = require("socket.io");
 
 // 2. Load environment variables
 dotenv.config();
 
 // 3. Create an Express app
 const app = express();
+
+// Define allowed origins
 const allowedOrigin = [
-  "https://gas-stations-staff-management.vercel.app", // production frontend
+  "https://gas-stations-staff-management.vercel.app",
   "https://gas-stations-staff-management-4hgc-git-main-jonah2xms-projects.vercel.app",
   "http://10.34.6.33:3000",
   "http://localhost:3000",
 ];
 
-// 4. Middleware
-app.use(cors({ credentials: true, origin: allowedOrigin }));
+console.log("Allowed origins:", allowedOrigin);
+
+// 4. ENHANCED CORS Configuration for Vercel
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigin.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log("Blocked origin:", origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600, // Cache preflight for 10 minutes
+}));
+
+// Explicit OPTIONS handler for all routes
+app.options('*', cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigin.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
+// Additional CORS headers middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigin.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(morgan("dev"));
+
 require("../src/cronjobs/statusCronjobs");
-console.log("allowed origins:", allowedOrigin);
+
 // 5. Session middleware (must come before routes)
 app.use(
   session({
@@ -56,10 +104,11 @@ app.use(
     }),
     cookie: {
       httpOnly: true,
-      secure: false, // Set to true if using HTTPS in production
+      secure: process.env.NODE_ENV === 'production', // true for HTTPS (Vercel)
       maxAge: 1000 * 60 * 60 * 24,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Required for cross-origin
     },
-  }),
+  })
 );
 
 // 6. Connect to the database
@@ -73,7 +122,7 @@ app.use(
   express.static(uploadsDir, {
     dotfiles: "deny",
     index: false,
-  }),
+  })
 );
 
 // debug endpoint (temporary)
@@ -89,7 +138,16 @@ app.get("/debug/list-uploads", (req, res) => {
 
 // 7. Basic route
 app.get("/", (req, res) => {
-  res.send("Welcome to the backend!");
+  res.json({ 
+    message: "Welcome to the backend!",
+    environment: process.env.NODE_ENV || 'development',
+    allowedOrigins: allowedOrigin
+  });
+});
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
 // 8. Routes
@@ -108,7 +166,7 @@ app.use("/api/notifications", notificationRoutes);
 // 9. Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: "Something went wrong!" });
+  res.status(500).json({ message: "Something went wrong!", error: err.message });
 });
 
 // 10. Create HTTP server and attach Socket.IO
@@ -118,6 +176,7 @@ const io = new Server(server, {
   cors: {
     origin: allowedOrigin,
     credentials: true,
+    methods: ['GET', 'POST'],
   },
 });
 
@@ -125,7 +184,6 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
-  // Client should emit 'join' with their user id after authentication
   socket.on("join", (userId) => {
     if (!userId) return;
     socket.join(`user:${userId}`);
@@ -140,11 +198,13 @@ io.on("connection", (socket) => {
 // make io accessible in request handlers/controllers
 app.set("io", io);
 
-// 11. Start server (use http server, not app.listen)
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// 11. For local development only
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
 
 // Close server properly on restart/exit
 process.on("SIGINT", () => {
@@ -162,3 +222,6 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
+
+// CRITICAL: Export app for Vercel serverless
+module.exports = app;
