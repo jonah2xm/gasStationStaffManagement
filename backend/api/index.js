@@ -25,21 +25,26 @@ const fs = require("fs"); // <- needed by your debug endpoint below
 
 // Socket.IO / http
 const http = require("http");
-const { Server } = require("socket.io");//tets
+const { Server } = require("socket.io"); //tets
 
 // 2. Load environment variables
 dotenv.config();
 
 // 3. Create an Express app
 const app = express();
-const allowedOrigin = [process.env.FRONTEND_URL,"http://10.34.6.33:3000", "http://localhost:3000"];
+const allowedOrigin = [
+  "https://gas-stations-staff-management.vercel.app", // production frontend
+  "https://gas-stations-staff-management-4hgc-git-main-jonah2xms-projects.vercel.app",
+  "http://10.34.6.33:3000",
+  "http://localhost:3000",
+];
 
 // 4. Middleware
 app.use(cors({ credentials: true, origin: allowedOrigin }));
 app.use(express.json());
 app.use(morgan("dev"));
 require("../src/cronjobs/statusCronjobs");
-console.log('allowed origins:', allowedOrigin);
+console.log("allowed origins:", allowedOrigin);
 // 5. Session middleware (must come before routes)
 app.use(
   session({
@@ -54,7 +59,7 @@ app.use(
       secure: false, // Set to true if using HTTPS in production
       maxAge: 1000 * 60 * 60 * 24,
     },
-  })
+  }),
 );
 
 // 6. Connect to the database
@@ -63,15 +68,21 @@ connectDB();
 const uploadsDir = path.resolve(process.cwd(), "src", "uploads");
 
 // serve uploads at /uploads
-app.use("/uploads", express.static(uploadsDir, {
-  dotfiles: "deny",
-  index: false,
-}));
+app.use(
+  "/uploads",
+  express.static(uploadsDir, {
+    dotfiles: "deny",
+    index: false,
+  }),
+);
 
 // debug endpoint (temporary)
 app.get("/debug/list-uploads", (req, res) => {
   fs.readdir(uploadsDir, (err, files) => {
-    if (err) return res.status(500).json({ err: err.message, uploadsDir, cwd: process.cwd() });
+    if (err)
+      return res
+        .status(500)
+        .json({ err: err.message, uploadsDir, cwd: process.cwd() });
     res.json({ uploadsDir, cwd: process.cwd(), files });
   });
 });
