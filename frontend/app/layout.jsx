@@ -26,14 +26,14 @@ function Sidebar() {
   // collapsed: persisted in localStorage so user choice survives refresh
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("pms.sidebar.collapsed")) ?? false;
+      return JSON.parse(localStorage.getItem("NSC.sidebar.collapsed")) ?? false;
     } catch {
       return false;
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem("pms.sidebar.collapsed", JSON.stringify(collapsed));
+      localStorage.setItem("NSC.sidebar.collapsed", JSON.stringify(collapsed));
     } catch {}
   }, [collapsed]);
 
@@ -75,7 +75,7 @@ function Sidebar() {
           </div>
           {!collapsed && (
             <div className="leading-tight">
-              <h2 className="text-lg font-semibold text-gray-800">PMS</h2>
+              <h2 className="text-lg font-semibold text-gray-800">NSC</h2>
               <p className="text-xs text-gray-500">Portal Management</p>
             </div>
           )}

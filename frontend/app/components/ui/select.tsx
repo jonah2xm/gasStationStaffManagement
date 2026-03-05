@@ -18,10 +18,6 @@ const baseContent =
   "relative z-[1000] max-h-80 min-w-[10rem] overflow-hidden rounded-md border border-gray-200 bg-white text-slate-800 shadow-lg " +
   "data-[state=open]:animate-in data-[state=closed]:animate-out transition";
 
-const baseItem =
-  "relative flex w-full cursor-default select-none items-center rounded-md px-3 py-2 text-sm outline-none transition-colors " +
-  "hover:bg-slate-50 focus:bg-slate-50 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500 " +
-  "data-[disabled]:pointer-events-none data-[disabled]:opacity-50";
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,

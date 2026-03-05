@@ -44,7 +44,7 @@ export function useToast() {
   return { toast, toasts, dismissToast };
 }
 
-export const toast = (options: ToastOptions) => {
+export const toast = () => {
   // This is a dummy function that will be replaced by the actual implementation
   // when the useToast hook is used in a component
   console.warn("Toast function called outside of a component");

@@ -73,7 +73,7 @@ export default function LoginPage() {
             />
             <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 to-blue-800/40 flex items-center justify-center">
               <div className="text-white text-center p-6 max-w-md">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">Bienvenue chez Naftal</h2>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">Bienvenue chez Staff Connect</h2>
                 <p className="text-lg md:text-xl opacity-90 leading-relaxed">
                   Votre partenaire énergétique de confiance
                 </p>
@@ -99,7 +99,7 @@ export default function LoginPage() {
             <CardContent className="p-0">
               <div className="text-center mb-8">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Espace Professionnel</h1>
-                <p className="text-blue-600 font-semibold text-lg">PMS</p>
+                <p className="text-blue-600 font-semibold text-lg">NSC</p>
                 <div className="w-12 h-1 bg-blue-600 mx-auto mt-3 rounded-full"></div>
               </div>
 
