@@ -1,9 +1,19 @@
 const Personnel = require("../models/personnelModel");
+const User = require("../models/userModel");
 
 // Get all personnel
 const getPersonnel = async (req, res) => {
   try {
-    const personnels = await Personnel.find();
+    const { role, id } = req.session.user || {};
+    let query = {};
+
+    if (role === "chef station") {
+      // Fetch latest station from DB to ensure immediate reflection of changes
+      const user = await User.findById(id);
+      query.stationName = user?.occupiedStation;
+    }
+
+    const personnels = await Personnel.find(query);
     res.status(200).json(personnels);
   } catch (error) {
     res.status(500).json({ message: error.message });

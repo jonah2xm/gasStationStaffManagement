@@ -21,6 +21,7 @@ const recuperationRoutes = require("./routes/recuperationRoutes");
 const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 const notificationRoutes = require("./routes/notificationRouter");
+const pointageRoutes = require("./routes/pointageRoutes");
 const fs = require("fs"); // <- needed by your debug endpoint below
 
 // Socket.IO / http
@@ -32,7 +33,7 @@ dotenv.config();
 
 // 3. Create an Express app
 const app = express();
-const allowedOrigin = ["http://10.34.6.33:3000", process.env.FRONTEND_URL];
+const allowedOrigin = ["http://10.34.6.33:3000", 'http://localhost:3000'];
 
 // 4. Middleware
 app.use(cors({ credentials: true, origin: allowedOrigin }));
@@ -93,6 +94,7 @@ app.use("/api/conges", congeRoutes);
 app.use("/api/recuperations", recuperationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/pointage", pointageRoutes);
 
 // 9. Error handler
 app.use((err, req, res, next) => {

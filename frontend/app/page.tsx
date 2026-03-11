@@ -1,335 +1,162 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Loader2,
-  AlertTriangle,
-  Info,
-  CheckCircle,
-  XCircle,
+  ArrowRight,
+  Fingerprint,
+  LayoutDashboard,
+  ShieldCheck,
+  Building2,
+  Users
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-export default function AlertDialogDemo() {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [openDialog, setOpenDialog] = useState<string | null>(null);
+export default function LandingPage() {
+  const [mounted, setMounted] = useState(false);
 
-  const handleDelete = () => {
-    setIsDeleting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsDeleting(false);
-      setOpenDialog(null);
-      setShowSuccess(true);
-    }, 1500);
-  };
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
-    <div className="container mx-auto py-10 space-y-10">
-      <h1 className="text-3xl font-bold text-center mb-8">
-        Alert Dialog Examples
-      </h1>
+    <div className="min-h-screen bg-[#f8f9fa] flex flex-col font-sans selection:bg-yellow-200">
+      {/* Structural Header (matching internal feel) */}
+      <header className="bg-white border-b border-gray-200 py-4 px-8 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="p-1 rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+              <Image
+                src="/naftalLogo.png"
+                alt="Naftal Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            <div>
+              <span className="text-xl font-black tracking-tighter text-gray-900">NSC Portal</span>
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Basic Confirmation Dialog */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Confirmation</CardTitle>
-            <CardDescription>A simple confirmation dialog</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              Use this pattern when you need the user to confirm an action that
-              doesn&apos;t have serious consequences.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline">Show Dialog</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently perform
-                    the action you&apos;ve requested.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
-        </Card>
-
-        {/* Destructive Action Dialog */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Destructive Action</CardTitle>
-            <CardDescription>
-              Confirmation for destructive actions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              Use this pattern when the user is about to perform a destructive
-              action like deleting data.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <AlertDialog
-              open={openDialog === "delete"}
-              onOpenChange={(open) => !open && setOpenDialog(null)}
-            >
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  onClick={() => setOpenDialog("delete")}
-                >
-                  Delete Item
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <div className="flex items-center gap-2 text-red-600 mb-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    <AlertDialogTitle>Delete Item</AlertDialogTitle>
-                  </div>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this item? This action
-                    cannot be undone and all associated data will be permanently
-                    removed.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      "Delete"
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Success Dialog */}
-            <AlertDialog open={showSuccess} onOpenChange={setShowSuccess}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <div className="flex items-center gap-2 text-green-600 mb-2">
-                    <CheckCircle className="h-5 w-5" />
-                    <AlertDialogTitle>Success</AlertDialogTitle>
-                  </div>
-                  <AlertDialogDescription>
-                    The item has been successfully deleted.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogAction onClick={() => setShowSuccess(false)}>
-                    OK
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
-        </Card>
-
-        {/* Information Dialog */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Information Alert</CardTitle>
-            <CardDescription>Display important information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              Use this pattern to display important information that the user
-              needs to acknowledge.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline">Show Information</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <div className="flex items-center gap-2 text-blue-600 mb-2">
-                    <Info className="h-5 w-5" />
-                    <AlertDialogTitle>Important Information</AlertDialogTitle>
-                  </div>
-                  <AlertDialogDescription>
-                    This is an important message that you need to be aware of.
-                    Please read it carefully before proceeding.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogAction>I understand</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
-        </Card>
-
-        {/* Error Dialog */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Error Alert</CardTitle>
-            <CardDescription>Display error information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              Use this pattern to display error information that requires user
-              attention.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline">Show Error</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <div className="flex items-center gap-2 text-red-600 mb-2">
-                    <XCircle className="h-5 w-5" />
-                    <AlertDialogTitle>Error Occurred</AlertDialogTitle>
-                  </div>
-                  <AlertDialogDescription>
-                    An error occurred while processing your request. Please try
-                    again or contact support if the problem persists.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction>Try Again</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
-        </Card>
-
-        {/* Custom Content Dialog */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Custom Content</CardTitle>
-            <CardDescription>Dialog with custom content</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              You can include any content inside the dialog, including forms,
-              images, or other components.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline">Show Custom Dialog</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Custom Dialog</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This dialog contains custom content.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-4">
-                  <div className="rounded-md bg-gray-50 p-4 border border-gray-200">
-                    <h3 className="font-medium">Custom Content Section</h3>
-                    <p className="text-sm text-gray-500 mt-2">
-                      You can include any React components or HTML elements
-                      here.
-                    </p>
-                    <div className="mt-4 flex items-center space-x-2">
-                      <div className="h-4 w-4 rounded-full bg-green-500"></div>
-                      <div className="h-4 w-4 rounded-full bg-yellow-500"></div>
-                      <div className="h-4 w-4 rounded-full bg-red-500"></div>
-                    </div>
-                  </div>
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
-        </Card>
-
-        {/* Controlled Dialog */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Controlled Dialog</CardTitle>
-            <CardDescription>
-              Programmatically control the dialog
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              You can programmatically control the dialog&apos;s open state using
-              React state.
-            </p>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <AlertDialog
-              open={openDialog === "controlled"}
-              onOpenChange={(open) => !open && setOpenDialog(null)}
-            >
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Controlled Dialog</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This dialog is controlled programmatically using React
-                    state.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Button
-              variant="outline"
-              onClick={() => setOpenDialog("controlled")}
-            >
-              Open Dialog
+          <Link href="/login">
+            <Button variant="ghost" className="text-sm font-bold text-gray-500 hover:text-gray-900 flex items-center gap-2">
+              <ShieldCheck size={16} />
+              Accès Sécurisé
             </Button>
-          </CardFooter>
-        </Card>
-      </div>
+          </Link>
+        </div>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center p-6 pb-24">
+        {/* Portal Entry container */}
+        <div className="w-full max-w-4xl space-y-12">
+
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/10 text-yellow-700 text-[10px] font-black uppercase tracking-[0.2em] mb-2">
+              <Building2 size={12} /> Gestion des Stations Service
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
+              Système de Management <br />
+              <span className="text-gray-400">Opérationnel Centralisé</span>
+            </h1>
+            <p className="text-gray-500 font-medium max-w-xl mx-auto text-lg">
+              Bienvenue sur l'interface de pilotage NSC. Sélectionnez votre espace de travail pour commencer.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* CTA 1: Public/Station Attendance */}
+            <Card className="bg-white shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2.5rem] border-none overflow-hidden group transition-all hover:-translate-y-1">
+              <CardContent className="p-10 flex flex-col items-center text-center space-y-8">
+                <div className="w-20 h-20 rounded-3xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#ffeb10] group-hover:text-black transition-all duration-300">
+                  <Fingerprint size={40} strokeWidth={1.5} />
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-black text-gray-900">Espace Pointage</h3>
+                  <p className="text-gray-400 font-medium px-4">
+                    Interface simplifiée pour l'enregistrement des entrées et sorties du personnel de station.
+                  </p>
+                </div>
+                <Link href="/pointage" className="w-full">
+                  <Button className="w-full h-14 rounded-2xl bg-gray-50 text-gray-900 hover:bg-[#ffeb10] hover:text-black font-black text-lg transition-all flex items-center justify-center gap-2 border-none">
+                    Accéder au Pointage
+                    <ArrowRight size={18} />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            {/* CTA 2: Management */}
+            <Card className="bg-blue-600 shadow-[0_20px_50px_rgba(37,99,235,0.1)] rounded-[2.5rem] border-none overflow-hidden group transition-all hover:-translate-y-1">
+              <CardContent className="p-10 flex flex-col items-center text-center space-y-8">
+                <div className="w-20 h-20 rounded-3xl bg-white/10 flex items-center justify-center text-white group-hover:bg-[#ffeb10] group-hover:text-black transition-all duration-300">
+                  <LayoutDashboard size={40} strokeWidth={1.5} />
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-black text-white">Espace Gestion</h3>
+                  <p className="text-blue-100 font-medium px-4">
+                    Tableaux de bord, rapports et administration complète pour les chefs de station et gestionnaires.
+                  </p>
+                </div>
+                <Link href="/login" className="w-full">
+                  <Button className="w-full h-14 rounded-2xl bg-white/10 text-white hover:bg-[#ffeb10] hover:text-black font-black text-lg transition-all flex items-center justify-center gap-2 border-none">
+                    Espace Gestionnaires
+                    <ArrowRight size={18} />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="pt-8 border-t border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Utilisateurs</p>
+              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
+                <Users size={14} className="text-[#ffeb10]" />
+                <span>Multi-Rôles</span>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Localisation</p>
+              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
+                <Building2 size={14} className="text-[#ffeb10]" />
+                <span>Multi-Stations</span>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Données</p>
+              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
+                <LayoutDashboard size={14} className="text-[#ffeb10]" />
+                <span>Temps Réel</span>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Sécurité</p>
+              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
+                <ShieldCheck size={14} className="text-[#ffeb10]" />
+                <span>Chiffré SSL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Simplified Footer matching internal project */}
+      <footer className="py-8 border-t border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-400 text-sm font-bold">
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] uppercase font-black tracking-[0.2em]">NSC PORTAL SYSTEM</span>
+            <div className="w-1 h-1 bg-yellow-400 rounded-full" />
+            <span>v2.4.0</span>
+          </div>
+          <p>© {new Date().getFullYear()} Naftal. Tous droits réservés.</p>
+        </div>
+      </footer>
     </div>
   );
 }

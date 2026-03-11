@@ -21,10 +21,19 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["administrateur", "gestionnaire", "chef station"],
+      enum: ["administrateur", "gestionnaire", "chef station", "personnel"],
     },
-    createdAt:{
-      
+    occupiedStation: {
+      type: String,
+      enum: [
+        "GD R3120", "GD R3121", "GD R3122", "GD R3124", "GD R3125",
+        "GD R3126", "GD R3127", "GD R3128", "GD R3130", "GD R3132",
+        "GD R3133", "GD R3134", "GD R3135", "GD R3136", "GD R3137",
+        "GD R3138"
+      ]
+    },
+    createdAt: {
+
     }
   },
   { timestamps: true }

@@ -14,9 +14,11 @@ import {
   ChevronDown,
   Plane,
   Bed,
+  Clock,
 } from "lucide-react";
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { AccountHeader } from "./components/account-header";
+import Image from "next/image";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -34,7 +36,7 @@ function Sidebar() {
   useEffect(() => {
     try {
       localStorage.setItem("NSC.sidebar.collapsed", JSON.stringify(collapsed));
-    } catch {}
+    } catch { }
   }, [collapsed]);
 
   // control which dropdowns are open (absence, affectation, ... )
@@ -50,8 +52,7 @@ function Sidebar() {
   const SELECTED_COLOR = "#000"; // black for contrast
 
   const navItemClass = (isActive) =>
-    `flex items-center gap-3 w-full p-2 rounded-md transition-colors duration-150 ${
-      isActive ? "font-medium text-base" : "text-gray-700 hover:bg-gray-100 text-sm"
+    `flex items-center gap-3 w-full p-2 rounded-md transition-colors duration-150 ${isActive ? "font-medium text-base" : "text-gray-700 hover:bg-gray-100 text-sm"
     }`;
 
   const navStyle = (isActive) =>
@@ -67,11 +68,16 @@ function Sidebar() {
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <div
-            className={`flex items-center justify-center rounded-md p-2 ${
-              collapsed ? "w-8 h-8" : "w-10 h-10"
-            } ring-1 ring-gray-100`}
+            className={`flex items-center justify-center rounded-md p-2 ${collapsed ? "w-8 h-8" : "w-10 h-10"
+              } ring-1 ring-gray-100`}
           >
-            <FuelIcon className="h-5 w-5" style={{ color: collapsed ? undefined : SELECTED_BG }} />
+            <Image
+              src="/naftalLogo.png"
+              alt="Naftal Logo"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
           </div>
           {!collapsed && (
             <div className="leading-tight">
@@ -153,6 +159,18 @@ function Sidebar() {
 
           <li>
             <Link
+              href="/pointage-list"
+              className={navItemClass(pathname.startsWith("/pointage-list"))}
+              style={navStyle(pathname.startsWith("/pointage-list"))}
+              title={collapsed ? "Pointages" : undefined}
+            >
+              <Clock className="w-5 h-5" style={pathname.startsWith("/pointage-list") ? { color: SELECTED_COLOR } : undefined} />
+              {!collapsed && <span>Pointages</span>}
+            </Link>
+          </li>
+
+          <li>
+            <Link
               href="/conges"
               className={navItemClass(pathname.startsWith("/conges"))}
               style={navStyle(pathname.startsWith("/conges"))}
@@ -180,9 +198,8 @@ function Sidebar() {
             <button
               onClick={() => toggleOpen("absence")}
               aria-expanded={open.absence}
-              className={`flex items-center justify-between w-full p-2 rounded-md transition-colors duration-150 ${
-                pathname.startsWith("/absence") ? "font-medium" : "text-gray-700 hover:bg-gray-100 text-sm"
-              }`}
+              className={`flex items-center justify-between w-full p-2 rounded-md transition-colors duration-150 ${pathname.startsWith("/absence") ? "font-medium" : "text-gray-700 hover:bg-gray-100 text-sm"
+                }`}
               style={pathname.startsWith("/absence") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR } : undefined}
               title={collapsed ? "Absence" : undefined}
             >
@@ -227,9 +244,8 @@ function Sidebar() {
             <button
               onClick={() => toggleOpen("affectation")}
               aria-expanded={open.affectation}
-              className={`flex items-center justify-between w-full p-2 rounded-md transition-colors duration-150 ${
-                pathname.startsWith("/affectation") ? "font-medium" : "text-gray-700 hover:bg-gray-100 text-sm"
-              }`}
+              className={`flex items-center justify-between w-full p-2 rounded-md transition-colors duration-150 ${pathname.startsWith("/affectation") ? "font-medium" : "text-gray-700 hover:bg-gray-100 text-sm"
+                }`}
               style={pathname.startsWith("/affectation") ? { backgroundColor: SELECTED_BG, color: SELECTED_COLOR } : undefined}
               title={collapsed ? "Affectation" : undefined}
             >
@@ -290,21 +306,23 @@ function Sidebar() {
 export default function RootLayout({ children }) {
   const pathname = usePathname();
   const isLoginPage = pathname === "/login";
+  const isPointagePage = pathname === "/pointage";
+  const isLandingPage = pathname === "/";
+  const isPublicPage = isLoginPage || isPointagePage || isLandingPage;
 
   return (
     <html lang="en">
       <body className={" overflow-y-hidden"}>
         <div
-          className={`flex h-screen bg-gray-100 ${isLoginPage ? "" : "flex"}`}
+          className={`flex h-screen bg-gray-100 ${isPublicPage ? "" : "flex"}`}
         >
-          {!isLoginPage && <Sidebar />}
-          
+          {!isPublicPage && <Sidebar />}
+
           <main
-            className={`${
-              isLoginPage ? "w-full" : "flex-1"
-            } overflow-y-auto bg-gray-50`}
+            className={`${isPublicPage ? "w-full" : "flex-1"
+              } overflow-y-auto bg-gray-50`}
           >
-             {!isLoginPage && <div className="container mx-auto p-6 text-gray-800"> <AccountHeader  /> </div>}
+            {!isPublicPage && <div className="container mx-auto p-6 text-gray-800"> <AccountHeader /> </div>}
             {children}
           </main>
         </div>

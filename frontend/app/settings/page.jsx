@@ -59,6 +59,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+const STATIONS = [
+  "GD R3120", "GD R3121", "GD R3122", "GD R3124", "GD R3125",
+  "GD R3126", "GD R3127", "GD R3128", "GD R3130", "GD R3132",
+  "GD R3133", "GD R3134", "GD R3135", "GD R3136", "GD R3137",
+  "GD R3138"
+];
+
 export default function SettingsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -84,16 +91,21 @@ export default function SettingsPage() {
     email: "",
     password: process.env.NEXT_PUBLIC_DEFAULT_PASSWORD,
     role: "gestionnaire",
+    occupiedStation: "",
   });
   const [addingUser, setAddingUser] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Edit user state
+  const [showEditUser, setShowEditUser] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [updatingUser, setUpdatingUser] = useState(false);
 
   // Reset password state
   const [resetPasswordUser, setResetPasswordUser] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
 
-  // Password form state
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -101,6 +113,19 @@ export default function SettingsPage() {
   });
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordTouched, setPasswordTouched] = useState({});
+
+  // Personnel account state
+  const [availablePersonnel, setAvailablePersonnel] = useState([]);
+  const [personnelLoading, setPersonnelLoading] = useState(false);
+  const [showPersonnelAccountDialog, setShowPersonnelAccountDialog] = useState(false);
+  const [showPersonnelSuccessDialog, setShowPersonnelSuccessDialog] = useState(false);
+  const [selectedPersonnel, setSelectedPersonnel] = useState(null);
+  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [creatingPersonnelAccount, setCreatingPersonnelAccount] = useState(false);
+  const [personnelSearchTerm, setPersonnelSearchTerm] = useState("");
+  const [personnelStationFilter, setPersonnelStationFilter] = useState("all");
+  const [personnelView, setPersonnelView] = useState("available"); // "available" or "active"
+  const [showResetSuccessDialog, setShowResetSuccessDialog] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -133,7 +158,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!user || user.role !== "administrateur") return;
+      if (!user || (user.role !== "administrateur" && user.role !== "chef station")) return;
 
       try {
         const res = await fetch(
@@ -162,6 +187,171 @@ export default function SettingsPage() {
       fetchUsers();
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchAvailablePersonnel = async () => {
+      if (!user || (user.role !== "administrateur" && user.role !== "chef station")) return;
+
+      setPersonnelLoading(true);
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/available-personnel`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch available personnel");
+        }
+
+        const data = await res.json();
+        setAvailablePersonnel(data || []);
+      } catch (err) {
+        console.error("Error fetching personnel:", err);
+        toast.error("Erreur lors du chargement des personnels disponibles");
+      } finally {
+        setPersonnelLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchAvailablePersonnel();
+    }
+  }, [user]);
+
+  const refreshPersonnel = async () => {
+    if (!user || (user.role !== "administrateur" && user.role !== "chef station")) return;
+
+    setPersonnelLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/available-personnel`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) throw new Error("Fetch failed");
+
+      const data = await res.json();
+      setAvailablePersonnel(data || []);
+      toast.success("Liste actualisée");
+    } catch (err) {
+      toast.error("Erreur d'actualisation");
+    } finally {
+      setPersonnelLoading(false);
+    }
+  };
+
+  const generateSimplePassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoid ambiguous characters
+    let pass = "";
+    for (let i = 0; i < 5; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+  };
+
+  const handleCreatePersonnelAccount = async (personnel) => {
+    const password = generateSimplePassword();
+    setGeneratedPassword(password);
+    setSelectedPersonnel(personnel);
+    setCreatingPersonnelAccount(true);
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/create-personnel-account`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            matricule: personnel.matricule,
+            password: password,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Erreur lors de la création");
+      }
+
+      setShowPersonnelAccountDialog(false);
+      setShowPersonnelSuccessDialog(true);
+      // Remove from available list
+      setAvailablePersonnel(prev => prev.filter(p => p.matricule !== personnel.matricule));
+      toast.success("Compte créé avec succès");
+    } catch (err) {
+      console.error("Error creating personnel account:", err);
+      toast.error(err.message || "Erreur lors de la création du compte");
+    } finally {
+      setCreatingPersonnelAccount(false);
+    }
+  };
+
+  const handleResetPersonnelPassword = async (userAccount) => {
+    const password = generateSimplePassword();
+    setGeneratedPassword(password);
+    setSelectedPersonnel({
+      matricule: userAccount.username,
+      firstName: "",
+      lastName: userAccount.username
+    });
+    setCreatingPersonnelAccount(true);
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/reset-password/${userAccount._id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            newPassword: password,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Erreur lors de la réinitialisation");
+      }
+
+      setShowResetSuccessDialog(true);
+      toast.success("Mot de passe réinitialisé");
+    } catch (err) {
+      console.error("Error resetting personnel password:", err);
+      toast.error(err.message || "Erreur lors de la réinitialisation");
+    } finally {
+      setCreatingPersonnelAccount(false);
+    }
+  };
+
+  const filteredPersonnel = availablePersonnel.filter(p => {
+    const matchesSearch =
+      p.firstName.toLowerCase().includes(personnelSearchTerm.toLowerCase()) ||
+      p.lastName.toLowerCase().includes(personnelSearchTerm.toLowerCase()) ||
+      p.matricule.toLowerCase().includes(personnelSearchTerm.toLowerCase());
+
+    const matchesStation = personnelStationFilter === "all" || p.stationName === personnelStationFilter;
+
+    return matchesSearch && matchesStation;
+  });
+
+  const activePersonnelAccounts = users.filter(u => {
+    const isPersonnel = u.role === "personnel";
+    const matchesSearch = u.username.toLowerCase().includes(personnelSearchTerm.toLowerCase());
+    const matchesStation = personnelStationFilter === "all" || u.occupiedStation === personnelStationFilter;
+    return isPersonnel && matchesSearch && matchesStation;
+  });
 
   const getRoleBadge = (role) => {
     const roleConfig = {
@@ -196,13 +386,14 @@ export default function SettingsPage() {
     });
   };
 
-  const filteredUsers = users; /*.filter((user) => {
+  const filteredUsers = users.filter((u) => {
+    const isNotPersonnel = u.role !== "personnel";
     const matchesSearch =
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = selectedRole === "all" || user.role === selectedRole
-    return matchesSearch && matchesRole
-  })*/
+      u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = selectedRole === "all" || u.role === selectedRole;
+    return isNotPersonnel && matchesSearch && matchesRole;
+  });
 
   const validateNewUser = () => {
     const newErrors = {};
@@ -225,10 +416,14 @@ export default function SettingsPage() {
     } else if (newUser.password.length < 6) {
       newErrors.password = "Le mot de passe doit contenir au moins 6 caractères"
     }*/
-    newUser.password = process.env.NEXT_PUBLIC_DEFAULT_PASSWORD+'_'+newUser.username;
+    newUser.password = process.env.NEXT_PUBLIC_DEFAULT_PASSWORD + '_' + newUser.username;
 
     if (!newUser.role) {
       newErrors.role = "Le rôle est requis";
+    }
+
+    if (newUser.role === "chef station" && !newUser.occupiedStation) {
+      newErrors.occupiedStation = "La station occupée est requise pour un chef station";
     }
 
     setErrors(newErrors);
@@ -270,6 +465,7 @@ export default function SettingsPage() {
         email: "",
         password: "",
         role: "gestionnaire",
+        occupiedStation: "",
       });
       setShowAddUser(false);
       setErrors({});
@@ -307,7 +503,7 @@ export default function SettingsPage() {
         const errorData = await res.json();
         throw new Error(
           errorData.message ||
-            "Erreur lors de la réinitialisation du mot de passe"
+          "Erreur lors de la réinitialisation du mot de passe"
         );
       }
 
@@ -348,6 +544,50 @@ export default function SettingsPage() {
       toast.error(
         err.message || "Erreur lors de la suppression de l'utilisateur"
       );
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser.username || !editingUser.email) {
+      toast.error("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
+    setUpdatingUser(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${editingUser._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(editingUser),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Erreur lors de la mise à jour");
+      }
+
+      const data = await res.json();
+      setUsers(users.map(u => u._id === editingUser._id ? data.user : u));
+      setShowEditUser(false);
+      setEditingUser(null);
+      toast.success("Utilisateur mis à jour avec succès");
+
+      // Refresh data if the updated user is the current user
+      if (user?._id === editingUser._id) {
+        // This will trigger the checkAuth effect or we can manually update local user state
+        setUser({ ...user, ...data.user });
+      }
+    } catch (err) {
+      console.error("Error updating user:", err);
+      toast.error(err.message || "Erreur lors de la mise à jour");
+    } finally {
+      setUpdatingUser(false);
     }
   };
 
@@ -601,6 +841,7 @@ export default function SettingsPage() {
                         <TableHead>Utilisateur</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Rôle</TableHead>
+                        <TableHead>Station</TableHead>
                         <TableHead>Date de création</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -620,6 +861,13 @@ export default function SettingsPage() {
                           </TableCell>
                           <TableCell>{userItem.email}</TableCell>
                           <TableCell>{getRoleBadge(userItem.role)}</TableCell>
+                          <TableCell>
+                            {userItem.role === "chef station" ? (
+                              <Badge variant="outline">{userItem.occupiedStation || "N/A"}</Badge>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
                           <TableCell className="text-sm text-gray-500">
                             {formatDate(userItem.createdAt)}
                           </TableCell>
@@ -636,6 +884,17 @@ export default function SettingsPage() {
                               >
                                 <RotateCcw className="h-3 w-3" />
                                 <span>Reset</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingUser({ ...userItem });
+                                  setShowEditUser(true);
+                                }}
+                                className="flex items-center space-x-1"
+                              >
+                                <span>Modifier</span>
                               </Button>
                               {userItem._id !== user._id && (
                                 <AlertDialog>
@@ -693,6 +952,182 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        {/* Personnel Management Section - For Admin and Chef Station */}
+        {(user?.role === "administrateur" || user?.role === "chef station") && (
+          <Card className="bg-white shadow-lg">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <CardTitle className="flex items-center">
+                      <Users className="mr-2 h-5 w-5" />
+                      Gestion du Personnel (Pointage)
+                    </CardTitle>
+                    <CardDescription>
+                      Créer des comptes restreints pour le pointage des ouvriers
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="flex bg-gray-100 p-1 rounded-md mr-4">
+                    <button
+                      onClick={() => setPersonnelView("available")}
+                      className={`px-3 py-1 text-xs rounded-md transition-colors ${personnelView === "available" ? "bg-white shadow-sm text-blue-600 font-medium" : "text-gray-600 hover:text-gray-900"
+                        }`}
+                    >
+                      Sans compte
+                    </button>
+                    <button
+                      onClick={() => setPersonnelView("active")}
+                      className={`px-3 py-1 text-xs rounded-md transition-colors ${personnelView === "active" ? "bg-white shadow-sm text-blue-600 font-medium" : "text-gray-600 hover:text-gray-900"
+                        }`}
+                    >
+                      Comptes actifs
+                    </button>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={refreshPersonnel} disabled={personnelLoading}>
+                    <RotateCcw className={`h-4 w-4 ${personnelLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                  <Button
+                    onClick={() => setShowPersonnelAccountDialog(true)}
+                    className="flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Créer un compte</span>
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {personnelLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative flex-1 max-w-sm w-full">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        placeholder="Filtrer personnels..."
+                        value={personnelSearchTerm}
+                        onChange={(e) => setPersonnelSearchTerm(e.target.value)}
+                        className="pl-10 h-9"
+                      />
+                    </div>
+                    {user?.role === "administrateur" && (
+                      <Select value={personnelStationFilter} onValueChange={setPersonnelStationFilter}>
+                        <SelectTrigger className="w-full sm:w-48 h-9 text-xs">
+                          <SelectValue placeholder="Toutes les stations" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toutes les stations</SelectItem>
+                          {STATIONS.map(station => (
+                            <SelectItem key={station} value={station}>{station}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  <div className="overflow-x-auto max-h-[400px]">
+                    {personnelView === "available" ? (
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-white">
+                          <TableRow>
+                            <TableHead>Nom Complet</TableHead>
+                            <TableHead>Matricule</TableHead>
+                            <TableHead>Poste</TableHead>
+                            <TableHead>Station</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredPersonnel.map((person) => (
+                            <TableRow key={person._id}>
+                              <TableCell className="font-medium">{person.lastName} {person.firstName}</TableCell>
+                              <TableCell>
+                                <code className="bg-gray-100 px-1 rounded">{person.matricule}</code>
+                              </TableCell>
+                              <TableCell className="text-sm">{person.poste}</TableCell>
+                              <TableCell className="text-sm">{person.stationName}</TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleCreatePersonnelAccount(person)}
+                                  disabled={creatingPersonnelAccount}
+                                  className="h-8"
+                                >
+                                  {creatingPersonnelAccount && selectedPersonnel?.matricule === person.matricule ? (
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                  ) : (
+                                    <Plus className="h-3 w-3 mr-1" />
+                                  )}
+                                  Créer
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-white">
+                          <TableRow>
+                            <TableHead>Identifiant (Matricule)</TableHead>
+                            <TableHead>Station</TableHead>
+                            <TableHead>Date Création</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activePersonnelAccounts.map((account) => (
+                            <TableRow key={account._id}>
+                              <TableCell className="font-medium">
+                                <code className="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100 italic font-bold">
+                                  {account.username}
+                                </code>
+                              </TableCell>
+                              <TableCell className="text-sm">{account.occupiedStation || "N/A"}</TableCell>
+                              <TableCell className="text-sm text-gray-500">
+                                {new Date(account.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleResetPersonnelPassword(account)}
+                                  disabled={creatingPersonnelAccount}
+                                  className="h-8 border-yellow-200 text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800"
+                                >
+                                  {creatingPersonnelAccount && selectedPersonnel?.matricule === account.username ? (
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                  ) : (
+                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                  )}
+                                  Reset Pass
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {((personnelView === "available" && filteredPersonnel.length === 0) ||
+                      (personnelView === "active" && activePersonnelAccounts.length === 0)) && (
+                        <div className="text-center py-8 text-gray-500 border rounded-md border-dashed">
+                          {personnelSearchTerm ? "Aucun résultat" :
+                            (personnelView === "available" ? "Tous les personnels ont déjà un compte" : "Aucun compte personnel actif")}
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Change Password */}
         <Card className="bg-white">
           <CardHeader>
@@ -718,12 +1153,11 @@ export default function SettingsPage() {
                     onChange={handlePasswordInputChange}
                     onBlur={() => validatePasswordField("currentPassword")}
                     disabled={loading}
-                    className={`pl-10 pr-10 ${
-                      passwordTouched.currentPassword &&
+                    className={`pl-10 pr-10 ${passwordTouched.currentPassword &&
                       passwordErrors.currentPassword
-                        ? "border-red-500"
-                        : ""
-                    }`}
+                      ? "border-red-500"
+                      : ""
+                      }`}
                   />
                   <Lock
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -761,11 +1195,10 @@ export default function SettingsPage() {
                     onChange={handlePasswordInputChange}
                     onBlur={() => validatePasswordField("newPassword")}
                     disabled={loading}
-                    className={`pl-10 pr-10 ${
-                      passwordTouched.newPassword && passwordErrors.newPassword
-                        ? "border-red-500"
-                        : ""
-                    }`}
+                    className={`pl-10 pr-10 ${passwordTouched.newPassword && passwordErrors.newPassword
+                      ? "border-red-500"
+                      : ""
+                      }`}
                   />
                   <Lock
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -795,15 +1228,14 @@ export default function SettingsPage() {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          passwordStrength.strength <= 2
-                            ? "bg-red-500"
-                            : passwordStrength.strength <= 3
+                        className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.strength <= 2
+                          ? "bg-red-500"
+                          : passwordStrength.strength <= 3
                             ? "bg-yellow-500"
                             : passwordStrength.strength <= 4
-                            ? "bg-green-500"
-                            : "bg-green-600"
-                        }`}
+                              ? "bg-green-500"
+                              : "bg-green-600"
+                          }`}
                         style={{
                           width: `${(passwordStrength.strength / 5) * 100}%`,
                         }}
@@ -867,12 +1299,11 @@ export default function SettingsPage() {
                     onChange={handlePasswordInputChange}
                     onBlur={() => validatePasswordField("confirmPassword")}
                     disabled={loading}
-                    className={`pl-10 pr-10 ${
-                      passwordTouched.confirmPassword &&
+                    className={`pl-10 pr-10 ${passwordTouched.confirmPassword &&
                       passwordErrors.confirmPassword
-                        ? "border-red-500"
-                        : ""
-                    }`}
+                      ? "border-red-500"
+                      : ""
+                      }`}
                   />
                   <Lock
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -990,6 +1421,33 @@ export default function SettingsPage() {
                 <p className="text-sm text-red-500">{errors.role}</p>
               )}
             </div>
+
+            {newUser.role === "chef station" && (
+              <div className="space-y-2">
+                <Label htmlFor="occupiedStation">Station occupée</Label>
+                <Select
+                  value={newUser.occupiedStation}
+                  onValueChange={(value) =>
+                    setNewUser({ ...newUser, occupiedStation: value })
+                  }
+                  disabled={addingUser}
+                >
+                  <SelectTrigger className={errors.occupiedStation ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Sélectionner une station" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATIONS.map((station) => (
+                      <SelectItem key={station} value={station}>
+                        {station}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.occupiedStation && (
+                  <p className="text-sm text-red-500">{errors.occupiedStation}</p>
+                )}
+              </div>
+            )}
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={addingUser}>Annuler</AlertDialogCancel>
@@ -1080,6 +1538,235 @@ export default function SettingsPage() {
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
               Fermer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit User Dialog */}
+      <AlertDialog open={showEditUser} onOpenChange={setShowEditUser}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Modifier l'utilisateur</AlertDialogTitle>
+            <AlertDialogDescription>
+              Mettez à jour les informations de l'utilisateur.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {editingUser && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-username">Nom d'utilisateur</Label>
+                <Input
+                  id="edit-username"
+                  value={editingUser.username}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, username: e.target.value })
+                  }
+                  disabled={updatingUser}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, email: e.target.value })
+                  }
+                  disabled={updatingUser}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Rôle</Label>
+                <Select
+                  value={editingUser.role}
+                  onValueChange={(value) =>
+                    setEditingUser({ ...editingUser, role: value })
+                  }
+                  disabled={updatingUser}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un rôle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gestionnaire">gestionnaire</SelectItem>
+                    <SelectItem value="chef station">Chef Station</SelectItem>
+                    <SelectItem value="administrateur">Administrateur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {editingUser.role === "chef station" && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-station">Station occupée</Label>
+                  <Select
+                    value={editingUser.occupiedStation || ""}
+                    onValueChange={(value) =>
+                      setEditingUser({ ...editingUser, occupiedStation: value })
+                    }
+                    disabled={updatingUser}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une station" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATIONS.map((station) => (
+                        <SelectItem key={station} value={station}>
+                          {station}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingUser} onClick={() => { setShowEditUser(false); setEditingUser(null); }}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleUpdateUser} disabled={updatingUser}>
+              {updatingUser ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {updatingUser ? "Enregistrement..." : "Enregistrer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Personnel Account Creation Dialog */}
+      <AlertDialog open={showPersonnelAccountDialog} onOpenChange={setShowPersonnelAccountDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Créer un compte de pointage</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sélectionnez un membre du personnel pour lui créer un compte (Identifiant = Matricule).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Rechercher par nom ou matricule..."
+                  value={personnelSearchTerm}
+                  onChange={(e) => setPersonnelSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {user?.role === "administrateur" && (
+                <Select value={personnelStationFilter} onValueChange={setPersonnelStationFilter}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Station" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les stations</SelectItem>
+                    {STATIONS.map(station => (
+                      <SelectItem key={station} value={station}>{station}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="max-h-[300px] overflow-y-auto border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Personnel</TableHead>
+                    <TableHead>Matricule</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPersonnel.map((person) => (
+                    <TableRow key={person._id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">{person.lastName} {person.firstName}</TableCell>
+                      <TableCell>{person.matricule}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          onClick={() => handleCreatePersonnelAccount(person)}
+                          disabled={creatingPersonnelAccount}
+                        >
+                          {creatingPersonnelAccount && selectedPersonnel?._id === person._id ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : "Créer"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredPersonnel.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-gray-500">
+                        Aucun personnel disponible.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Personnel Account Success Dialog */}
+      <AlertDialog open={showPersonnelSuccessDialog} onOpenChange={setShowPersonnelSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-blue-600 flex items-center gap-2">
+              <Check className="h-6 w-6" />
+              Compte créé avec succès
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4 pt-2">
+              <p>Un compte de pointage a été créé pour <strong>{selectedPersonnel?.firstName} {selectedPersonnel?.lastName}</strong>.</p>
+              <div className="p-4 bg-gray-100 rounded-lg border border-dashed border-gray-400 text-center">
+                <p className="text-sm text-gray-600 mb-1">Identifiant (Matricule)</p>
+                <p className="text-xl font-mono font-bold text-gray-800 mb-4">{selectedPersonnel?.matricule}</p>
+                <p className="text-sm text-gray-600 mb-1">Mot de passe temporaire (5 caractères)</p>
+                <p className="text-3xl font-mono font-bold text-blue-600 tracking-widest">{generatedPassword}</p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                IMPORTANT: Veuillez noter ce mot de passe. Il ne sera plus affiché.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowPersonnelSuccessDialog(false)}>
+              J'ai noté le mot de passe
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Personnel Account Reset Success Dialog */}
+      <AlertDialog open={showResetSuccessDialog} onOpenChange={setShowResetSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-yellow-600 flex items-center gap-2">
+              <RotateCcw className="h-6 w-6" />
+              Mot de passe réinitialisé
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4 pt-2">
+              <p>Le mot de passe pour le compte <strong>{selectedPersonnel?.matricule}</strong> a été réinitialisé.</p>
+              <div className="p-4 bg-gray-100 rounded-lg border border-dashed border-gray-400 text-center">
+                <p className="text-sm text-gray-600 mb-1">Nouvel Identifiant (Inchangé)</p>
+                <p className="text-xl font-mono font-bold text-gray-800 mb-4">{selectedPersonnel?.matricule}</p>
+                <p className="text-sm text-gray-600 mb-1">NOUVEAU Mot de passe (5 caractères)</p>
+                <p className="text-3xl font-mono font-bold text-blue-600 tracking-widest">{generatedPassword}</p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                IMPORTANT: Veuillez noter ce NOUVEAU mot de passe. Il ne sera plus affiché.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowResetSuccessDialog(false)}>
+              J'ai noté le nouveau mot de passe
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,4 +1,4 @@
 export const metadata = {
-  title: "Personnel Management System",
+  title: "NSC",
   description: "Manage personnel mutations and statuses",
 };

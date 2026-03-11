@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
+const Personnel = require("../models/personnelModel");
 const mongoose = require("mongoose");
 // Helper function to generate a JWT token
 const generateToken = (id, username, email, role) => {
@@ -14,9 +15,9 @@ const generateToken = (id, username, email, role) => {
  * @access  Public (make private/admin if needed)
  */
 exports.registerNewUser = async (req, res) => {
-  
+
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, occupiedStation } = req.body;
 
     // Basic validation
     if (!username || !email || !password) {
@@ -37,6 +38,7 @@ exports.registerNewUser = async (req, res) => {
       email,
       password,
       role: role || "user",
+      occupiedStation,
     });
 
     // Return created user (exclude password)
@@ -45,6 +47,7 @@ exports.registerNewUser = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
+      occupiedStation: user.occupiedStation,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -61,16 +64,22 @@ exports.loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Find the user by email
+    // Find the user by username
     const user = await User.findOne({ username: username });
     if (user && (await user.matchPassword(password))) {
+      // Prevent personnel accounts from logging into the management app
+      if (user.role === "personnel") {
+        return res.status(403).json({ message: "Accès refusé : ce compte est réservé au pointage uniquement." });
+      }
+
       req.session.user = {
         id: user._id,
         username: user.username,
         role: user.role,
-        email:user.email,
-        createdAt:user.createdAt,
-        updatedAt:user.updatedAt
+        email: user.email,
+        occupiedStation: user.occupiedStation,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       };
       console.log(req.session.user, "req req");
       res.json({
@@ -78,9 +87,9 @@ exports.loginUser = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        district:user.discrict,
-        structure:user.structure,
-      
+        district: user.discrict,
+        structure: user.structure,
+
         token: generateToken(user._id),
       });
     } else {
@@ -214,5 +223,133 @@ exports.getUsers = async (req, res) => {
     return res.json(users);
   } catch (error) {
     return res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Get personnel who don't have a user account yet
+ * @route   GET /api/users/available-personnel
+ * @access  Private (Admin or Chef Station)
+ */
+exports.getAvailablePersonnel = async (req, res) => {
+  try {
+    const userRole = req.session.user.role;
+    let userStation = req.session.user.occupiedStation;
+
+    // Get all usernames (matricules) from existing users
+    const users = await User.find({}, "username");
+    const existingMatricules = users.map((u) => u.username);
+
+    let query = { matricule: { $nin: existingMatricules } };
+
+    // If chef station, only show personnel from their station
+    if (userRole === "chef station") {
+      if (!userStation) {
+        // Try to fetch from DB if missing in session
+        const fullUser = await User.findById(req.session.user.id);
+        userStation = fullUser?.occupiedStation;
+      }
+
+      if (!userStation) {
+        return res.status(400).json({ message: "Station non assignée pour ce chef" });
+      }
+      query.stationName = userStation;
+    }
+
+    const personnel = await Personnel.find(query);
+    res.json(personnel);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Create a restricted account for personnel (pointage)
+ * @route   POST /api/users/create-personnel-account
+ * @access  Private (Admin or Chef Station)
+ */
+exports.createPersonnelAccount = async (req, res) => {
+  try {
+    const { matricule, password, email } = req.body;
+
+    if (!matricule || !password) {
+      return res.status(400).json({ message: "Matricule et mot de passe requis" });
+    }
+
+    // Verify personnel exists
+    const personnel = await Personnel.findOne({ matricule });
+    if (!personnel) {
+      return res.status(404).json({ message: "Personnel non trouvé" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ username: matricule });
+    if (existingUser) {
+      return res.status(400).json({ message: "Un compte existe déjà pour ce matricule" });
+    }
+
+    // Create the account
+    const newUser = await User.create({
+      username: matricule,
+      email: email || `${matricule}@placeholder.com`, // Email is required by model
+      password,
+      role: "personnel",
+      occupiedStation: personnel.stationName
+    });
+
+    res.status(201).json({
+      message: "Compte personnel créé avec succès",
+      user: {
+        username: newUser.username,
+        role: newUser.role,
+        occupiedStation: newUser.occupiedStation
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Update a user
+ * @route   PUT /api/users/:id
+ * @access  Private (Admin)
+ */
+exports.updateUser = async (req, res) => {
+  try {
+    const { username, email, role, occupiedStation } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    user.username = username || user.username;
+    user.email = email || user.email;
+    user.role = role || user.role;
+    user.occupiedStation = occupiedStation !== undefined ? occupiedStation : user.occupiedStation;
+
+    const updatedUser = await user.save();
+
+    // If the updated user is the current session user, update the session
+    if (req.session.user && req.session.user.id === updatedUser._id.toString()) {
+      req.session.user.username = updatedUser.username;
+      req.session.user.email = updatedUser.email;
+      req.session.user.role = updatedUser.role;
+      req.session.user.occupiedStation = updatedUser.occupiedStation;
+    }
+
+    res.json({
+      message: "Utilisateur mis à jour avec succès",
+      user: {
+        _id: updatedUser._id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        occupiedStation: updatedUser.occupiedStation
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

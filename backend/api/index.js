@@ -21,6 +21,7 @@ const recuperationRoutes = require("../src/routes/recuperationRoutes");
 const path = require("path");
 const authRoutes = require("../src/routes/authRoutes");
 const notificationRoutes = require("../src/routes/notificationRouter");
+const pointageRoutes = require("../src/routes/pointageRoutes");
 const fs = require("fs");
 
 // Socket.IO / http
@@ -48,7 +49,7 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, Postman, curl)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigin.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -138,7 +139,7 @@ app.get("/debug/list-uploads", (req, res) => {
 
 // 7. Basic route
 app.get("/", (req, res) => {
-  res.json({ 
+  res.json({
     message: "Welcome to the backend!",
     environment: process.env.NODE_ENV || 'development',
     allowedOrigins: allowedOrigin
@@ -162,6 +163,7 @@ app.use("/api/conges", congeRoutes);
 app.use("/api/recuperations", recuperationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/pointage", pointageRoutes);
 
 // 9. Error handler
 app.use((err, req, res, next) => {
