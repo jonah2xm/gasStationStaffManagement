@@ -40,29 +40,33 @@ const allowedOrigins = [
   "http://10.34.6.33:3000",
   "http://localhost:3000",
   process.env.FRONTEND_URL,
+  "https://gas-station-staff-management-vz4v.vercel.app",
 ].filter(Boolean);
-console.log("Allowed origins:", allowedOrigins);
 
-// 4. CORS Configuration
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+// 4. Manual CORS and Preflight Handling (More Reliable for Vercel)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-    if (
-      allowedOrigins.indexOf(origin) !== -1 ||
-      origin.endsWith(".vercel.app")
-    ) {
-      callback(null, true);
-    } else {
-      console.log("Blocked origin:", origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+  // Define helper to check if origin is allowed
+  const isAllowed = origin && (
+    allowedOrigins.includes(origin.replace(/\/$/, "")) ||
+    origin.endsWith(".vercel.app")
+  );
 
-// Explicit OPTIONS handler for all routes
-app.options('*', cors());
+  if (isAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  }
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+});
 
 app.use(express.json());
 app.use(morgan("dev"));
@@ -152,10 +156,10 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, "")) || origin.endsWith(".vercel.app")) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(null, false);
       }
     },
     credentials: true,
