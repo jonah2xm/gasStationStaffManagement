@@ -36,22 +36,22 @@ dotenv.config();
 const app = express();
 
 // Define allowed origins
-const allowedOrigin = [
-  "https://gas-station-staff-management-vz4v.vercel.app/",
-  "https://gas-stations-staff-management-4hgc-git-main-jonah2xms-projects.vercel.app",
+const allowedOrigins = [
   "http://10.34.6.33:3000",
   "http://localhost:3000",
-];
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+console.log("Allowed origins:", allowedOrigins);
 
-console.log("Allowed origins:", allowedOrigin);
-
-// 4. ENHANCED CORS Configuration for Vercel
+// 4. CORS Configuration
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, curl)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigin.indexOf(origin) !== -1) {
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      origin.endsWith(".vercel.app")
+    ) {
       callback(null, true);
     } else {
       console.log("Blocked origin:", origin);
@@ -59,36 +59,10 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 600, // Cache preflight for 10 minutes
 }));
 
 // Explicit OPTIONS handler for all routes
-app.options('*', cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigin.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
-
-// Additional CORS headers middleware
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigin.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  }
-  next();
-});
+app.options('*', cors());
 
 app.use(express.json());
 app.use(morgan("dev"));
@@ -143,7 +117,7 @@ app.get("/", (req, res) => {
   res.json({
     message: "Welcome to the backend!",
     environment: process.env.NODE_ENV || 'development',
-    allowedOrigins: allowedOrigin
+    allowedOrigins: allowedOrigins
   });
 });
 
@@ -177,9 +151,14 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigin,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
-    methods: ['GET', 'POST'],
   },
 });
 

@@ -33,10 +33,32 @@ dotenv.config();
 
 // 3. Create an Express app
 const app = express();
-const allowedOrigin = ["http://10.34.6.33:3000", 'http://localhost:3000'];
+
+const allowedOrigins = [
+  "http://10.34.6.33:3000",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
 // 4. Middleware
-app.use(cors({ credentials: true, origin: allowedOrigin }));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        origin.endsWith(".vercel.app") // Allow Vercel preview deployments
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(morgan("dev"));
 require("./cronjobs/statusCronjobs");
@@ -107,7 +129,13 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigin,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   },
 });
