@@ -37,7 +37,7 @@ const app = express();
 
 // Define allowed origins
 const allowedOrigin = [
-  "https://gas-stations-staff-management.vercel.app",
+  "https://gas-station-staff-management-vz4v.vercel.app/",
   "https://gas-stations-staff-management-4hgc-git-main-jonah2xms-projects.vercel.app",
   "http://10.34.6.33:3000",
   "http://localhost:3000",
