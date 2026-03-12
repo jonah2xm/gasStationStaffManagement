@@ -60,7 +60,7 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
 
         const data = await res.json()
         if (data.user) {
-          console.log('data',data)
+          console.log('data', data)
           // normalize id field so code can reference user.id or user._id
           setUser({ ...data.user, id: data.user._id || data.user.id });
         } else {
@@ -148,7 +148,7 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
 
         if (ids.length === 0) {
           // nothing to do; optional resync
-          fetchOverview().catch(() => {});
+          fetchOverview().catch(() => { });
           return;
         }
 
@@ -169,7 +169,7 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
         });
 
         // optional: re-sync authoritative unread count
-        fetchOverview().catch(() => {});
+        fetchOverview().catch(() => { });
       } catch (err) {
         console.error("onNotificationRead handler error:", err);
       }
@@ -182,7 +182,7 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
         setUnreadCount(0);
         // re-sync just in case
-        fetchOverview().catch(() => {});
+        fetchOverview().catch(() => { });
       } catch (err) {
         console.error("onMarkAllRead handler error:", err);
       }
@@ -229,8 +229,8 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
     } catch (err) {
       console.error("Mark as read error:", err)
       // fallback resync
-      await fetchOverview().catch(()=>{})
-      await fetchNotifications().catch(()=>{})
+      await fetchOverview().catch(() => { })
+      await fetchNotifications().catch(() => { })
     }
   }
 
@@ -254,15 +254,15 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
       }
     } catch (err) {
       console.error("Mark all as read error:", err)
-      await fetchOverview().catch(()=>{})
-      await fetchNotifications().catch(()=>{})
+      await fetchOverview().catch(() => { })
+      await fetchNotifications().catch(() => { })
     }
   }
 
   // 5) Handle logout
   const handleLogout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/logout`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/logout`, {
         method: "POST",
         credentials: "include",
       })
@@ -433,7 +433,7 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
               <User className="mr-2 h-4 w-4" />
               <span>Profil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem  onClick={() => router.push("/settings")}>
+            <DropdownMenuItem onClick={() => router.push("/settings")}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Paramètres</span>
             </DropdownMenuItem>

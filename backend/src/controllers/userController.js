@@ -81,7 +81,6 @@ exports.loginUser = async (req, res) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       };
-      console.log(req.session.user, "req req");
       res.json({
         _id: user._id,
         username: user.username,
@@ -348,6 +347,27 @@ exports.updateUser = async (req, res) => {
         role: updatedUser.role,
         occupiedStation: updatedUser.occupiedStation
       }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.logoutUser = async (req, res) => {
+  try {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Error destroying session:", err);
+        return res.status(500).json({ message: "Erreur lors de la déconnexion" });
+      }
+
+      res.clearCookie("connect.sid", {
+        path: "/",
+        httpOnly: true,
+        secure: false, // set to true if using HTTPS
+      });
+
+      res.status(200).json({ message: "Déconnexion réussie" });
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

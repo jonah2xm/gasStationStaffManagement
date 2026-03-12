@@ -22,6 +22,7 @@ const path = require("path");
 const authRoutes = require("../src/routes/authRoutes");
 const notificationRoutes = require("../src/routes/notificationRouter");
 const pointageRoutes = require("../src/routes/pointageRoutes");
+
 const fs = require("fs");
 
 // Socket.IO / http

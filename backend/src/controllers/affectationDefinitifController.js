@@ -177,7 +177,25 @@ exports.createAffectationDefinitif = async (req, res) => {
 
 exports.getAllAffectationsDefinitif = async (req, res) => {
   try {
-    const affectations = await AffectationDefinitif.find()
+    const { role, id } = req.session.user || {};
+    let query = {};
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        const station = await Station.findOne({ name: user.occupiedStation });
+        if (station) {
+          query = {
+            $or: [
+              { originStation: station._id },
+              { affectedStation: station._id },
+            ],
+          };
+        }
+      }
+    }
+
+    const affectations = await AffectationDefinitif.find(query)
       .populate("personnel", "firstName lastName matricule")
       .populate("originStation", "_id name")
       .populate("affectedStation", "_id name")

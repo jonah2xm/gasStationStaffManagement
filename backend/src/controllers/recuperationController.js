@@ -145,7 +145,17 @@ exports.createRecuperation = async (req, res) => {
 // Get all recuperations
 exports.getAllRecuperations = async (req, res) => {
   try {
-    const list = await Recuperation.find().populate("personnelId");
+    const { role, id } = req.session.user || {};
+    let query = {};
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        query.stationName = user.occupiedStation;
+      }
+    }
+
+    const list = await Recuperation.find(query).populate("personnelId");
     res.json(list);
   } catch (err) {
     res.status(500).json({ error: err.message });

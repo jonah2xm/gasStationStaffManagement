@@ -188,7 +188,22 @@ exports.createAbsenceAI = async (req, res) => {
 // Get all absence/reprise records
 exports.getAllAbsenceAI = async (req, res) => {
   try {
-    const entries = await AbsenceAI.find()
+    const { role, id } = req.session.user || {};
+    let query = {};
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        const personnelIds = await Personnel.find({
+          stationName: user.occupiedStation,
+        })
+          .select("_id")
+          .lean();
+        query.personnel = { $in: personnelIds.map((p) => p._id) };
+      }
+    }
+
+    const entries = await AbsenceAI.find(query)
       .populate("personnel", "firstName lastName matricule stationName")
       .sort({ createdAt: -1 });
     res.status(200).json(entries);
@@ -312,12 +327,10 @@ exports.updateEndDate = async (req, res) => {
     // 4) Broadcast notification to all users
     const allUsers = await Users.find().select("_id").lean();
     const baseMsg = inPeriod
-      ? `L'avis de reprise de ${updated.personnel.firstName} ${
-          updated.personnel.lastName
-        } démarre aujourd'hui jusqu'au ${end.toLocaleDateString()}.`
-      : `L'avis de reprise de ${updated.personnel.firstName} ${
-          updated.personnel.lastName
-        } est terminé le ${end.toLocaleDateString()}.`;
+      ? `L'avis de reprise de ${updated.personnel.firstName} ${updated.personnel.lastName
+      } démarre aujourd'hui jusqu'au ${end.toLocaleDateString()}.`
+      : `L'avis de reprise de ${updated.personnel.firstName} ${updated.personnel.lastName
+      } est terminé le ${end.toLocaleDateString()}.`;
 
     const notifs = allUsers.map((u) => ({
       personnel: u._id,
@@ -347,13 +360,27 @@ exports.updateEndDate = async (req, res) => {
 
 exports.getAIAfter48h = async (req, res) => {
   try {
+    const { role, id } = req.session.user || {};
     const now = new Date();
     const fortyEightHoursAgo = new Date(now.getTime());
-
-    const results = await AbsenceAI.find({
+    let query = {
       operationType: "avisAbsence",
       createdAt: { $lt: fortyEightHoursAgo },
-    }).populate("personnel"); // remove .populate() if not needed
+    };
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        const personnelIds = await Personnel.find({
+          stationName: user.occupiedStation,
+        })
+          .select("_id")
+          .lean();
+        query.personnel = { $in: personnelIds.map((p) => p._id) };
+      }
+    }
+
+    const results = await AbsenceAI.find(query).populate("personnel"); // remove .populate() if not needed
 
     return res.status(200).json({ success: true, data: results });
   } catch (error) {
@@ -366,8 +393,21 @@ exports.getAIAfter48h = async (req, res) => {
 // Get only avisAbsence records (with optional pagination)
 exports.getAvisAbsence = async (req, res) => {
   try {
+    const { role, id } = req.session.user || {};
     // filter for avisAbsence
     const filter = { operationType: "avisAbsence" };
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        const personnelIds = await Personnel.find({
+          stationName: user.occupiedStation,
+        })
+          .select("_id")
+          .lean();
+        filter.personnel = { $in: personnelIds.map((p) => p._id) };
+      }
+    }
 
     // pagination (limit=0 means no limit)
     const page = Math.max(parseInt(req.query.page ?? "1", 10), 1);

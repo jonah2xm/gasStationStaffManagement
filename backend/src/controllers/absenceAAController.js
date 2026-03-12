@@ -74,9 +74,8 @@ exports.createAbsenceAA = async (req, res) => {
         personnel: u._id,
         type: "AbsenceAA",
         reference: created._id,
-        message: `Nouvelle absence AA pour ${personnel.firstName} ${
-          personnel.lastName
-        } du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}.`,
+        message: `Nouvelle absence AA pour ${personnel.firstName} ${personnel.lastName
+          } du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}.`,
         detailsUrl: "/conges",
       }));
 
@@ -121,9 +120,8 @@ exports.createAbsenceAA = async (req, res) => {
       personnel: u._id,
       type: "AbsenceAA",
       reference: created._id,
-      message: `Nouvelle absence AA pour ${personnel.firstName} ${
-        personnel.lastName
-      } du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}.`,
+      message: `Nouvelle absence AA pour ${personnel.firstName} ${personnel.lastName
+        } du ${newStart.toLocaleDateString()} au ${newEnd.toLocaleDateString()}.`,
       detailsUrl: "/conges",
     }));
 
@@ -147,8 +145,23 @@ exports.createAbsenceAA = async (req, res) => {
 
 exports.getAbsencesAA = async (req, res) => {
   try {
+    const { role, id } = req.session.user || {};
+    let query = {};
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        const personnelIds = await Personnel.find({
+          stationName: user.occupiedStation,
+        })
+          .select("_id")
+          .lean();
+        query.personnel = { $in: personnelIds.map((p) => p._id) };
+      }
+    }
+
     // Fetch all absences. You can add .populate() if you have ref fields.
-    const absences = await AbsenceAA.find().populate(
+    const absences = await AbsenceAA.find(query).populate(
       "personnel",
       "firstName lastName matricule stationName"
     );
@@ -221,9 +234,8 @@ exports.deleteAbsenceAA = async (req, res) => {
     // 5) Broadcast a notification to all users
     const allUsers = await Users.find().select("_id").lean();
     const msg = statusReset
-      ? `L'absence AA du ${
-          absence.personnel.firstName + " " + absence.personnel.lastName
-        } a été supprimée et le statut du personnel est repassé à Actif.`
+      ? `L'absence AA du ${absence.personnel.firstName + " " + absence.personnel.lastName
+      } a été supprimée et le statut du personnel est repassé à Actif.`
       : `L'absence AA (${absence._id}) a été supprimée.`;
 
     const notifs = allUsers.map((u) => ({

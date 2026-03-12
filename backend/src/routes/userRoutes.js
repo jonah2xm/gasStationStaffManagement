@@ -12,6 +12,8 @@ const {
 } = require("../controllers/userController");
 const { ensureAuthenticated } = require("../middleware/auth");
 const router = express.Router();
+const { logoutUser } = require("../controllers/userController");
+
 
 
 router.post("/login", loginUser);
@@ -23,5 +25,6 @@ router.get('/', ensureAuthenticated, getUsers)
 router.get("/available-personnel", ensureAuthenticated, getAvailablePersonnel);
 router.post("/create-personnel-account", ensureAuthenticated, createPersonnelAccount);
 router.post("/register", registerNewUser);
+router.post("/logout", ensureAuthenticated, logoutUser);
 
 module.exports = router;

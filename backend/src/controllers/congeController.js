@@ -55,7 +55,7 @@ exports.addConge = async (req, res) => {
       lieuSejour,
       nombreJourRestant,
     } = req.body;
-    
+
     // 1) Champs obligatoires
     if (!personnelId || !stationName || !req.file) {
       return res.status(400).json({ message: "Champs requis manquants." });
@@ -142,9 +142,8 @@ exports.addConge = async (req, res) => {
 
     // 8) Broadcast notification à tous les utilisateurs
     const allUsers = await Users.find().select("_id").lean();
-    const broadcastMessage = `Congé de ${personnel.firstName} ${
-      personnel.lastName
-    } (${typeConge}) du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}. pour ${dureeConge} jour(s).`;
+    const broadcastMessage = `Congé de ${personnel.firstName} ${personnel.lastName
+      } (${typeConge}) du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}. pour ${dureeConge} jour(s).`;
 
     const notifs = allUsers.map((u) => ({
       personnel: u._id,
@@ -186,7 +185,17 @@ exports.addConge = async (req, res) => {
 
 exports.getAllConges = async (req, res) => {
   try {
-    const list = await Conge.find()
+    const { role, id } = req.session.user || {};
+    let query = {};
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        query.stationName = user.occupiedStation;
+      }
+    }
+
+    const list = await Conge.find(query)
       .populate("personnelId", "firstName lastName matricule")
       .lean();
 
@@ -297,10 +306,10 @@ exports.deleteConge = async (req, res) => {
     const personnel = await Personnel.findById(conge.personnelId).lean();
     const broadcastMessage = personnel
       ? `Le congé de ${personnel.firstName} ${personnel.lastName} du ${new Date(
-          conge.dateDebut
-        ).toLocaleDateString()} au ${new Date(
-          conge.dateRetour
-        ).toLocaleDateString()} a été annulé.`
+        conge.dateDebut
+      ).toLocaleDateString()} au ${new Date(
+        conge.dateRetour
+      ).toLocaleDateString()} a été annulé.`
       : `Un congé a été annulé (ID: ${conge._id}).`;
 
     const notifs = allUsers.map((u) => ({

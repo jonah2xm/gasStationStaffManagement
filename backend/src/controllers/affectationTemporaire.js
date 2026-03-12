@@ -131,11 +131,9 @@ exports.createAffectation = async (req, res) => {
     });
 
     const allUsers = await Users.find().select("_id").lean();
-    const msg = `Affectation temporaire: ${personnel.firstName} ${
-      personnel.lastName
-    } déplacé de "${originDoc.name}" à "${
-      affectedDoc.name
-    }" du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}.`;
+    const msg = `Affectation temporaire: ${personnel.firstName} ${personnel.lastName
+      } déplacé de "${originDoc.name}" à "${affectedDoc.name
+      }" du ${start.toLocaleDateString()} au ${end.toLocaleDateString()}.`;
 
     const notifs = allUsers.map((u) => ({
       personnel: u._id,
@@ -171,7 +169,25 @@ exports.createAffectation = async (req, res) => {
 
 exports.getAbsenceTemp = async (req, res) => {
   try {
-    const affectations = await AffectationTemporaire.find()
+    const { role, id } = req.session.user || {};
+    let query = {};
+
+    if (role === "chef station") {
+      const user = await Users.findById(id);
+      if (user && user.occupiedStation) {
+        const station = await Station.findOne({ name: user.occupiedStation });
+        if (station) {
+          query = {
+            $or: [
+              { originStation: station._id },
+              { affectedStation: station._id },
+            ],
+          };
+        }
+      }
+    }
+
+    const affectations = await AffectationTemporaire.find(query)
       .populate("personnel", "firstName lastName matricule")
       .populate("originStation", "_id name")
       .populate("affectedStation", "_id name")
@@ -342,9 +358,8 @@ exports.deleteAffectationTemporaire = async (req, res) => {
     }
 
     const allUsers = await Users.find().select("_id").lean();
-    const msg = `Affectation temporaire pour le personnel ${
-      assign.personnel.firstName + " " + assign.personnel.lastName
-    } a ete supprimée. ${stationResetMsg}.`;
+    const msg = `Affectation temporaire pour le personnel ${assign.personnel.firstName + " " + assign.personnel.lastName
+      } a ete supprimée. ${stationResetMsg}.`;
 
     const notifs = allUsers.map((u) => ({
       personnel: u._id,
