@@ -71,7 +71,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(morgan("dev"));
 
-require("../src/cronjobs/statusCronjobs");
+require("./src/cronjobs/statusCronjobs");
 
 // 5. Session middleware (must come before routes)
 app.use(
