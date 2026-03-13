@@ -40,8 +40,7 @@ const allowedOrigins = [
   "http://10.34.6.33:3000",
   "http://localhost:3000",
   process.env.FRONTEND_URL,
-  "https://gas-station-staff-management-vz4v.vercel.app",
-].filter(Boolean);
+]
 
 // 4. Manual CORS and Preflight Handling (More Reliable for Vercel)
 app.use((req, res, next) => {
