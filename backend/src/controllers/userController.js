@@ -6,10 +6,10 @@ const mongoose = require("mongoose");
 const isProduction = process.env.NODE_ENV === "production";
 
 const cookieOptions = {
-  path: "/",
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? "none" : "lax",
+  sameSite: isProduction ? "None" : "lax",
+  maxAge: 24 * 60 * 60 * 1000,
 };
 
 // Helper function to generate a JWT token
@@ -69,35 +69,35 @@ exports.loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const user = await User.findOne({ username: username });
+    const user = await User.findOne({ username });
+
     if (user && (await user.matchPassword(password))) {
       if (user.role === "personnel") {
-        return res
-          .status(403)
-          .json({
-            message:
-              "Accès refusé : ce compte est réservé au pointage uniquement.",
-          });
+        return res.status(403).json({
+          message:
+            "Accès refusé : ce compte est réservé au pointage uniquement.",
+        });
       }
 
-      req.session.user = {
-        id: user._id,
-        username: user.username,
-        role: user.role,
-        email: user.email,
-        occupiedStation: user.occupiedStation,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
+      const token = generateToken(
+        user._id,
+        user.username,
+        user.email,
+        user.role,
+      );
+
+      // Store JWT in cookie
+      res.cookie("token", token, cookieOptions);
 
       res.json({
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        district: user.discrict,
-        structure: user.structure,
-        token: generateToken(user._id),
+        message: "Login successful",
+        user: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          occupiedStation: user.occupiedStation,
+        },
       });
     } else {
       res.status(401).json({ message: "email ou mot de passe invalide" });
