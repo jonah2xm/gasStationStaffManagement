@@ -2,6 +2,16 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Personnel = require("../models/personnelModel");
 const mongoose = require("mongoose");
+
+const isProduction = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  path: "/",
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+};
+
 // Helper function to generate a JWT token
 const generateToken = (id, username, email, role) => {
   return jwt.sign({ id, username, email, role }, process.env.JWT_SECRET, {
@@ -15,16 +25,13 @@ const generateToken = (id, username, email, role) => {
  * @access  Public (make private/admin if needed)
  */
 exports.registerNewUser = async (req, res) => {
-
   try {
     const { username, email, password, role, occupiedStation } = req.body;
 
-    // Basic validation
     if (!username || !email || !password) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Prevent duplicates by email or username
     const existing = await User.findOne({
       $or: [{ email: email }, { username: username }],
     });
@@ -32,7 +39,6 @@ exports.registerNewUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Create user (password will be hashed by model pre-save hook)
     const user = await User.create({
       username,
       email,
@@ -41,7 +47,6 @@ exports.registerNewUser = async (req, res) => {
       occupiedStation,
     });
 
-    // Return created user (exclude password)
     res.status(201).json({
       _id: user._id,
       username: user.username,
@@ -64,12 +69,15 @@ exports.loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Find the user by username
     const user = await User.findOne({ username: username });
     if (user && (await user.matchPassword(password))) {
-      // Prevent personnel accounts from logging into the management app
       if (user.role === "personnel") {
-        return res.status(403).json({ message: "Accès refusé : ce compte est réservé au pointage uniquement." });
+        return res
+          .status(403)
+          .json({
+            message:
+              "Accès refusé : ce compte est réservé au pointage uniquement.",
+          });
       }
 
       req.session.user = {
@@ -79,8 +87,9 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         occupiedStation: user.occupiedStation,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        updatedAt: user.updatedAt,
       };
+
       res.json({
         _id: user._id,
         username: user.username,
@@ -88,7 +97,6 @@ exports.loginUser = async (req, res) => {
         role: user.role,
         district: user.discrict,
         structure: user.structure,
-
         token: generateToken(user._id),
       });
     } else {
@@ -102,36 +110,30 @@ exports.loginUser = async (req, res) => {
 /**
  * @desc    Reset user's password
  * @route   POST /api/users/reset-password
- * @access  Public (Should be protected in a real app)
- *
- * Expected body: { email, oldPassword, newPassword }
+ * @access  Public
  */
-
 exports.resetPassword = async (req, res) => {
   try {
-    // Log both params and body for debugging
     console.log("resetPassword - params:", req.params, "body:", req.body);
 
     const { id } = req.params;
     const { newPassword } = req.body;
 
-    // Basic validation
-    if (!id) return res.status(400).json({ message: "Missing user id in params" });
-    if (!newPassword) return res.status(400).json({ message: "Missing newPassword in body" });
+    if (!id)
+      return res.status(400).json({ message: "Missing user id in params" });
+    if (!newPassword)
+      return res.status(400).json({ message: "Missing newPassword in body" });
 
-    // Validate id format
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid user id format" });
     }
 
-    // Find by _id (use findById to ensure correct lookup)
     const user = await User.findById(id);
     if (!user) {
       console.log("resetPassword - user not found for id:", id);
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update password (pre("save") hook on the model will hash it)
     user.password = newPassword;
     await user.save();
 
@@ -145,13 +147,12 @@ exports.resetPassword = async (req, res) => {
 /**
  * @desc    Delete a user
  * @route   DELETE /api/users/:id
- * @access  Private (should be protected with proper auth in a real app)
+ * @access  Private
  */
 exports.deleteUser = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    // Find the user by ID
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -176,34 +177,23 @@ exports.updatePassword = async (req, res) => {
       return res.status(400).json({ message: "Champs manquants" });
     }
 
-    // Fetch the user
     const user = await User.findById(userSession.id);
     if (!user) {
       console.error("Utilisateur introuvable:", userSession.id);
       return res.status(404).json({ message: "Utilisateur introuvable" });
     }
 
-    // Verify current password
     const isMatch = await user.matchPassword(currentPassword);
     if (!isMatch) {
       return res.status(401).json({ message: "Mot de passe actuel incorrect" });
     }
 
-    // Update to new password
     user.password = newPassword;
     await user.save();
 
-    // Destroy session & clear cookie
     req.session.destroy((err) => {
       if (err) console.error("Error destroying session:", err);
-      // Default cookie name is 'connect.sid'
-      res.clearCookie("connect.sid", {
-        path: "/",
-        httpOnly: true,
-        secure: false, // true if your site is served over HTTPS
-      });
-
-      // Respond only after session is cleared
+      res.clearCookie("connect.sid", cookieOptions);
       res.status(200).json({
         message:
           "Mot de passe mis à jour avec succès. Vous avez été déconnecté.",
@@ -217,7 +207,6 @@ exports.updatePassword = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
-    // Fetch all users, exclude password and mongoose __v field
     const users = await User.find().select("-password -__v");
     return res.json(users);
   } catch (error) {
@@ -235,22 +224,21 @@ exports.getAvailablePersonnel = async (req, res) => {
     const userRole = req.session.user.role;
     let userStation = req.session.user.occupiedStation;
 
-    // Get all usernames (matricules) from existing users
     const users = await User.find({}, "username");
     const existingMatricules = users.map((u) => u.username);
 
     let query = { matricule: { $nin: existingMatricules } };
 
-    // If chef station, only show personnel from their station
     if (userRole === "chef station") {
       if (!userStation) {
-        // Try to fetch from DB if missing in session
         const fullUser = await User.findById(req.session.user.id);
         userStation = fullUser?.occupiedStation;
       }
 
       if (!userStation) {
-        return res.status(400).json({ message: "Station non assignée pour ce chef" });
+        return res
+          .status(400)
+          .json({ message: "Station non assignée pour ce chef" });
       }
       query.stationName = userStation;
     }
@@ -272,28 +260,29 @@ exports.createPersonnelAccount = async (req, res) => {
     const { matricule, password, email } = req.body;
 
     if (!matricule || !password) {
-      return res.status(400).json({ message: "Matricule et mot de passe requis" });
+      return res
+        .status(400)
+        .json({ message: "Matricule et mot de passe requis" });
     }
 
-    // Verify personnel exists
     const personnel = await Personnel.findOne({ matricule });
     if (!personnel) {
       return res.status(404).json({ message: "Personnel non trouvé" });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ username: matricule });
     if (existingUser) {
-      return res.status(400).json({ message: "Un compte existe déjà pour ce matricule" });
+      return res
+        .status(400)
+        .json({ message: "Un compte existe déjà pour ce matricule" });
     }
 
-    // Create the account
     const newUser = await User.create({
       username: matricule,
-      email: email || `${matricule}@placeholder.com`, // Email is required by model
+      email: email || `${matricule}@placeholder.com`,
       password,
       role: "personnel",
-      occupiedStation: personnel.stationName
+      occupiedStation: personnel.stationName,
     });
 
     res.status(201).json({
@@ -301,8 +290,8 @@ exports.createPersonnelAccount = async (req, res) => {
       user: {
         username: newUser.username,
         role: newUser.role,
-        occupiedStation: newUser.occupiedStation
-      }
+        occupiedStation: newUser.occupiedStation,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -326,12 +315,15 @@ exports.updateUser = async (req, res) => {
     user.username = username || user.username;
     user.email = email || user.email;
     user.role = role || user.role;
-    user.occupiedStation = occupiedStation !== undefined ? occupiedStation : user.occupiedStation;
+    user.occupiedStation =
+      occupiedStation !== undefined ? occupiedStation : user.occupiedStation;
 
     const updatedUser = await user.save();
 
-    // If the updated user is the current session user, update the session
-    if (req.session.user && req.session.user.id === updatedUser._id.toString()) {
+    if (
+      req.session.user &&
+      req.session.user.id === updatedUser._id.toString()
+    ) {
       req.session.user.username = updatedUser.username;
       req.session.user.email = updatedUser.email;
       req.session.user.role = updatedUser.role;
@@ -345,8 +337,8 @@ exports.updateUser = async (req, res) => {
         username: updatedUser.username,
         email: updatedUser.email,
         role: updatedUser.role,
-        occupiedStation: updatedUser.occupiedStation
-      }
+        occupiedStation: updatedUser.occupiedStation,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -358,15 +350,12 @@ exports.logoutUser = async (req, res) => {
     req.session.destroy((err) => {
       if (err) {
         console.error("Error destroying session:", err);
-        return res.status(500).json({ message: "Erreur lors de la déconnexion" });
+        return res
+          .status(500)
+          .json({ message: "Erreur lors de la déconnexion" });
       }
 
-      res.clearCookie("connect.sid", {
-        path: "/",
-        httpOnly: true,
-        secure: false, // set to true if using HTTPS
-      });
-
+      res.clearCookie("connect.sid", cookieOptions);
       res.status(200).json({ message: "Déconnexion réussie" });
     });
   } catch (error) {

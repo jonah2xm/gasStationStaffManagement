@@ -2,7 +2,8 @@ const mongoose = require("mongoose");
 const User = require("./models/userModel"); // adjust path if needed
 
 // 🔴 PUT YOUR REAL MONGO URI HERE
-const MONGO_URI = "mongodb://127.0.0.1:27017/NaftalFlow"
+const MONGO_URI =
+  "mongodb+srv://younesoubelaid2000_db_user:wcjr309PHXc3XsqA@naftalstaffconnect.mwyrovc.mongodb.net/naftalStaffConnect?retryWrites=true&w=majority&appName=naftalStaffConnect";
 console.log("MONGO_URI:", MONGO_URI);
 async function createUser() {
   try {
@@ -19,7 +20,7 @@ async function createUser() {
     const user = new User({
       username: "younes.oubelaid",
       email: "younes.oubelaid@naftal.dz", // REQUIRED by schema
-      password: "Youens2000", // will be hashed automatically
+      password: "Younes2000", // will be hashed automatically
       role: "administrateur",
     });
 
