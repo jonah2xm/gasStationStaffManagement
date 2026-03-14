@@ -66,6 +66,7 @@ exports.registerNewUser = async (req, res) => {
  * @access  Public
  */
 exports.loginUser = async (req, res) => {
+  console.log("is production", isProduction);
   try {
     const { username, password } = req.body;
 
