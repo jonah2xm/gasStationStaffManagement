@@ -15,7 +15,8 @@ import {
   X,
   Check,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -60,6 +61,11 @@ import {
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CalendarClock } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { ComputedValue, Field, FileDropzone, FormActions, FormSection } from "@/components/ui/form-layout";
+import { EmployeeCombobox } from "@/components/ui/employee-combobox";
+import { StatusDialog } from "@/components/ui/status-dialog";
 
 // Types of authorized absences
 const absenceTypes = [
@@ -368,411 +374,168 @@ export default function AddAbsenceAAPage() {
       person.matricule?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const duration = calculateDuration();
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/absence/aa"
+        backLabel="Absences AA"
+        title="Nouvelle absence autorisée"
+        description="Enregistrez une absence autorisée, son motif et, si disponible, le justificatif."
+      />
 
-
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Ajouter une Absence Autorisée
-        </h1>
-        <Button variant="outline" onClick={() => router.push("/absence/aa")}>
-          Retour à la liste
-        </Button>
-      </div>
-
-      <Card className="max-w-4xl mx-auto bg-white">
-        <CardHeader>
-          <CardTitle>Enregistrer une Absence Autorisée</CardTitle>
-          <CardDescription>
-            Saisissez les informations relatives à l'absence autorisée d'un
-            employé.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personnel Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="personnel">Employé*</Label>
-              <Popover
-                open={openPersonnelCombobox}
-                onOpenChange={setOpenPersonnelCombobox}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openPersonnelCombobox}
-                    className={`w-full justify-between bg-gray-50 ${
-                      errors.personnel ? "border-red-500" : ""
-                    }`}
-                    disabled={loading}
-                  >
-                    {selectedPersonnel ? (
-                      <div className="flex items-center bg-gray-50">
-                        <Avatar className="h-6 w-6 mr-2">
-                          <AvatarFallback className="bg-blue-100 text-blue-800 text-xs">
-                            {getInitials(
-                              `${selectedPersonnel.firstName} ${selectedPersonnel.lastName}`
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col items-start text-left">
-                          <span className="font-medium text-gray-800">
-                            {selectedPersonnel.firstName}{" "}
-                            {selectedPersonnel.lastName}
-                          </span>
-                          <span className="text-xs text-gray-800">
-                            {selectedPersonnel.matricule}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center text-muted-foreground">
-                        <Search className="mr-2 h-4 w-4" />
-                        Rechercher un employé...
-                      </div>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[400px] p-0 bg-gray-50"
-                  align="start"
-                >
-                  <Command>
-                    <CommandInput
-                      placeholder="Rechercher par nom ou matricule..."
-                      className="h-9"
-                      value={searchTerm}
-                      onValueChange={setSearchTerm}
-                    />
-                    <CommandList>
-                      <CommandEmpty>
-                        <div className="flex flex-col items-center justify-center py-6 text-center">
-                          <p className="text-sm text-muted-foreground">
-                            Aucun employé trouvé.
-                          </p>
-                        </div>
-                      </CommandEmpty>
-                      <CommandGroup heading="Employés">
-                        {filteredPersonnel.map((person) => (
-                          <CommandItem
-                            key={person._id}
-                            value={`${person.firstName} ${person.lastName} ${person.matricule}`}
-                            onSelect={() => {
-                              setSelectedPersonnel(person);
-                              setOpenPersonnelCombobox(false);
-                              if (errors.personnel) {
-                                setErrors((prev) => ({
-                                  ...prev,
-                                  personnel: "",
-                                }));
-                              }
-                            }}
-                            className="flex items-center py-3 text-gray-800"
-                          >
-                            <Avatar className="h-8 w-8 mr-2">
-                              <AvatarFallback className="bg-blue-100 text-blue-800">
-                                {person.firstName.charAt(0)}
-                                {person.lastName.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-gray-800">
-                                {person.firstName} {person.lastName}
-                              </span>
-                              <span className="text-xs text-gray-800">
-                                {person.matricule} •{" "}
-                                {person.poste || "Non défini"}
-                              </span>
-                            </div>
-                            {selectedPersonnel?._id === person._id && (
-                              <Check className="ml-auto h-4 w-4 text-green-500" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {errors.personnel && (
-                <p className="text-red-500 text-sm">{errors.personnel}</p>
-              )}
-            </div>
-
-            {/* Absence Dates */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Date de début*</Label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("startDate")}
-                    disabled={loading}
-                    className={`pl-10 ${
-                      touched.startDate && errors.startDate
-                        ? "border-red-500"
-                        : ""
-                    }`}
-                  />
-                  <Calendar
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                {touched.startDate && errors.startDate && (
-                  <p className="text-red-500 text-sm">{errors.startDate}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endDate">Date de fin*</Label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    id="endDate"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("endDate")}
-                    disabled={loading}
-                    className={`pl-10 ${
-                      touched.endDate && errors.endDate ? "border-red-500" : ""
-                    }`}
-                  />
-                  <Calendar
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                {touched.endDate && errors.endDate && (
-                  <p className="text-red-500 text-sm">{errors.endDate}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Show Overlap Error if Present */}
-            {overlapError && (
-              <div className="bg-red-50 p-3 rounded-md flex items-center">
-                <AlertTriangle className="text-red-500 mr-2" size={18} />
-                <span className="text-red-700">{overlapError}</span>
-              </div>
-            )}
-
-            {/* Duration */}
-            {calculateDuration() && (
-              <div className="bg-blue-50 p-3 rounded-md flex items-center">
-                <Clock className="text-blue-500 mr-2" size={18} />
-                <span className="text-blue-700">
-                  Durée:{" "}
-                  <strong>
-                    {calculateDuration()} jour
-                    {calculateDuration() > 1 ? "s" : ""}
-                  </strong>
-                </span>
-              </div>
-            )}
-
-            {/* Absence Type */}
-            <div className="space-y-2">
-              <Label htmlFor="absenceType">Type d'absence*</Label>
-              <Select
-                onValueChange={(value) =>
-                  handleSelectChange(value, "absenceType")
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+        <FormSection title="Employé" description="L'agent absent.">
+          <Field label="Employé" htmlFor="personnel" required full error={errors.personnel}>
+            <EmployeeCombobox
+              id="personnel"
+              open={openPersonnelCombobox}
+              onOpenChange={setOpenPersonnelCombobox}
+              people={filteredPersonnel}
+              selected={selectedPersonnel}
+              searchValue={searchTerm}
+              onSearchChange={setSearchTerm}
+              onSelect={(person) => {
+                setSelectedPersonnel(person);
+                setOpenPersonnelCombobox(false);
+                if (errors.personnel) {
+                  setErrors((prev) => ({ ...prev, personnel: "" }));
                 }
-                value={formData.absenceType}
-                onOpenChange={() =>
-                  formData.absenceType || handleBlur("absenceType")
-                }
-                disabled={loading}
-              >
-                <SelectTrigger
-                  className={
-                    touched.absenceType && errors.absenceType
-                      ? "border-red-500"
-                      : ""
-                  }
-                >
-                  <SelectValue placeholder="Sélectionnez le type d'absence" />
-                </SelectTrigger>
-                <SelectContent>
-                  {absenceTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {touched.absenceType && errors.absenceType && (
-                <p className="text-red-500 text-sm">{errors.absenceType}</p>
-              )}
+              }}
+              disabled={loading}
+              invalid={!!errors.personnel}
+              loading={fetchingPersonnel}
+            />
+          </Field>
+        </FormSection>
+
+        <FormSection title="Période" description="La date de fin doit être égale ou postérieure à la date de début.">
+          <Field label="Date de début" htmlFor="startDate" required error={touched.startDate && errors.startDate}>
+            <Input
+              type="date"
+              id="startDate"
+              name="startDate"
+              value={formData.startDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("startDate")}
+              disabled={loading}
+              aria-invalid={!!(touched.startDate && errors.startDate)}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Date de fin" htmlFor="endDate" required error={touched.endDate && errors.endDate}>
+            <Input
+              type="date"
+              id="endDate"
+              name="endDate"
+              value={formData.endDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("endDate")}
+              disabled={loading}
+              aria-invalid={!!(touched.endDate && errors.endDate)}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Durée" hint="Jours calendaires, début et fin inclus.">
+            <ComputedValue icon={CalendarClock} placeholder="Renseignez les deux dates">
+              {duration ? `${duration} jour${duration > 1 ? "s" : ""}` : ""}
+            </ComputedValue>
+          </Field>
+          {overlapError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 rounded-md border border-destructive-border bg-destructive-subtle px-3 py-2.5 text-[13.5px] text-destructive-text sm:col-span-2"
+            >
+              <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{overlapError}</span>
             </div>
+          )}
+        </FormSection>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optionnel)</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Informations supplémentaires sur l'absence..."
-                rows={3}
-                disabled={loading}
-              />
-            </div>
+        <FormSection title="Motif" description="Le type d'absence et, si utile, des précisions.">
+          <Field label="Type d'absence" htmlFor="absenceType" required error={touched.absenceType && errors.absenceType}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "absenceType")}
+              value={formData.absenceType}
+              onOpenChange={() => formData.absenceType || handleBlur("absenceType")}
+              disabled={loading}
+            >
+              <SelectTrigger id="absenceType" aria-invalid={!!(touched.absenceType && errors.absenceType)}>
+                <SelectValue placeholder="Sélectionnez le type d'absence" />
+              </SelectTrigger>
+              <SelectContent>
+                {absenceTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Description" htmlFor="description" full hint="Optionnel.">
+            <Textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder="Informations supplémentaires sur l'absence…"
+              rows={3}
+              disabled={loading}
+            />
+          </Field>
+        </FormSection>
 
-            {/* Document Upload */}
-            <div className="space-y-2">
-              <Label htmlFor="document">Document justificatif (PDF)</Label>
-              <div className="flex items-center">
-                <label
-                  htmlFor="document"
-                  className={`flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                    fileError
-                      ? "border-red-500 text-red-500"
-                      : "text-gray-700 hover:bg-gray-50"
-                  } cursor-pointer`}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {file ? "Changer de fichier" : "Télécharger un PDF"}
-                </label>
-                <input
-                  id="document"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  disabled={loading}
-                />
-                {file && (
-                  <div className="ml-4 flex items-center bg-gray-100 px-3 py-1 rounded-md">
-                    <FileText className="text-blue-500 mr-2" size={16} />
-                    <span className="text-sm truncate max-w-[200px]">
-                      {file.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setFile(null)}
-                      className="ml-2 text-gray-500 hover:text-red-500"
-                      disabled={loading}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {fileError && <p className="text-red-500 text-sm">{fileError}</p>}
-              <p className="text-xs text-gray-500">
-                Formats acceptés: PDF uniquement. Taille maximale: 5MB
-              </p>
-            </div>
+        <FormSection title="Justificatif" description="Certificat ou attestation, si disponible.">
+          <Field label="Document" htmlFor="document" full error={fileError}>
+            <FileDropzone
+              id="document"
+              file={file}
+              onFileChange={handleFileChange}
+              onRemove={() => setFile(null)}
+              disabled={loading}
+              invalid={!!fileError}
+              hint="PDF uniquement · 5 Mo maximum"
+            />
+          </Field>
+        </FormSection>
 
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/absence/aa")}
-                disabled={loading}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Enregistrer l'absence
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <FormActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/absence/aa")} disabled={loading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Enregistrement…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Enregistrer l'absence
+              </>
+            )}
+          </Button>
+        </FormActions>
+      </form>
 
-      <div className="mt-4 text-center text-sm text-gray-500">
-        <AlertTriangle className="inline-block mr-1" size={16} />
-        Les champs marqués avec * sont obligatoires.
-      </div>
-
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-green-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Absence Enregistrée avec Succès
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              L'absence autorisée a été enregistrée avec succès pour{" "}
-              {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSuccessConfirm}>
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Error Dialog */}
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              Erreur
-            </AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
-              Fermer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <StatusDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        title="Absence enregistrée"
+        description={`L'absence autorisée de ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""} a bien été enregistrée.`}
+        onAction={handleSuccessConfirm}
+      />
+      <StatusDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        variant="error"
+        title="Échec de l'enregistrement"
+        description={errorMessage}
+        actionLabel="Fermer"
+        onAction={() => setShowErrorDialog(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

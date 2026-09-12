@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Save } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { Field, FormActions, FormSection, FormSkeleton, UnitInput } from "@/components/ui/form-layout";
 
 
 const educationLevels = [
@@ -331,319 +335,198 @@ export default function AddPersonnel() {
     }
   };
 
+  if (fetchingStations) {
+    return <FormSkeleton />;
+  }
+
+  const fieldError = (field) => (touched[field] && errors[field]) || undefined;
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/personnel"
+        backLabel="Personnel"
+        title="Nouvel agent"
+        description="Enregistrez un agent, son poste, sa station et son solde de congés."
+      />
 
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Ajouter un Personnel
-        </h1>
-        <Button variant="outline" onClick={() => router.push("/personnel")}>
-          Retour au Tableau de Bord
-        </Button>
-      </div>
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+        <FormSection title="Identité" description="Le matricule doit être unique et ne contenir que des lettres et des chiffres.">
+          <Field label="Matricule" htmlFor="matricule" required error={fieldError("matricule")}>
+            <Input
+              type="text"
+              id="matricule"
+              name="matricule"
+              value={personnelData.matricule}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("matricule")}
+              aria-invalid={!!fieldError("matricule")}
+              placeholder="Ex : R3120-04"
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Date de naissance" htmlFor="birthDate" required error={fieldError("birthDate")}>
+            <Input
+              type="date"
+              id="birthDate"
+              name="birthDate"
+              value={personnelData.birthDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("birthDate")}
+              aria-invalid={!!fieldError("birthDate")}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Nom" htmlFor="firstName" required error={fieldError("firstName")}>
+            <Input
+              type="text"
+              id="firstName"
+              name="firstName"
+              value={personnelData.firstName}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("firstName")}
+              aria-invalid={!!fieldError("firstName")}
+              placeholder="Entrez le nom"
+            />
+          </Field>
+          <Field label="Prénom" htmlFor="lastName" required error={fieldError("lastName")}>
+            <Input
+              type="text"
+              id="lastName"
+              name="lastName"
+              value={personnelData.lastName}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("lastName")}
+              aria-invalid={!!fieldError("lastName")}
+              placeholder="Entrez le prénom"
+            />
+          </Field>
+        </FormSection>
 
-      {fetchingStations ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-          <span className="ml-2 text-gray-500">Chargement des stations...</span>
-        </div>
-      ) : (
-        <Card className="max-w-4xl mx-auto bg-white">
-          <CardHeader>
-            <CardTitle>Détails du Personnel</CardTitle>
-            <CardDescription>
-              Entrez les informations du nouveau personnel ci-dessous.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="matricule">Matricule*</Label>
-                  <Input
-                    type="text"
-                    id="matricule"
-                    name="matricule"
-                    value={personnelData.matricule}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("matricule")}
-                    className={
-                      touched.matricule && errors.matricule
-                        ? "border-red-500"
-                        : ""
-                    }
-                    placeholder="Entrez le matricule"
-                  />
-                  {touched.matricule && errors.matricule && (
-                    <p className="text-red-500 text-sm">{errors.matricule}</p>
-                  )}
-                </div>
+        <FormSection title="Poste et affectation" description="Poste occupé, contrat, décision et station de rattachement.">
+          <Field label="Poste" htmlFor="poste" required error={fieldError("poste")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "poste")}
+              value={personnelData.poste}
+              onOpenChange={() => !personnelData.poste && handleBlur("poste")}
+            >
+              <SelectTrigger id="poste" aria-invalid={!!fieldError("poste")}>
+                <SelectValue placeholder="Sélectionnez le poste" />
+              </SelectTrigger>
+              <SelectContent>
+                {posts.map((poste) => (
+                  <SelectItem key={poste} value={poste}>
+                    {poste}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Type de contrat" htmlFor="contractType" required error={fieldError("contractType")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "contractType")}
+              value={personnelData.contractType}
+              onOpenChange={() => !personnelData.contractType && handleBlur("contractType")}
+            >
+              <SelectTrigger id="contractType" aria-invalid={!!fieldError("contractType")}>
+                <SelectValue placeholder="Sélectionnez le type de contrat" />
+              </SelectTrigger>
+              <SelectContent>
+                {contractTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Station" htmlFor="station" required error={fieldError("station")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "station")}
+              value={personnelData.station}
+              onOpenChange={() => !personnelData.station && handleBlur("station")}
+            >
+              <SelectTrigger id="station" aria-invalid={!!fieldError("station")}>
+                <SelectValue placeholder="Sélectionnez la station" />
+              </SelectTrigger>
+              <SelectContent>
+                {stations.map((station) => (
+                  <SelectItem key={station._id} value={station._id}>
+                    {station.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Décision" htmlFor="decision" required error={fieldError("decision")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "decision")}
+              value={personnelData.decision}
+              onOpenChange={() => !personnelData.decision && handleBlur("decision")}
+            >
+              <SelectTrigger id="decision" aria-invalid={!!fieldError("decision")}>
+                <SelectValue placeholder="Sélectionnez la décision" />
+              </SelectTrigger>
+              <SelectContent>
+                {stations.map((station) => (
+                  <SelectItem key={station._id} value={station.name}>
+                    {station.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Date de recrutement" htmlFor="hireDate" required error={fieldError("hireDate")}>
+            <Input
+              type="date"
+              id="hireDate"
+              name="hireDate"
+              value={personnelData.hireDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("hireDate")}
+              aria-invalid={!!fieldError("hireDate")}
+              className="tabular-nums"
+            />
+          </Field>
+        </FormSection>
 
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Nom*</Label>
-                  <Input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={personnelData.firstName}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("firstName")}
-                    className={
-                      touched.firstName && errors.firstName
-                        ? "border-red-500"
-                        : ""
-                    }
-                    placeholder="Entrez le nom"
-                  />
-                  {touched.firstName && errors.firstName && (
-                    <p className="text-red-500 text-sm">{errors.firstName}</p>
-                  )}
-                </div>
+        <FormSection title="Congés" description="Solde de congés disponible à la création de la fiche.">
+          <Field label="Congés restants" htmlFor="holidaysLeft" required error={fieldError("holidaysLeft")}>
+            <UnitInput
+              unit="jours"
+              type="number"
+              id="holidaysLeft"
+              name="holidaysLeft"
+              value={personnelData.holidaysLeft}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("holidaysLeft")}
+              invalid={!!fieldError("holidaysLeft")}
+              placeholder="Ex : 30"
+              min="0"
+            />
+          </Field>
+        </FormSection>
 
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Prénom*</Label>
-                  <Input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={personnelData.lastName}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("lastName")}
-                    className={
-                      touched.lastName && errors.lastName
-                        ? "border-red-500"
-                        : ""
-                    }
-                    placeholder="Entrez le prénom"
-                  />
-                  {touched.lastName && errors.lastName && (
-                    <p className="text-red-500 text-sm">{errors.lastName}</p>
-                  )}
-                </div>
+        <FormActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/personnel")} disabled={loading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Ajout en cours…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Ajouter l'agent
+              </>
+            )}
+          </Button>
+        </FormActions>
+      </form>
 
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate">Date de Naissance*</Label>
-                  <Input
-                    type="date"
-                    id="birthDate"
-                    name="birthDate"
-                    value={personnelData.birthDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("birthDate")}
-                    className={
-                      touched.birthDate && errors.birthDate
-                        ? "border-red-500"
-                        : ""
-                    }
-                  />
-                  {touched.birthDate && errors.birthDate && (
-                    <p className="text-red-500 text-sm">{errors.birthDate}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="hireDate">Date de Recrutement*</Label>
-                  <Input
-                    type="date"
-                    id="hireDate"
-                    name="hireDate"
-                    value={personnelData.hireDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("hireDate")}
-                    className={
-                      touched.hireDate && errors.hireDate
-                        ? "border-red-500"
-                        : ""
-                    }
-                  />
-                  {touched.hireDate && errors.hireDate && (
-                    <p className="text-red-500 text-sm">{errors.hireDate}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="poste">Poste*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "poste")
-                    }
-                    value={personnelData.poste}
-                    onOpenChange={() =>
-                      !personnelData.poste && handleBlur("poste")
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.poste && errors.poste ? "border-red-500" : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez le Poste" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {posts.map((poste) => (
-                        <SelectItem key={poste} value={poste}>
-                          {poste}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.poste && errors.poste && (
-                    <p className="text-red-500 text-sm">{errors.poste}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contractType">Type de contrat*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "contractType")
-                    }
-                    value={personnelData.contractType}
-                    onOpenChange={() =>
-                      !personnelData.contractType && handleBlur("contractType")
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.contractType && errors.contractType
-                          ? "border-red-500"
-                          : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez le type de contrat" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contractTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.contractType && errors.contractType && (
-                    <p className="text-red-500 text-sm">
-                      {errors.contractType}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="decision">Decision*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "decision")
-                    }
-                    value={personnelData.decision}
-                    onOpenChange={() =>
-                      !personnelData.decision && handleBlur("decision")
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.decision && errors.decision
-                          ? "border-red-500"
-                          : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez la décision" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stations.map((station) => (
-                        <SelectItem key={station._id} value={station.name}>
-                          {station.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.decision && errors.decision && (
-                    <p className="text-red-500 text-sm">{errors.decision}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="station">Station*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "station")
-                    }
-                    value={personnelData.station}
-                    onOpenChange={() =>
-                      !personnelData.station && handleBlur("station")
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.station && errors.station
-                          ? "border-red-500"
-                          : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez la station" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stations.map((station) => (
-                        <SelectItem key={station._id} value={station._id}>
-                          {station.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.station && errors.station && (
-                    <p className="text-red-500 text-sm">{errors.station}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Conge Restant*</Label>
-                  <Input
-                    type="number"
-                    id="holidaysLeft"
-                    name="holidaysLeft"
-                    value={personnelData.holidaysLeft}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("holidaysLeft")}
-                    className={
-                      touched.holidaysLeft && errors.holidaysLeft
-                        ? "border-red-500"
-                        : ""
-                    }
-                    placeholder="Entrez Nombre conge"
-                  />
-                  {touched.holidaysLeft && errors.holidaysLeft && (
-                    <p className="text-red-500 text-sm">{errors.firstName}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/personnel")}
-                  disabled={loading}
-                >
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Ajout en cours...
-                    </>
-                  ) : (
-                    "Ajouter Personnel"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="mt-4 text-center text-sm text-gray-500">
-        <AlertTriangle className="inline-block mr-1" size={16} />
-        Les champs marqués avec * sont obligatoires.
-      </div>
       <Toaster position="bottom-left" />
     </div>
   );

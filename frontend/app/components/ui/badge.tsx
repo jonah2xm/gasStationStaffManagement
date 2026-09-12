@@ -3,22 +3,20 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+// Generic badge. For business statuses use <StatusBadge> so each concept keeps one color.
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-sm border px-[9px] text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        success:
-          "border-transparent bg-green-100 text-green-800 hover:bg-green-200",
-        warning:
-          "border-transparent bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+        // Transparent border so pages that pass their own bg/text colors don't get an ink outline.
+        default: "border-transparent bg-foreground text-white",
+        secondary: "border-border bg-muted text-ink-750",
+        destructive: "border-destructive-border bg-destructive-subtle text-destructive-text",
+        outline: "border-input bg-card text-ink-750",
+        success: "border-success-border bg-success-subtle text-success-text",
+        warning: "border-warning-border bg-warning-subtle text-warning-text",
+        info: "border-info-border bg-info-subtle text-info-text",
       },
     },
     defaultVariants: {

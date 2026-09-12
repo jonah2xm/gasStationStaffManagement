@@ -1,18 +1,25 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   ArrowRight,
+  Building2,
   Fingerprint,
   LayoutDashboard,
+  RefreshCw,
   ShieldCheck,
-  Building2,
-  Users
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+const TRUST_POINTS = [
+  { label: "Multi-stations", caption: "GD R3120 → R3138", icon: Building2 },
+  { label: "Multi-rôles", caption: "Admin, gestion, chef station", icon: Users },
+  { label: "Temps réel", caption: "Statuts et notifications", icon: RefreshCw },
+  { label: "Sécurisé", caption: "Connexion chiffrée SSL", icon: ShieldCheck },
+];
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
@@ -24,136 +31,98 @@ export default function LandingPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] flex flex-col font-sans selection:bg-yellow-200">
-      {/* Structural Header (matching internal feel) */}
-      <header className="bg-white border-b border-gray-200 py-4 px-8 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="p-1 rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
-              <Image
-                src="/naftalLogo.png"
-                alt="Naftal Logo"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <span className="text-xl font-black tracking-tighter text-gray-900">NSC Portal</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-border bg-card p-1">
+              <Image src="/naftalLogo.png" alt="Naftal" width={28} height={28} className="object-contain" />
+            </span>
+            <div className="leading-tight">
+              <p className="text-[15px] font-semibold text-foreground">NSC Portal</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Naftal Staff Connect
+              </p>
             </div>
           </div>
-
-          <Link href="/login">
-            <Button variant="ghost" className="text-sm font-bold text-gray-500 hover:text-gray-900 flex items-center gap-2">
-              <ShieldCheck size={16} />
-              Accès Sécurisé
-            </Button>
-          </Link>
+          <Button asChild variant="outline">
+            <Link href="/login">
+              <ShieldCheck className="h-4 w-4" />
+              Connexion
+            </Link>
+          </Button>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-6 pb-24">
-        {/* Portal Entry container */}
-        <div className="w-full max-w-4xl space-y-12">
-
-          <div className="text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/10 text-yellow-700 text-[10px] font-black uppercase tracking-[0.2em] mb-2">
-              <Building2 size={12} /> Gestion des Stations Service
-            </div>
-            <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
-              Système de Management <br />
-              <span className="text-gray-400">Opérationnel Centralisé</span>
+      <main className="flex flex-1 items-center justify-center px-6 py-14">
+        <div className="w-full max-w-4xl space-y-10">
+          <div className="space-y-4 text-center">
+            <span className="inline-flex h-7 items-center gap-2 rounded-sm border border-border bg-card px-2.5 text-xs font-medium text-ink-750">
+              <Building2 className="h-3.5 w-3.5" /> Gestion des stations-service
+            </span>
+            <h1 className="mx-auto max-w-[22ch] text-[40px] font-semibold leading-[46px] tracking-tight text-foreground">
+              Système de gestion du personnel des stations
             </h1>
-            <p className="text-gray-500 font-medium max-w-xl mx-auto text-lg">
+            <p className="mx-auto max-w-[60ch] text-[15px] leading-6 text-muted-foreground">
               Bienvenue sur l'interface de pilotage NSC. Sélectionnez votre espace de travail pour commencer.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* CTA 1: Public/Station Attendance */}
-            <Card className="bg-white shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2.5rem] border-none overflow-hidden group transition-all hover:-translate-y-1">
-              <CardContent className="p-10 flex flex-col items-center text-center space-y-8">
-                <div className="w-20 h-20 rounded-3xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#ffeb10] group-hover:text-black transition-all duration-300">
-                  <Fingerprint size={40} strokeWidth={1.5} />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-2xl font-black text-gray-900">Espace Pointage</h3>
-                  <p className="text-gray-400 font-medium px-4">
-                    Interface simplifiée pour l'enregistrement des entrées et sorties du personnel de station.
-                  </p>
-                </div>
-                <Link href="/pointage" className="w-full">
-                  <Button className="w-full h-14 rounded-2xl bg-gray-50 text-gray-900 hover:bg-[#ffeb10] hover:text-black font-black text-lg transition-all flex items-center justify-center gap-2 border-none">
-                    Accéder au Pointage
-                    <ArrowRight size={18} />
-                  </Button>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="flex flex-col gap-5 rounded-lg border border-border bg-card p-7 shadow-xs transition-shadow hover:shadow-md">
+              <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
+                <Fingerprint className="h-6 w-6 text-ink-750" strokeWidth={1.75} />
+              </span>
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold text-foreground">Espace Pointage</h2>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Interface simplifiée pour l'enregistrement des entrées et sorties du personnel de station.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="lg" className="mt-auto w-full">
+                <Link href="/pointage">
+                  Accéder au pointage
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
-              </CardContent>
-            </Card>
+              </Button>
+            </div>
 
-            {/* CTA 2: Management */}
-            <Card className="bg-blue-600 shadow-[0_20px_50px_rgba(37,99,235,0.1)] rounded-[2.5rem] border-none overflow-hidden group transition-all hover:-translate-y-1">
-              <CardContent className="p-10 flex flex-col items-center text-center space-y-8">
-                <div className="w-20 h-20 rounded-3xl bg-white/10 flex items-center justify-center text-white group-hover:bg-[#ffeb10] group-hover:text-black transition-all duration-300">
-                  <LayoutDashboard size={40} strokeWidth={1.5} />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-2xl font-black text-white">Espace Gestion</h3>
-                  <p className="text-blue-100 font-medium px-4">
-                    Tableaux de bord, rapports et administration complète pour les chefs de station et gestionnaires.
-                  </p>
-                </div>
-                <Link href="/login" className="w-full">
-                  <Button className="w-full h-14 rounded-2xl bg-white/10 text-white hover:bg-[#ffeb10] hover:text-black font-black text-lg transition-all flex items-center justify-center gap-2 border-none">
-                    Espace Gestionnaires
-                    <ArrowRight size={18} />
-                  </Button>
+            <div className="flex flex-col gap-5 rounded-lg border border-border bg-card p-7 shadow-xs transition-shadow hover:shadow-md">
+              <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
+                <LayoutDashboard className="h-6 w-6 text-primary-foreground" strokeWidth={1.75} />
+              </span>
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold text-foreground">Espace Gestion</h2>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Tableaux de bord, rapports et administration complète pour les chefs de station et gestionnaires.
+                </p>
+              </div>
+              <Button asChild size="lg" className="mt-auto w-full">
+                <Link href="/login">
+                  Accéder à la gestion
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
-              </CardContent>
-            </Card>
+              </Button>
+            </div>
           </div>
 
-          <div className="pt-8 border-t border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Utilisateurs</p>
-              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
-                <Users size={14} className="text-[#ffeb10]" />
-                <span>Multi-Rôles</span>
+          <div className="grid grid-cols-2 gap-6 border-t border-border pt-8 md:grid-cols-4">
+            {TRUST_POINTS.map(({ label, caption, icon: Icon }) => (
+              <div key={label} className="flex items-start gap-3">
+                <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-ink-700" />
+                <div>
+                  <p className="text-[13.5px] font-semibold text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{caption}</p>
+                </div>
               </div>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Localisation</p>
-              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
-                <Building2 size={14} className="text-[#ffeb10]" />
-                <span>Multi-Stations</span>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Données</p>
-              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
-                <LayoutDashboard size={14} className="text-[#ffeb10]" />
-                <span>Temps Réel</span>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Sécurité</p>
-              <div className="flex items-center justify-center gap-2 text-gray-900 font-black">
-                <ShieldCheck size={14} className="text-[#ffeb10]" />
-                <span>Chiffré SSL</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </main>
 
-      {/* Simplified Footer matching internal project */}
-      <footer className="py-8 border-t border-gray-100 bg-white">
-        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-400 text-sm font-bold">
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] uppercase font-black tracking-[0.2em]">NSC PORTAL SYSTEM</span>
-            <div className="w-1 h-1 bg-yellow-400 rounded-full" />
-            <span>v2.4.0</span>
-          </div>
+      <footer className="border-t border-border bg-card">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-5 text-[13px] text-muted-foreground md:flex-row">
+          <span className="tabular-nums">NSC Portal · v2.4.0</span>
           <p>© {new Date().getFullYear()} Naftal. Tous droits réservés.</p>
         </div>
       </footer>

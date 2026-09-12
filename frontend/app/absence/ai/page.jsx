@@ -19,7 +19,8 @@ import {
   SlidersHorizontal,
   ArrowRightLeft,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,10 +63,10 @@ import {
 // Operation types
 const operationTypes = {
   avisAbsence: {
-    label: "Avis Absence",
-    color: "bg-yellow-100 text-yellow-800",
+    label: "Avis d'absence",
+    color: "border-destructive-border bg-destructive-subtle text-destructive-text",
   },
-  avisReprise: { label: "Avis Reprise", color: "bg-green-100 text-green-800" },
+  avisReprise: { label: "Avis de reprise", color: "border-success-border bg-success-subtle text-success-text" },
 };
 
 export default function AbsenceAIListPage() {
@@ -356,17 +357,16 @@ export default function AbsenceAIListPage() {
   const currentAbsences = sortedAbsences.slice(startIndex, endIndex);
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
 
 
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Liste des Absences AI
         </h1>
         <Button
           onClick={() => router.push("/absence/ai/add")}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
         >
           <Plus className="mr-2 h-4 w-4" /> Ajouter une Absence AI
         </Button>
@@ -379,10 +379,10 @@ export default function AbsenceAIListPage() {
             placeholder="Rechercher par nom ou matricule..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            className="pl-10 pr-4 py-2 w-full rounded-full border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50"
           />
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -568,25 +568,25 @@ export default function AbsenceAIListPage() {
         </div>
       )}
 
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              <span className="ml-2 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
                 Chargement des absences...
               </span>
             </div>
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <AlertTriangle className="h-8 w-8 mr-2" />
               <p>{error}</p>
             </div>
           ) : currentAbsences.length === 0 ? (
-            <div className="flex flex-col justify-center items-center h-64 text-gray-500">
-              <Calendar className="h-12 w-12 mb-4 text-gray-400" />
+            <div className="flex flex-col justify-center items-center h-64 text-muted-foreground">
+              <Calendar className="h-12 w-12 mb-4 text-ink-600" />
               <p className="text-lg mb-2">Aucune absence trouvée</p>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-ink-600 mb-4">
                 {searchTerm || typeFilter.length > 0 || dateFilter
                   ? "Essayez de modifier vos filtres de recherche"
                   : "Commencez par ajouter une nouvelle absence"}
@@ -603,7 +603,6 @@ export default function AbsenceAIListPage() {
               ) : (
                 <Button
                   onClick={() => router.push("/absence/ai/add")}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   <Plus className="mr-2 h-4 w-4" /> Ajouter une Absence AI
                 </Button>
@@ -674,14 +673,14 @@ export default function AbsenceAIListPage() {
               </TableHeader>
               <TableBody>
                 {currentAbsences.map((absence) => (
-                  <TableRow key={absence._id} className="hover:bg-gray-50">
+                  <TableRow key={absence._id} className="hover:bg-background">
                     <TableCell>
                       <div>
                         <div className="font-semibold">
                           {absence.personnel.firstName}{" "}
                           {absence.personnel.lastName}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           {absence.personnel.matricule}
                         </div>
                       </div>
@@ -695,7 +694,7 @@ export default function AbsenceAIListPage() {
                       <Badge
                         className={
                           operationTypes[absence.operationType]?.color ||
-                          "bg-gray-100 text-gray-800"
+                          "bg-muted text-foreground"
                         }
                       >
                         {operationTypes[absence.operationType]?.label ||
@@ -763,7 +762,7 @@ export default function AbsenceAIListPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(absence)}
-                            className="text-red-600"
+                            className="text-destructive-text"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
@@ -865,14 +864,14 @@ export default function AbsenceAIListPage() {
                     setEndDate(e.target.value);
                     setEndDateError("");
                   }}
-                  className={`pl-10 ${endDateError ? "border-red-500" : ""}`}
+                  className={`pl-10 ${endDateError ? "border-destructive" : ""}`}
                 />
                 <Calendar
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600"
                   size={16}
                 />
                 {endDateError && (
-                  <p className="text-red-500 text-sm mt-1">{endDateError}</p>
+                  <p className="text-destructive-text text-sm mt-1">{endDateError}</p>
                 )}
               </div>
             </div>
@@ -886,7 +885,6 @@ export default function AbsenceAIListPage() {
             <Button
               onClick={handleAddEndDateSubmit}
               disabled={updatingAbsence}
-              className="bg-blue-500 hover:bg-blue-600"
             >
               {updatingAbsence ? (
                 <>

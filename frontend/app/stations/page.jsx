@@ -46,7 +46,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import toast, { Toaster } from "react-hot-toast"
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster"
 
 const getInitials = (name) => {
   if (!name) return "??"
@@ -58,30 +59,26 @@ const getInitials = (name) => {
 }
 
 const getStatusColor = (status) => {
-  switch (status?.toLowerCase()) {
+  switch (status?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()) {
     case "actif":
-      return "bg-green-100 text-green-800 border-green-200"
+      return "border-success-border bg-success-subtle text-success-text"
+    case "conge":
+    case "en conge":
     case "on leave":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200"
-    case "en congé":
-      return "bg-orange-100 text-orange-800 border-orange-200"
+      return "border-info-border bg-info-subtle text-info-text"
+    case "recuperation":
+      return "border-teal-border bg-teal-subtle text-teal-text"
+    case "ai":
+      return "border-destructive-border bg-destructive-subtle text-destructive-text"
+    case "aa":
+      return "border-warning-border bg-warning-subtle text-warning-text"
     default:
-      return "bg-gray-100 text-gray-800 border-gray-200"
+      return "border-border bg-muted text-ink-750"
   }
 }
 
-const getStationTypeColor = (type) => {
-  switch (type?.toLowerCase()) {
-    case "rurale":
-      return "bg-blue-100 text-blue-800 border-blue-200"
-    case "autoroute":
-      return "bg-purple-100 text-purple-800 border-purple-200"
-    case "urbaine":
-      return "bg-green-100 text-green-800 border-green-200"
-    default:
-      return "bg-gray-100 text-gray-800 border-gray-200"
-  }
-}
+// Station types are categories: neutral.
+const getStationTypeColor = () => "border-border bg-muted text-ink-750"
 
 export default function StationDashboard() {
   const router = useRouter()
@@ -206,9 +203,9 @@ export default function StationDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
       <div className="flex flex-col md:flex-row items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4 md:mb-0">Tableau de Bord des Stations</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-4 md:mb-0">Tableau de Bord des Stations</h1>
         <div className="flex items-center space-x-4">
           <div className="relative w-full md:w-64">
             <Input
@@ -216,12 +213,12 @@ export default function StationDashboard() {
               placeholder="Rechercher stations ou personnel..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full rounded-full bg-white border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              className="pl-10 pr-4 py-2 w-full rounded-full bg-card border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50"
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600" size={20} />
           </div>
           <Link href="/stations/add-station">
-            <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+            <Button>
               <Plus className="mr-2 h-4 w-4" /> Ajouter Station
             </Button>
           </Link>
@@ -230,11 +227,11 @@ export default function StationDashboard() {
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-          <span className="ml-2 text-gray-500">Chargement des stations...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Chargement des stations...</span>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center justify-center h-64 text-red-500">
+        <div className="flex flex-col items-center justify-center h-64 text-destructive-text">
           <AlertTriangle className="h-12 w-12 mb-4" />
           <p className="text-lg mb-4">{error}</p>
           <Button variant="outline" onClick={fetchStations} className="flex items-center bg-transparent">
@@ -271,29 +268,29 @@ export default function StationDashboard() {
                 color: "red",
               },
             ].map((item, index) => (
-              <Card key={index} className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <Card key={index} className="bg-card shadow-xs hover:shadow-md transition-shadow duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">{item.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium text-ink-750">{item.title}</CardTitle>
                   <item.icon className={`h-5 w-5 text-${item.color}-500`} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-gray-800">{item.value}</div>
+                  <div className="text-2xl font-semibold tracking-tight text-foreground">{item.value}</div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
           {filteredStations.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-800 mb-2">Aucune station trouvée</h3>
-              <p className="text-gray-500 mb-6">
+            <div className="bg-card rounded-lg shadow-md p-8 text-center">
+              <Building2 className="h-12 w-12 mx-auto text-ink-600 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Aucune station trouvée</h3>
+              <p className="text-muted-foreground mb-6">
                 {searchTerm
                   ? "Aucune station ne correspond à votre recherche. Essayez d'autres termes."
                   : "Aucune station n'a été ajoutée. Commencez par ajouter une nouvelle station."}
               </p>
               <Link href="/stations/add-station">
-                <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+                <Button>
                   <Plus className="mr-2 h-4 w-4" /> Ajouter une Station
                 </Button>
               </Link>
@@ -304,26 +301,25 @@ export default function StationDashboard() {
                 <AccordionItem
                   key={station._id}
                   value={station._id}
-                  className="bg-white rounded-xl shadow-lg border-0 overflow-hidden"
+                  className="bg-card rounded-xl shadow-xs border-0 overflow-hidden"
                 >
-                  <AccordionTrigger className="px-6 py-5 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200">
+                  <AccordionTrigger className="px-6 py-5 hover:bg-ink-50 transition-all duration-200">
                     <div className="flex justify-between items-center w-full">
                       <div className="flex items-center space-x-4">
                         <div
-                          className="flex items-center justify-center w-12 h-12 rounded-lg shadow-md"
-                          style={{ backgroundColor: "rgb(59, 130, 246)" }}
+                          className="flex items-center justify-center w-12 h-12 rounded-lg bg-secondary"
                         >
-                          <Building className="h-6 w-6 text-white" />
+                          <Building className="h-6 w-6 text-ink-750" />
                         </div>
                         <div className="text-left">
                           <div className="flex items-center space-x-3">
-                            <span className="text-xl font-bold text-gray-800">{station.name}</span>
-                            <Badge className="bg-blue-100 text-blue-800 border border-blue-200 font-medium">
+                            <span className="text-xl font-semibold text-foreground">{station.name}</span>
+                            <Badge className="border-border bg-muted text-ink-750 font-medium tabular-nums">
                               {station.code}
                             </Badge>
                             <Badge className={`font-medium ${getStationTypeColor(station.type)}`}>{station.type}</Badge>
                           </div>
-                          <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                          <div className="flex items-center space-x-4 mt-2 text-sm text-ink-750">
                             <div className="flex items-center space-x-1">
                               <MapPin className="h-4 w-4" />
                               <span>
@@ -342,69 +338,69 @@ export default function StationDashboard() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-9 w-9 p-0 hover:bg-blue-100 rounded-lg"
+                          className="h-9 w-9 p-0 hover:bg-info-subtle rounded-lg"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleEditStation(station)
                           }}
                         >
-                          <Edit className="h-4 w-4 text-blue-600" />
+                          <Edit className="h-4 w-4 text-info" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-9 w-9 p-0 hover:bg-red-100 rounded-lg"
+                          className="h-9 w-9 p-0 hover:bg-destructive-subtle rounded-lg"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDeleteClick(station)
                           }}
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                          <Trash2 className="h-4 w-4 text-destructive-text" />
                         </Button>
                       </div>
                     </div>
                   </AccordionTrigger>
 
-                  <AccordionContent className="px-6 py-6 bg-gray-50">
+                  <AccordionContent className="px-6 py-6 bg-background">
                     {/* Station Information Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                      <Card className="border-0 shadow-sm bg-white">
+                      <Card className="border-0 shadow-sm bg-card">
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-3">
-                            <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg">
-                              <MapPin className="h-5 w-5 text-green-600" />
+                            <div className="flex items-center justify-center w-10 h-10 bg-success-subtle rounded-lg">
+                              <MapPin className="h-5 w-5 text-success" />
                             </div>
                             <div>
-                              <h4 className="text-sm font-medium text-gray-500">Adresse</h4>
-                              <p className="text-sm font-semibold text-gray-800">{station.address}</p>
+                              <h4 className="text-sm font-medium text-muted-foreground">Adresse</h4>
+                              <p className="text-sm font-semibold text-foreground">{station.address}</p>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
 
-                      <Card className="border-0 shadow-sm bg-white">
+                      <Card className="border-0 shadow-sm bg-card">
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-3">
-                            <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-lg">
-                              <Building2 className="h-5 w-5 text-purple-600" />
+                            <div className="flex items-center justify-center w-10 h-10 bg-violet-subtle rounded-lg">
+                              <Building2 className="h-5 w-5 text-violet-text" />
                             </div>
                             <div>
-                              <h4 className="text-sm font-medium text-gray-500">Type de Station</h4>
-                              <p className="text-sm font-semibold text-gray-800">{station.type}</p>
+                              <h4 className="text-sm font-medium text-muted-foreground">Type de Station</h4>
+                              <p className="text-sm font-semibold text-foreground">{station.type}</p>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
 
-                      <Card className="border-0 shadow-sm bg-white">
+                      <Card className="border-0 shadow-sm bg-card">
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-3">
-                            <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
-                              <Users className="h-5 w-5 text-blue-600" />
+                            <div className="flex items-center justify-center w-10 h-10 bg-info-subtle rounded-lg">
+                              <Users className="h-5 w-5 text-info" />
                             </div>
                             <div>
-                              <h4 className="text-sm font-medium text-gray-500">Personnel</h4>
-                              <p className="text-sm font-semibold text-gray-800">
+                              <h4 className="text-sm font-medium text-muted-foreground">Personnel</h4>
+                              <p className="text-sm font-semibold text-foreground">
                                 {station.personnels?.length || 0} employés
                               </p>
                             </div>
@@ -414,15 +410,15 @@ export default function StationDashboard() {
                     </div>
 
                     {station.notes && (
-                      <Card className="border-0 shadow-sm bg-white mb-6">
+                      <Card className="border-0 shadow-sm bg-card mb-6">
                         <CardContent className="p-4">
                           <div className="flex items-start space-x-3">
-                            <div className="flex items-center justify-center w-10 h-10 bg-yellow-100 rounded-lg">
-                              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                            <div className="flex items-center justify-center w-10 h-10 bg-warning-subtle rounded-lg">
+                              <AlertTriangle className="h-5 w-5 text-warning-text" />
                             </div>
                             <div>
-                              <h4 className="text-sm font-medium text-gray-500 mb-1">Notes</h4>
-                              <p className="text-sm text-gray-700">{station.notes}</p>
+                              <h4 className="text-sm font-medium text-muted-foreground mb-1">Notes</h4>
+                              <p className="text-sm text-ink-800">{station.notes}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -432,16 +428,16 @@ export default function StationDashboard() {
                     <Separator className="my-6" />
 
                     {/* Personnel Section */}
-                    <div className="bg-white rounded-lg shadow-sm border-0 p-6">
+                    <div className="bg-card rounded-lg shadow-sm border-0 p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                          <UserCheck className="h-5 w-5 mr-2 text-blue-600" />
+                        <h3 className="text-lg font-semibold text-foreground flex items-center">
+                          <UserCheck className="h-5 w-5 mr-2 text-info" />
                           Personnel de la Station
                         </h3>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                          className="bg-info-subtle border-info-border text-info-text hover:bg-info-subtle"
                           onClick={() => {
                             router.push("/personnel/add-personnel")
                           }}
@@ -454,7 +450,7 @@ export default function StationDashboard() {
                         <div className="overflow-x-auto">
                           <Table>
                             <TableHeader>
-                              <TableRow className="bg-gray-50">
+                              <TableRow className="bg-background">
                                 <TableHead className="w-[60px]">Avatar</TableHead>
                                 <TableHead className="font-semibold">Nom Complet</TableHead>
                                 <TableHead className="font-semibold">Poste</TableHead>
@@ -466,13 +462,12 @@ export default function StationDashboard() {
                               {station.personnels.map((employee) => (
                                 <TableRow
                                   key={employee._id || employee.matricule}
-                                  className="hover:bg-blue-50 transition-colors duration-150"
+                                  className="hover:bg-ink-50 transition-colors duration-150"
                                 >
                                   <TableCell>
-                                    <Avatar className="h-10 w-10 border-2 border-gray-200">
+                                    <Avatar className="h-10 w-10 border-2 border-border">
                                       <AvatarFallback
-                                        className="text-white font-semibold"
-                                        style={{ backgroundColor: "rgb(59, 130, 246)" }}
+                                        className="font-semibold"
                                       >
                                         {getInitials(`${employee.firstName} ${employee.lastName}`)}
                                       </AvatarFallback>
@@ -480,14 +475,14 @@ export default function StationDashboard() {
                                   </TableCell>
                                   <TableCell>
                                     <div>
-                                      <div className="font-semibold text-gray-800">
+                                      <div className="font-semibold text-foreground">
                                         {employee.lastName} {employee.firstName}
                                       </div>
-                                      <div className="text-xs text-gray-500">ID: {employee.matricule}</div>
+                                      <div className="text-xs text-muted-foreground">ID: {employee.matricule}</div>
                                     </div>
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">
+                                    <Badge variant="outline" className="bg-background text-ink-800 border-input">
                                       {employee.poste}
                                     </Badge>
                                   </TableCell>
@@ -499,7 +494,7 @@ export default function StationDashboard() {
                                   <TableCell className="text-right">
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
+                                        <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-muted">
                                           <span className="sr-only">Open menu</span>
                                           <MoreHorizontal className="h-4 w-4" />
                                         </Button>
@@ -534,13 +529,13 @@ export default function StationDashboard() {
                           </Table>
                         </div>
                       ) : (
-                        <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border-2 border-dashed border-gray-300">
-                          <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                          <h4 className="text-lg font-semibold text-gray-600 mb-2">Aucun personnel assigné</h4>
-                          <p className="text-gray-500 mb-4">Cette station n'a pas encore d'employés assignés.</p>
+                        <div className="text-center py-12 bg-gradient-to-br from-ink-50 to-ink-50 rounded-lg border-2 border-dashed border-input">
+                          <Users className="h-12 w-12 mx-auto text-ink-600 mb-4" />
+                          <h4 className="text-lg font-semibold text-ink-750 mb-2">Aucun personnel assigné</h4>
+                          <p className="text-muted-foreground mb-4">Cette station n'a pas encore d'employés assignés.</p>
                           <Button
                             variant="outline"
-                            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            className="bg-info-subtle border-info-border text-info-text hover:bg-info-subtle"
                             onClick={() => {
                               router.push("/personnel/add-personnel")
                             }}
@@ -561,7 +556,7 @@ export default function StationDashboard() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center text-red-600">
+            <AlertDialogTitle className="flex items-center text-destructive-text">
               <AlertTriangle className="mr-2 h-5 w-5" />
               Confirmer la suppression
             </AlertDialogTitle>
@@ -576,7 +571,7 @@ export default function StationDashboard() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deletingStation}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive-hover"
             >
               {deletingStation ? (
                 <>

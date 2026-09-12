@@ -11,27 +11,32 @@ import {
   MapPin,
   FileText,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Edit } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { DetailItem, DetailList, DetailSection, DetailSkeleton, DocumentLink, PageError, TransferRoute } from "@/components/ui/detail-layout";
+import { EmployeeIdentity } from "@/components/ui/form-layout";
 
 
 // Status types with their display names and colors
 const statusTypes = {
   active: {
     label: "En cours",
-    color: "bg-green-100 text-green-800",
+    color: "border-info-border bg-info-subtle text-info-text",
   },
   upcoming: {
     label: "À venir",
-    color: "bg-blue-100 text-blue-800",
+    color: "border-input bg-card text-ink-750",
   },
   completed: {
     label: "Terminée",
-    color: "bg-gray-100 text-gray-800",
+    color: "border-border bg-muted text-ink-600",
   },
 };
 
@@ -120,232 +125,110 @@ export default function AffectationTemporaireDetailsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
-        <span className="mt-4 text-lg text-gray-500">Chargement...</span>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-red-500">
-        <p className="text-xl mb-4">{error}</p>
-        <Button
-          onClick={() => router.push("/affectation/temporaire")}
-          className="flex items-center"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la liste
-        </Button>
-      </div>
+      <PageError
+        title="Impossible de charger cette affectation"
+        message={error}
+        backHref="/affectation/temporaire"
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
   if (!affectation) return null;
 
-  // Determine the gradient color based on status
-  const headerGradient =
-    affectation.status === "active"
-      ? "bg-gradient-to-r from-green-500 to-green-600"
-      : affectation.status === "upcoming"
-      ? "bg-gradient-to-r from-blue-500 to-blue-600"
-      : "bg-gradient-to-r from-gray-500 to-gray-600";
+  // Same rule as the list: the period decides the status.
+  const today = new Date();
+  const statusKey =
+    affectation.status && statusTypes[affectation.status]
+      ? affectation.status
+      : today < new Date(affectation.startDate)
+        ? "upcoming"
+        : today <= new Date(affectation.endDate)
+          ? "active"
+          : "completed";
+  const status = statusTypes[statusKey];
+  const durationDays = Math.round(
+    (new Date(affectation.endDate) - new Date(affectation.startDate)) / (1000 * 60 * 60 * 24)
+  );
+  const formatDateTime = (value) =>
+    new Date(value).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/affectatio/temporaire")}
-            className="flex items-center"
-          >
-            <ArrowLeft className="mr-2 h-5 w-5" /> Retour
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/affectation/temporaire"
+        backLabel="Affectations temporaires"
+        title="Détails de l'affectation temporaire"
+        meta={<Badge className={status.color}>{status.label}</Badge>}
+        actions={
+          <Button onClick={() => router.push(`/affectation/temporaire/edit/${affectation._id}`)}>
+            <Edit className="h-4 w-4" />
+            Modifier
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Détails de l'Affectation Temporaire
-          </h1>
-          <div></div>
-        </div>
+        }
+      />
 
-        <Card className="max-w-4xl mx-auto shadow-2xl">
-          <CardHeader className={`${headerGradient} p-6 rounded-t-lg`}>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold text-white">
-                Affectation Temporaire
-              </CardTitle>
-              <Badge
-                className={`${
-                  statusTypes[affectation.status]?.color ||
-                  "bg-gray-200 text-gray-800"
-                } text-sm px-3 py-1`}
-              >
-                {statusTypes[affectation.status]?.label || "Statut inconnu"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8 bg-white">
-            <div className="space-y-6">
-              {/* Employé Info */}
-              <div className="border-b pb-4">
-                <Label className="block text-sm font-semibold text-gray-600">
-                  Employé
-                </Label>
-                <p className="mt-1 text-lg text-gray-800">
-                  {affectation.personnel?.firstName}{" "}
-                  {affectation.personnel?.lastName}
-                </p>
-              </div>
+      <DetailSection>
+        <EmployeeIdentity
+          firstName={affectation.personnel?.firstName}
+          lastName={affectation.personnel?.lastName}
+          matricule={affectation.personnel?.matricule}
+          meta={affectation.personnel?.poste}
+          size="lg"
+          highlighted
+        />
+      </DetailSection>
 
-              {/* Matricule */}
-              <div className="border-b pb-4">
-                <Label className="block text-sm font-semibold text-gray-600">
-                  Matricule
-                </Label>
-                <p className="mt-1 text-lg text-gray-800">
-                  {affectation.personnel?.matricule}
-                </p>
-              </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <DetailSection title="Affectation" className="xl:col-span-2">
+          <div className="space-y-5">
+            <TransferRoute
+              from={affectation.originStation?.name || affectation.stationOrigin}
+              to={affectation.affectedStation?.name || affectation.temporaryStation}
+              toLabel="Station temporaire"
+            />
+            <DetailList>
+              <DetailItem label="Date de début">{formatDate(affectation.startDate)}</DetailItem>
+              <DetailItem label="Date de fin">{formatDate(affectation.endDate)}</DetailItem>
+              <DetailItem label="Durée">
+                {durationDays > 0 ? `${durationDays} jour${durationDays > 1 ? "s" : ""}` : ""}
+              </DetailItem>
+              <DetailItem label="Statut">
+                <Badge className={status.color}>{status.label}</Badge>
+              </DetailItem>
+              <DetailItem label="Motif" full>
+                {affectation.reason || affectation.description}
+              </DetailItem>
+            </DetailList>
+          </div>
+        </DetailSection>
 
-              {/* Stations */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Station d'origine
-                  </Label>
-                  <div className="mt-1 flex items-center sdtext-lg text-gray-800">
-                    <Building className="mr-2 h-5 w-5 text-gray-500" />
-                    {affectation.stationOrigin}
-                  </div>
-                </div>
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Station temporaire
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <MapPin className="mr-2 h-5 w-5 text-blue-500" />
-                    {affectation.temporaryStation}
-                  </div>
-                </div>
-              </div>
-
-              {/* Dates */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Date de début
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Calendar className="mr-2 h-5 w-5 text-blue-500" />
-                    {formatDate(affectation.startDate)}
-                  </div>
-                </div>
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Date de fin
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Calendar className="mr-2 h-5 w-5 text-blue-500" />
-                    {formatDate(affectation.endDate)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Reason */}
-              <div className="border-b pb-4">
-                <Label className="block text-sm font-semibold text-gray-600">
-                  Motif de l'affectation
-                </Label>
-                <p className="mt-1 text-lg text-gray-800">
-                  {affectation.reason || "Aucun motif fourni"}
-                </p>
-              </div>
-
-              {/* Document */}
-              {affectation.document && (
-                <div className="border-b pb-4">
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Document justificatif
-                  </Label>
-                  <a
-                    href={`/document/${encodeURIComponent(
-                      affectation.document
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center text-lg text-blue-600 hover:underline"
-                  >
-                    <FileText className="mr-2 h-5 w-5" />
-                    Voir le document
-                  </a>
-                </div>
-              )}
-
-              {/* Date d'enregistrement */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Enregistrée le
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Clock className="mr-2 h-5 w-5 text-blue-500" />
-                    {new Date(affectation.createdAt).toLocaleString("fr-FR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-                {affectation.updatedAt &&
-                  affectation.updatedAt !== affectation.createdAt && (
-                    <div>
-                      <Label className="block text-sm font-semibold text-gray-600">
-                        Dernière modification
-                      </Label>
-                      <div className="mt-1 flex items-center text-lg text-gray-800">
-                        <Clock className="mr-2 h-5 w-5 text-blue-500" />
-                        {new Date(affectation.updatedAt).toLocaleString(
-                          "fr-FR",
-                          {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
-                        )}
-                      </div>
-                    </div>
-                  )}
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  router.push(`/affectation/temporaire/edit/${affectation._id}`)
-                }
-                className="flex items-center"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Modifier
-              </Button>
-              <Button
-                onClick={() => router.push("/affectation/temporaire")}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour à la liste
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <DetailSection title="Justificatif">
+          {affectation.document ? (
+            <DocumentLink
+              href={`/document/${encodeURIComponent(String(affectation.document).replace(/\\/g, "/"))}`}
+            />
+          ) : (
+            <p className="text-[13.5px] text-muted-foreground">Aucun document joint.</p>
+          )}
+          <dl className="mt-5 space-y-4 border-t border-border pt-4">
+            <DetailItem label="Enregistrée le">{formatDateTime(affectation.createdAt)}</DetailItem>
+            {affectation.updatedAt && affectation.updatedAt !== affectation.createdAt && (
+              <DetailItem label="Dernière modification">{formatDateTime(affectation.updatedAt)}</DetailItem>
+            )}
+          </dl>
+        </DetailSection>
       </div>
 
       <Toaster position="bottom-left" />

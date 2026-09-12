@@ -2,82 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * NSC Portal design system tokens (Claude Design: "NSC Design System").
+ * Values are "R G B" channels so Tailwind opacity modifiers work, e.g. bg-primary/80.
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-}
+    /* Base & surfaces */
+    --background: 246 247 249; /* #F6F7F9 */
+    --foreground: 16 21 28; /* #10151C */
+    --card: 255 255 255; /* #FFFFFF */
+    --card-foreground: 16 21 28; /* #10151C */
+    --popover: 255 255 255; /* #FFFFFF */
+    --popover-foreground: 16 21 28; /* #10151C */
+    --secondary: 237 239 243; /* #EDEFF3 */
+    --secondary-foreground: 16 21 28; /* #10151C */
+    --muted: 241 243 246; /* #F1F3F6 */
+    --muted-foreground: 99 112 127; /* #63707F */
+    --accent: 232 235 240; /* #E8EBF0 */
+    --accent-foreground: 16 21 28; /* #10151C */
+    --border: 226 230 236; /* #E2E6EC */
+    --input: 213 219 227; /* #D5DBE3 */
+    --ring: 16 21 28; /* #10151C */
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+    /* Brand: yellow is always a fill carrying ink text, never a text color */
+    --primary: 255 235 16; /* #FFEB10 */
+    --primary-foreground: 16 21 28; /* #10151C */
+    --primary-hover: 242 220 0; /* #F2DC00 */
+    --primary-subtle: 255 251 214; /* #FFFBD6 */
+    --primary-border: 244 233 160; /* #F4E9A0 */
+    --primary-strong: 217 201 0; /* #D9C900 */
+    --brand: 30 58 82; /* #1E3A52 */
+
+    /* Semantic */
+    --success: 15 123 85; /* #0F7B55 */
+    --success-subtle: 230 244 238; /* #E6F4EE */
+    --success-border: 198 229 216; /* #C6E5D8 */
+    --success-text: 11 94 65; /* #0B5E41 */
+    --warning: 194 65 12; /* #C2410C */
+    --warning-subtle: 253 237 229; /* #FDEDE5 */
+    --warning-border: 246 213 195; /* #F6D5C3 */
+    --warning-text: 154 52 10; /* #9A340A */
+    --destructive: 220 38 38; /* #DC2626 */
+    --destructive-hover: 185 28 28; /* #B91C1C */
+    --destructive-foreground: 255 255 255; /* #FFFFFF */
+    --destructive-subtle: 253 234 234; /* #FDEAEA */
+    --destructive-border: 246 207 207; /* #F6CFCF */
+    --destructive-text: 176 27 27; /* #B01B1B */
+    --info: 27 99 196; /* #1B63C4 */
+    --info-subtle: 232 240 252; /* #E8F0FC */
+    --info-border: 203 220 246; /* #CBDCF6 */
+    --info-text: 22 80 158; /* #16509E */
+    --teal: 14 116 144; /* #0E7490 */
+    --teal-subtle: 228 242 246; /* #E4F2F6 */
+    --teal-border: 194 224 233; /* #C2E0E9 */
+    --teal-text: 11 90 112; /* #0B5A70 */
+    --violet: 91 75 196; /* #5B4BC4 */
+    --violet-subtle: 238 236 251; /* #EEECFB */
+    --violet-border: 218 213 245; /* #DAD5F5 */
+    --violet-text: 73 59 163; /* #493BA3 */
+
+    /* Charts: one color per personnel status */
+    --chart-1: 15 123 85; /* #0F7B55 */
+    --chart-2: 27 99 196; /* #1B63C4 */
+    --chart-3: 14 116 144; /* #0E7490 */
+    --chart-4: 220 38 38; /* #DC2626 */
+    --chart-5: 194 65 12; /* #C2410C */
+    --chart-muted: 148 163 179; /* #94A3B3 */
+
+    /* Sidebar: white */
+    --sidebar-background: 255 255 255; /* #FFFFFF */
+    --sidebar-foreground: 72 84 95; /* #48545F */
+    --sidebar-muted: 99 112 127; /* #63707F */
+    --sidebar-primary: 255 235 16; /* #FFEB10 */
+    --sidebar-primary-foreground: 16 21 28; /* #10151C */
+    --sidebar-accent: 241 243 246; /* #F1F3F6 */
+    --sidebar-accent-foreground: 16 21 28; /* #10151C */
+    --sidebar-border: 226 230 236; /* #E2E6EC */
+    --sidebar-ring: 16 21 28; /* #10151C */
+
+    --radius: 8px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
 }
 
 /* Treat the cmdk group wrapper as transparent so child items are direct children again */

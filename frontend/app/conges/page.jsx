@@ -21,9 +21,11 @@ import {
   Clock,
   Plane,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -53,8 +55,8 @@ import {
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 // Leave types
 const leaveTypes = {
-  ordinaire: { label: "Ordinaire", color: "bg-blue-100 text-blue-800" },
-  anticipe: { label: "Anticipé", color: "bg-orange-100 text-orange-800" },
+  ordinaire: { label: "Ordinaire", color: "border-border bg-muted text-ink-750" },
+  anticipe: { label: "Anticipé", color: "border-violet-border bg-violet-subtle text-violet-text" },
 };
 const getLeaveStatusLabel = (dateDebut, dateRetour) => {
   const today = new Date();
@@ -76,8 +78,10 @@ const getLeaveStatusBadge = (dateDebut, dateRetour) => {
   const label = getLeaveStatusLabel(dateDebut, dateRetour);
   const info =
     label === "En cours"
-      ? { color: "bg-green-100 text-green-800" }
-      : { color: "bg-gray-100 text-gray-700" };
+      ? { color: "border-info-border bg-info-subtle text-info-text" }
+      : label === "Pas encore débuté"
+      ? { color: "border-input bg-card text-ink-750" }
+      : { color: "border-border bg-muted text-ink-600" };
 
   return <Badge className={info.color}>{label}</Badge>;
 };
@@ -174,7 +178,7 @@ export default function CongeMainPage() {
   const getLeaveTypeBadge = (type) => {
     const info = leaveTypes[type] || {
       label: "Inconnu",
-      color: "bg-gray-100 text-gray-800",
+      color: "border-border bg-muted text-ink-750",
     };
     return <Badge className={info.color}>{info.label}</Badge>;
   };
@@ -290,16 +294,15 @@ export default function CongeMainPage() {
   // above your CongeMainPage component:
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
 
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold">Gestion des Congés</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Gestion des Congés</h1>
         <Button
           onClick={() => router.push("/conges/add")}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
         >
-          <Plus className="mr-2" /> Ajouter un congé
+          <Plus className="mr-2 h-4 w-4" /> Ajouter un congé
         </Button>
       </div>
 
@@ -313,7 +316,7 @@ export default function CongeMainPage() {
             className="pl-10"
           />
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -322,7 +325,7 @@ export default function CongeMainPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
-                <Filter className="mr-2" /> Filtrer
+                <Filter className="mr-2 h-4 w-4" /> Filtrer
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[300px]">
@@ -409,7 +412,7 @@ export default function CongeMainPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
-                <SlidersHorizontal className="mr-2" /> Trier
+                <SlidersHorizontal className="mr-2 h-4 w-4" /> Trier
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -497,18 +500,16 @@ export default function CongeMainPage() {
       )}
 
       {/* Table */}
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="animate-spin" />
-            </div>
+            <TableSkeleton />
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <AlertTriangle size={32} className="mr-2" /> {error}
             </div>
           ) : paged.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <Plane size={48} className="mb-2" /> Aucun congé trouvé
             </div>
           ) : (
@@ -516,7 +517,7 @@ export default function CongeMainPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("employee")}
                     >
@@ -529,7 +530,7 @@ export default function CongeMainPage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("station")}
                     >
@@ -543,7 +544,7 @@ export default function CongeMainPage() {
                   </TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("dateDebut")}
                     >
@@ -557,7 +558,7 @@ export default function CongeMainPage() {
                   </TableHead>
 
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("dateRetour")}
                     >
@@ -570,7 +571,7 @@ export default function CongeMainPage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button variant="ghost" onClick={() => handleSort("duree")}>
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground" variant="ghost" onClick={() => handleSort("duree")}>
                       Durée{" "}
                       {sortConfig.key === "duree"
                         ? sortConfig.direction === "asc"
@@ -586,31 +587,31 @@ export default function CongeMainPage() {
               </TableHeader>
               <TableBody>
                 {paged.map((r) => (
-                  <TableRow key={r._id} className="hover:bg-gray-50">
+                  <TableRow key={r._id} className="hover:bg-background">
                     <TableCell>
                       {r.personnel.firstName} {r.personnel.lastName}
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {r.personnel.matricule}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Building className="inline mr-1" /> {r.station?.name}
+                      {r.station?.name}
                     </TableCell>
                     <TableCell>{getLeaveTypeBadge(r.typeConge)}</TableCell>
                     <TableCell>
-                      <Calendar className="inline mr-1" />{" "}
+                      
                       {formatDate(r.dateDebut)}
                     </TableCell>
                     <TableCell>
-                      <Calendar className="inline mr-1" />{" "}
+                      
                       {formatDate(r.dateRetour)}
                     </TableCell>
                     <TableCell>
-                      <Clock className="inline mr-1" /> {r.dureeConge} jour
+                      {r.dureeConge} jour
                       {r.dureeConge > 1 && "s"}
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-blue-600">
+                      <span className="font-medium tabular-nums text-foreground">
                         {calculateRemainingDays(r.dateDebut, r.dureeConge)} jour
                         {calculateRemainingDays(r.dateDebut, r.dureeConge) >
                           1 && "s"}
@@ -623,7 +624,7 @@ export default function CongeMainPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="p-0">
-                            <MoreHorizontal />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -631,19 +632,19 @@ export default function CongeMainPage() {
                           <DropdownMenuItem
                             onClick={() => router.push(`/conges/details/${r._id}`)}
                           >
-                            <Eye className="mr-2" /> Voir
+                            <Eye className="mr-2 h-4 w-4" /> Voir
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => router.push(`/conges/edit/${r._id}`)}
                           >
-                            <Edit className="mr-2" /> Modifier
+                            <Edit className="mr-2 h-4 w-4" /> Modifier
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            className="text-red-600"
+                            className="text-destructive-text"
                             onClick={() => handleDeleteClick(r)}
                           >
-                            <Trash2 className="mr-2" /> Supprimer
+                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -670,14 +671,14 @@ export default function CongeMainPage() {
               disabled={currentPage === 1}
               variant="outline"
             >
-              <ChevronLeft />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
               variant="outline"
             >
-              <ChevronRight />
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

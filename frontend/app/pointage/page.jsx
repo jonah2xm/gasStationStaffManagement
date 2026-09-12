@@ -3,10 +3,11 @@
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { EyeIcon, EyeOffIcon, Loader2, CheckCircle2, Clock, MapPin } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Toaster } from "@/components/ui/toaster";
+import { EyeIcon, EyeOffIcon, Loader2, CheckCircle2, Clock, MapPin, LogIn, LogOut } from "lucide-react";
 import { useState } from "react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 export default function PointagePage() {
     const [identifier, setIdentifier] = useState("");
@@ -61,63 +62,57 @@ export default function PointagePage() {
         setPointageSuccess(null);
     };
 
-    return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <Card className="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden border-none">
-                <CardHeader className="bg-blue-600 p-8 text-center relative">
-                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
-                        <div className="absolute -top-10 -left-10 w-40 h-40 bg-white rounded-full blur-3xl"></div>
-                        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white rounded-full blur-3xl"></div>
-                    </div>
-                    <div className="flex justify-center mb-4">
-                        <Image
-                            src="/naftalLogo.png"
-                            alt="Naftal Logo"
-                            width={100}
-                            height={100}
-                            className="object-contain"
-                        />
-                    </div>
-                    <h1 className="text-2xl font-bold text-white">Système de Pointage</h1>
-                    <p className="text-blue-100 text-sm opacity-80 mt-1">Veuillez vous identifier pour valider votre présence</p>
-                </CardHeader>
+    const isEntry = pointageSuccess?.type === "entrée";
 
-                <CardContent className="p-8">
+    return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+            <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-md">
+                <div className="flex items-center gap-3 border-b border-border px-6 py-5">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-card p-1">
+                        <Image src="/naftalLogo.png" alt="Naftal" width={34} height={34} className="object-contain" />
+                    </span>
+                    <div className="leading-tight">
+                        <h1 className="text-lg font-semibold text-foreground">Système de pointage</h1>
+                        <p className="text-[13px] text-muted-foreground">Identifiez-vous pour valider votre présence</p>
+                    </div>
+                </div>
+
+                <div className="p-6">
                     {!pointageSuccess ? (
-                        <form className="space-y-6" onSubmit={handleSubmit}>
+                        <form className="space-y-5" onSubmit={handleSubmit}>
                             <div className="space-y-2">
-                                <label htmlFor="identifier" className="text-sm font-semibold text-gray-700 block">
-                                    Matricule
-                                </label>
+                                <Label htmlFor="identifier">Matricule</Label>
                                 <Input
                                     id="identifier"
-                                    placeholder="EX: 123456"
+                                    placeholder="Ex : 123456"
                                     type="text"
+                                    inputMode="numeric"
+                                    autoComplete="username"
                                     value={identifier}
                                     onChange={(e) => setIdentifier(e.target.value)}
-                                    className="w-full h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-all bg-gray-50"
+                                    className="h-12 text-base tabular-nums"
                                     disabled={isLoading}
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label htmlFor="password" className="text-sm font-semibold text-gray-700 block">
-                                    Mot de passe
-                                </label>
+                                <Label htmlFor="password">Mot de passe</Label>
                                 <div className="relative">
                                     <Input
                                         id="password"
                                         type={showPassword ? "text" : "password"}
                                         placeholder="•••••"
+                                        autoComplete="current-password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-all bg-gray-50 pr-12"
+                                        className="h-12 pr-12 text-base"
                                         disabled={isLoading}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                                        className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[7px] text-ink-700 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                                         disabled={isLoading}
                                     >
                                         {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -125,71 +120,61 @@ export default function PointagePage() {
                                 </div>
                             </div>
 
-                            <Button
-                                type="submit"
-                                disabled={isLoading}
-                                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-lg font-bold shadow-md transform active:scale-95 transition-all"
-                            >
-                                {isLoading ? (
-                                    <Loader2 className="h-6 w-6 animate-spin" />
-                                ) : (
-                                    "Valider ma présence"
-                                )}
+                            <Button type="submit" size="lg" disabled={isLoading} className="h-12 w-full text-base">
+                                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Valider ma présence"}
                             </Button>
                         </form>
                     ) : (
-                        <div className="py-6 text-center animate-in fade-in zoom-in duration-300">
-                            <div className="flex justify-center mb-6">
-                                <div className="rounded-full bg-green-100 p-4">
-                                    <CheckCircle2 className="h-16 w-16 text-green-600" />
-                                </div>
-                            </div>
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Merci, {pointageSuccess.name} !</h2>
-                            <p className="text-gray-600 mb-8">Votre pointage a été enregistré avec succès.</p>
+                        <div className="text-center animate-in fade-in zoom-in-95 duration-300">
+                            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success-subtle">
+                                <CheckCircle2 className="h-9 w-9 text-success" />
+                            </span>
+                            <h2 className="mt-4 text-xl font-semibold text-foreground">Merci, {pointageSuccess.name} !</h2>
+                            <p className="mt-1 text-[13.5px] text-muted-foreground">Votre pointage a été enregistré avec succès.</p>
 
-                            <div className="bg-gray-50 rounded-2xl p-6 space-y-4 mb-8 text-left border border-gray-100">
-                                <div className="flex items-center gap-3">
-                                    <Clock className="h-5 w-5 text-blue-500" />
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Heure d'enregistrement</p>
-                                        <p className="text-lg font-medium text-gray-800">
-                                            {new Date(pointageSuccess.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                        </p>
-                                    </div>
+                            <dl className="mt-6 divide-y divide-border rounded-lg border border-border text-left">
+                                <div className="flex items-center gap-3 px-4 py-3">
+                                    <Clock className="h-4 w-4 shrink-0 text-ink-700" />
+                                    <dt className="flex-1 text-[13px] text-muted-foreground">Heure d'enregistrement</dt>
+                                    <dd className="text-[15px] font-semibold tabular-nums text-foreground">
+                                        {new Date(pointageSuccess.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    </dd>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <MapPin className="h-5 w-5 text-red-500" />
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Station / Lieu</p>
-                                        <p className="text-lg font-medium text-gray-800">{pointageSuccess.station}</p>
-                                    </div>
+                                <div className="flex items-center gap-3 px-4 py-3">
+                                    <MapPin className="h-4 w-4 shrink-0 text-ink-700" />
+                                    <dt className="flex-1 text-[13px] text-muted-foreground">Station</dt>
+                                    <dd className="text-[15px] font-semibold tabular-nums text-foreground">{pointageSuccess.station}</dd>
                                 </div>
-                                <div className="flex items-center gap-3 border-t border-gray-100 pt-4">
-                                    <div className={`h-2.5 w-2.5 rounded-full ${pointageSuccess.type === 'entrée' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Type de pointage</p>
-                                        <p className="text-lg font-bold text-gray-800 capitalize">{pointageSuccess.type}</p>
-                                    </div>
+                                <div className="flex items-center gap-3 px-4 py-3">
+                                    {isEntry ? <LogIn className="h-4 w-4 shrink-0 text-ink-700" /> : <LogOut className="h-4 w-4 shrink-0 text-ink-700" />}
+                                    <dt className="flex-1 text-[13px] text-muted-foreground">Type de pointage</dt>
+                                    <dd>
+                                        <span
+                                            className={`inline-flex h-7 items-center gap-1.5 rounded-sm border px-2.5 text-[13px] font-semibold capitalize ${
+                                                isEntry
+                                                    ? "border-success-border bg-success-subtle text-success-text"
+                                                    : "border-warning-border bg-warning-subtle text-warning-text"
+                                            }`}
+                                        >
+                                            <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${isEntry ? "bg-success" : "bg-warning"}`} />
+                                            {pointageSuccess.type}
+                                        </span>
+                                    </dd>
                                 </div>
-                            </div>
+                            </dl>
 
-                            <Button
-                                onClick={handleReset}
-                                variant="outline"
-                                className="w-full h-12 rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50"
-                            >
+                            <Button onClick={handleReset} variant="outline" size="lg" className="mt-6 h-12 w-full">
                                 Nouveau pointage
                             </Button>
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             <Toaster position="top-center" />
-
-            <div className="fixed bottom-6 text-gray-400 text-sm">
-                © 2024 Naftal Staff Connect • Système de Gestion du Personnel
-            </div>
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+                © 2024 Naftal Staff Connect · Système de gestion du personnel
+            </p>
         </div>
     );
 }

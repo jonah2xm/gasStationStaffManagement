@@ -21,9 +21,11 @@ import {
   Clock,
   Plane,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -54,21 +56,21 @@ import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 const recoveryTypes = {
   heures_supplementaires: {
     label: "Heures supplémentaires",
-    color: "bg-blue-100 text-blue-800",
+    color: "border-border bg-muted text-ink-750",
   },
   travail_weekend: {
     label: "Travail weekend",
-    color: "bg-green-100 text-green-800",
+    color: "border-border bg-muted text-ink-750",
   },
   jour_ferie: {
     label: "Jour férié travaillé",
-    color: "bg-purple-100 text-purple-800",
+    color: "border-border bg-muted text-ink-750",
   },
   mission_prolongee: {
     label: "Mission prolongée",
-    color: "bg-orange-100 text-orange-800",
+    color: "border-border bg-muted text-ink-750",
   },
-  astreinte: { label: "Astreinte", color: "bg-red-100 text-red-800" },
+  astreinte: { label: "Astreinte", color: "border-border bg-muted text-ink-750" },
 };
 
 export default function RecuperationMainPage() {
@@ -154,7 +156,7 @@ export default function RecuperationMainPage() {
   const getRecoveryTypeBadge = (type) => {
     const typeInfo = recoveryTypes[type] || {
       label: "Inconnu",
-      color: "bg-gray-100 text-gray-800",
+      color: "border-border bg-muted text-ink-750",
     };
     return <Badge className={typeInfo.color}>{typeInfo.label}</Badge>;
   };
@@ -279,16 +281,15 @@ export default function RecuperationMainPage() {
   const paged = sorted.slice(startIndex, endIndex);
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
 
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold">Gestion des Récupérations</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Gestion des Récupérations</h1>
         <Button
           onClick={() => router.push("/recuperations/add")}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
         >
-          <Plus className="mr-2" /> Ajouter une récupération
+          <Plus className="mr-2 h-4 w-4" /> Ajouter une récupération
         </Button>
       </div>
 
@@ -302,7 +303,7 @@ export default function RecuperationMainPage() {
             className="pl-10"
           />
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -313,7 +314,7 @@ export default function RecuperationMainPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
-                <Filter className="mr-2" /> Filtrer
+                <Filter className="mr-2 h-4 w-4" /> Filtrer
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[300px]">
@@ -363,7 +364,7 @@ export default function RecuperationMainPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
-                <SlidersHorizontal className="mr-2" /> Trier
+                <SlidersHorizontal className="mr-2 h-4 w-4" /> Trier
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -445,18 +446,16 @@ export default function RecuperationMainPage() {
       )}
 
       {/* Table */}
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="animate-spin" />
-            </div>
+            <TableSkeleton />
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <AlertTriangle size={32} className="mr-2" /> {error}
             </div>
           ) : paged.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <Plane size={48} className="mb-2" /> Aucune récupération trouvée
             </div>
           ) : (
@@ -464,7 +463,7 @@ export default function RecuperationMainPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("employee")}
                     >
@@ -477,7 +476,7 @@ export default function RecuperationMainPage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("station")}
                     >
@@ -491,7 +490,7 @@ export default function RecuperationMainPage() {
                   </TableHead>
 
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("dateDebut")}
                     >
@@ -504,7 +503,7 @@ export default function RecuperationMainPage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("dateRetour")}
                     >
@@ -517,7 +516,7 @@ export default function RecuperationMainPage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button variant="ghost" onClick={() => handleSort("duree")}>
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground" variant="ghost" onClick={() => handleSort("duree")}>
                       Durée{" "}
                       {sortConfig.key === "duree"
                         ? sortConfig.direction === "asc"
@@ -532,32 +531,32 @@ export default function RecuperationMainPage() {
               </TableHeader>
               <TableBody>
                 {paged.map((r) => (
-                  <TableRow key={r._id} className="hover:bg-gray-50">
+                  <TableRow key={r._id} className="hover:bg-background">
                     <TableCell>
                       {r.personnelId.firstName} {r.personnelId.lastName}
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {r.personnelId.matricule}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Building className="inline mr-1" />{" "}
+                      
                       {r.stationName || "Non défini"}
                     </TableCell>
                     <TableCell>
-                      <Calendar className="inline mr-1" />{" "}
+                      
                       {formatDate(r.dateDebut)}
                     </TableCell>
                     <TableCell>
-                      <Calendar className="inline mr-1" />{" "}
+                      
                       {formatDate(r.dateRetour)}
                     </TableCell>
                     <TableCell>
-                      <Clock className="inline mr-1" /> {r.dureeRecuperation}{" "}
+                      {r.dureeRecuperation}{" "}
                       jour
                       {Number.parseInt(r.dureeRecuperation) > 1 ? "s" : ""}
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-blue-600">
+                      <span className="font-medium text-info">
                         {calculateRemainingDays(
                           r.dateDebut,
                           r.dureeRecuperation
@@ -575,7 +574,7 @@ export default function RecuperationMainPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="p-0">
-                            <MoreHorizontal />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -585,21 +584,21 @@ export default function RecuperationMainPage() {
                               router.push(`/recuperations/details/${r._id}`)
                             }
                           >
-                            <Eye className="mr-2" /> Voir
+                            <Eye className="mr-2 h-4 w-4" /> Voir
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
                               router.push(`/recuperations/edit/${r._id}`)
                             }
                           >
-                            <Edit className="mr-2" /> Modifier
+                            <Edit className="mr-2 h-4 w-4" /> Modifier
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(r)}
-                            className="text-red-600"
+                            className="text-destructive-text"
                           >
-                            <Trash2 className="mr-2" /> Supprimer
+                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -625,14 +624,14 @@ export default function RecuperationMainPage() {
               disabled={currentPage === 1}
               variant="outline"
             >
-              <ChevronLeft />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
               variant="outline"
             >
-              <ChevronRight />
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

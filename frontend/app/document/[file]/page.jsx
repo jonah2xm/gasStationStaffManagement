@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import toast, { Toaster } from "react-hot-toast"
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster"
+import { DetailSkeleton, PageError } from "@/components/ui/detail-layout"
 
 export default function DocumentViewerPage() {
   const router = useRouter()
@@ -89,161 +91,72 @@ export default function DocumentViewerPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-600">Chargement du document...</p>
-        </div>
-      </div>
-    )
+    return <DetailSkeleton />
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Erreur de chargement</h3>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <div className="flex space-x-2 justify-center">
-                <Button variant="outline" onClick={() => router.back()}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Retour
-                </Button>
-                <Button onClick={handleRefresh}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Réessayer
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <PageError
+        title="Erreur de chargement"
+        message={error}
+        onRetry={handleRefresh}
+      />
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" onClick={() => router.back()} className="flex items-center">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour
-              </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-gray-900">{documentInfo.filename}</h1>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                      {documentInfo.type}
-                    </Badge>
-                    <span>•</span>
-                    <span>Modifié le {documentInfo.lastModified}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={handleDownload} className="flex items-center bg-transparent">
-                <Download className="mr-2 h-4 w-4" />
-                Télécharger
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(pdfUrl, "_blank")}
-                className="flex items-center"
-              >
-                <Maximize2 className="mr-2 h-4 w-4" />
-                Plein écran
-              </Button>
-            </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-6 lg:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button variant="outline" size="icon" onClick={() => router.back()} aria-label="Retour" title="Retour">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span
+            aria-hidden
+            className="flex h-10 w-[34px] shrink-0 items-center justify-center rounded-[5px] border border-destructive-border bg-destructive-subtle text-[10px] font-bold text-destructive-text"
+          >
+            PDF
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold text-foreground">{documentInfo.filename}</h1>
+            <p className="text-xs tabular-nums text-muted-foreground">
+              Document {documentInfo.type} · ouvert le {documentInfo.lastModified}
+            </p>
           </div>
         </div>
-      </header>
 
-      {/* Document Viewer */}
-      <main className="flex-1 container mx-auto px-6 py-6">
-        <Card className="h-full shadow-lg">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5 text-blue-600" />
-                <span>Visualiseur de Document</span>
-              </CardTitle>
-
-              {/* Viewer Controls */}
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm" title="Zoom avant">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" title="Zoom arrière">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" title="Rotation">
-                  <RotateCw className="h-4 w-4" />
-                </Button>
-                <Separator orientation="vertical" className="h-4" />
-                <Button variant="ghost" size="sm" onClick={handleRefresh} title="Actualiser">
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-0">
-            <div className="relative bg-gray-100 rounded-b-lg overflow-hidden">
-              {pdfUrl ? (
-                <iframe
-                  src={pdfUrl}
-                  className="w-full h-[calc(100vh-12rem)] border-0"
-                  title="Document PDF"
-                  style={{ minHeight: "600px" }}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-96 text-gray-500">
-                  <div className="text-center">
-                    <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg">Aucun document à afficher</p>
-                    <p className="text-sm">Le document demandé n'a pas pu être chargé</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t py-4">
-        <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="flex items-center space-x-4">
-              <span>Visualiseur PDF intégré</span>
-              <Separator orientation="vertical" className="h-4" />
-              <span>Prise en charge des formats PDF</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span>Powered by</span>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                NAFTAL
-              </Badge>
-            </div>
-          </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={handleRefresh} aria-label="Actualiser" title="Actualiser">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={() => window.open(pdfUrl, "_blank")} disabled={!pdfUrl}>
+            <Maximize2 className="h-4 w-4" />
+            Plein écran
+          </Button>
+          <Button onClick={handleDownload} disabled={!pdfUrl}>
+            <Download className="h-4 w-4" />
+            Télécharger
+          </Button>
         </div>
-      </footer>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-muted shadow-xs">
+        {pdfUrl ? (
+          <iframe
+            src={pdfUrl}
+            title={`Document ${documentInfo.filename}`}
+            className="h-[calc(100vh-13rem)] min-h-[560px] w-full border-0 bg-card"
+          />
+        ) : (
+          <div className="flex h-96 flex-col items-center justify-center gap-2 text-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary">
+              <FileText className="h-5 w-5 text-ink-700" />
+            </span>
+            <p className="text-[15px] font-semibold text-foreground">Aucun document à afficher</p>
+            <p className="text-[13.5px] text-muted-foreground">Le document demandé n'a pas pu être chargé.</p>
+          </div>
+        )}
+      </div>
 
       <Toaster position="bottom-left" />
     </div>

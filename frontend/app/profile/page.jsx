@@ -7,6 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 
 import { User, Mail, Shield, Calendar, CheckCircle, Loader2, AlertCircle } from "lucide-react"
+import Link from "next/link"
+import { Settings } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/ui/page-header"
+import { DetailItem, DetailList, DetailSection, DetailSkeleton, PageError } from "@/components/ui/detail-layout"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -40,12 +46,12 @@ export default function ProfilePage() {
 
   const getRoleBadge = (role) => {
     const roleConfig = {
-      administrateur: { label: "Administrateur", color: "bg-red-100 text-red-800" },
-      consultant: { label: "Consultant", color: "bg-blue-100 text-blue-800" },
-      "chef station": { label: "Chef Station", color: "bg-green-100 text-green-800" },
+      administrateur: { label: "Administrateur", color: "border-foreground bg-foreground text-white" },
+      consultant: { label: "Consultant", color: "border-brand bg-card text-brand" },
+      "chef station": { label: "Chef station", color: "border-teal bg-card text-teal-text" },
     }
 
-    const config = roleConfig[role] || { label: role, color: "bg-gray-100 text-gray-800" }
+    const config = roleConfig[role] || { label: role, color: "border-border bg-muted text-ink-750" }
     return <Badge className={config.color}>{config.label}</Badge>
   }
 
@@ -60,112 +66,74 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
+    return <DetailSkeleton />
   }
 
   if (!user) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-          <p className="text-gray-600">Erreur lors du chargement du profil</p>
-        </div>
-      </div>
+      <PageError
+        title="Erreur lors du chargement du profil"
+        message="Votre session a peut-être expiré. Reconnectez-vous puis réessayez."
+        onRetry={() => window.location.reload()}
+      />
     )
   }
 
+  const initials = (user.username || "?").slice(0, 2).toUpperCase()
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
- 
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        title="Mon profil"
+        description="Les informations de votre compte NSC Portal."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/settings">
+              <Settings className="h-4 w-4" />
+              Paramètres
+            </Link>
+          </Button>
+        }
+      />
 
-
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Mon Profil</h1>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Overview */}
-          <div className="lg:col-span-1">
-            <Card className="bg-white shadow-lg">
-              <CardHeader className="text-center pb-4">
-                <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="h-12 w-12 text-blue-600" />
-                </div>
-                <CardTitle className="text-xl">{user.username}</CardTitle>
-                <div className="mt-2">{getRoleBadge(user.role)}</div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">{user.email}</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Shield className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">Rôle: {user.role}</span>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <p className="text-sm font-medium">Membre depuis</p>
-                      <p className="text-xs text-gray-500">{formatDate(user.createdAt)}</p>
-                    </div>
-                  </div>
-                  {user.updatedAt !== user.createdAt && (
-                    <div className="flex items-center space-x-3">
-                      <CheckCircle className="h-4 w-4 text-gray-500" />
-                      <div>
-                        <p className="text-sm font-medium">Dernière modification</p>
-                        <p className="text-xs text-gray-500">{formatDate(user.updatedAt)}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+      <section className="rounded-lg border border-border bg-card px-5 py-5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              aria-hidden
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-info text-lg font-semibold text-primary"
+            >
+              {initials}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold text-foreground">{user.username}</p>
+              <p className="truncate text-[13px] text-muted-foreground">{user.email}</p>
+            </div>
           </div>
-
-          {/* Profile Details */}
-          <div className="lg:col-span-2">
-            <Card className="bg-white shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="mr-2 h-5 w-5" />
-                  Informations du Profil
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Username */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Nom d'utilisateur</label>
-                  <p className="text-gray-800 bg-gray-50 p-3 rounded-md">{user.username}</p>
-                </div>
-
-                {/* Email */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Adresse email</label>
-                  <p className="text-gray-800 bg-gray-50 p-3 rounded-md">{user.email}</p>
-                </div>
-
-                {/* Role */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Rôle</label>
-                  <div className="bg-gray-50 p-3 rounded-md">{getRoleBadge(user.role)}</div>
-                </div>
-
-                <Separator />
-
-
-              </CardContent>
-            </Card>
-          </div>
+          <StatusBadge kind="role" value={user.role} />
         </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <DetailSection title="Compte" className="xl:col-span-2">
+          <DetailList>
+            <DetailItem label="Nom d'utilisateur">{user.username}</DetailItem>
+            <DetailItem label="Adresse email">{user.email}</DetailItem>
+            <DetailItem label="Rôle">
+              <StatusBadge kind="role" value={user.role} />
+            </DetailItem>
+            <DetailItem label="Station">{user.occupiedStation}</DetailItem>
+          </DetailList>
+        </DetailSection>
+
+        <DetailSection title="Activité">
+          <dl className="space-y-4">
+            <DetailItem label="Membre depuis">{user.createdAt ? formatDate(user.createdAt) : ""}</DetailItem>
+            {user.updatedAt && user.updatedAt !== user.createdAt && (
+              <DetailItem label="Dernière modification">{formatDate(user.updatedAt)}</DetailItem>
+            )}
+          </dl>
+        </DetailSection>
       </div>
     </div>
   )

@@ -19,9 +19,11 @@ import {
   Building,
   MapPin,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 import { Button } from "@/components/ui/button";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,8 +53,8 @@ import {
 
 // Status types
 const statusTypes = {
-  active: { label: "Active", color: "bg-green-100 text-green-800" },
-  pending: { label: "En attente", color: "bg-yellow-100 text-yellow-800" },
+  active: { label: "Active", color: "border-success-border bg-success-subtle text-success-text" },
+  pending: { label: "En attente", color: "border-input bg-card text-ink-750" },
 };
 
 export default function AffectationDefinitivePage() {
@@ -246,16 +248,15 @@ export default function AffectationDefinitivePage() {
   const paged = sorted.slice(startIndex, endIndex);
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
   
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold">Affectations Définitives</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Affectations Définitives</h1>
         <Button
           onClick={() => router.push("/affectation/definitif/add")}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
         >
-          <Plus className="mr-2" /> Ajouter
+          <Plus className="mr-2 h-4 w-4" /> Ajouter
         </Button>
       </div>
 
@@ -269,7 +270,7 @@ export default function AffectationDefinitivePage() {
             className="pl-10"
           />
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -280,7 +281,7 @@ export default function AffectationDefinitivePage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
-                <Filter className="mr-2" /> Filtrer
+                <Filter className="mr-2 h-4 w-4" /> Filtrer
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[300px]">
@@ -346,7 +347,7 @@ export default function AffectationDefinitivePage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
-                <SlidersHorizontal className="mr-2" /> Trier
+                <SlidersHorizontal className="mr-2 h-4 w-4" /> Trier
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -422,18 +423,16 @@ export default function AffectationDefinitivePage() {
       )}
 
       {/* Table */}
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="animate-spin" />
-            </div>
+            <TableSkeleton />
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <AlertTriangle size={32} className="mr-2" /> {error}
             </div>
           ) : paged.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <MapPin size={48} className="mb-2" /> Aucune donnée
             </div>
           ) : (
@@ -441,7 +440,7 @@ export default function AffectationDefinitivePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("employee")}
                     >
@@ -454,7 +453,7 @@ export default function AffectationDefinitivePage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("origin")}
                     >
@@ -467,7 +466,7 @@ export default function AffectationDefinitivePage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button variant="ghost" onClick={() => handleSort("dest")}>
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground" variant="ghost" onClick={() => handleSort("dest")}>
                       Destination{" "}
                       {sortConfig.key === "dest"
                         ? sortConfig.direction === "asc"
@@ -477,7 +476,7 @@ export default function AffectationDefinitivePage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("startDate")}
                     >
@@ -495,19 +494,19 @@ export default function AffectationDefinitivePage() {
               </TableHeader>
               <TableBody>
                 {paged.map((r) => (
-                  <TableRow key={r._id} className="hover:bg-gray-50">
+                  <TableRow key={r._id} className="hover:bg-background">
                     <TableCell>
                       {r.personnel.firstName} {r.personnel.lastName}
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {r.personnel.matricule}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Building className="inline mr-1" />{" "}
+                      
                       {r.originStation.name}
                     </TableCell>
                     <TableCell>
-                      <MapPin className="inline mr-1" />{" "}
+                      
                       {r.affectedStation.name}
                     </TableCell>
                     <TableCell>{formatDate(r.startDate)}</TableCell>
@@ -516,7 +515,7 @@ export default function AffectationDefinitivePage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="p-0">
-                            <MoreHorizontal />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -526,7 +525,7 @@ export default function AffectationDefinitivePage() {
                               router.push(`/affectation/definitif/details/${r._id}`)
                             }
                           >
-                            <Eye className="mr-2" /> Voir
+                            <Eye className="mr-2 h-4 w-4" /> Voir
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
@@ -535,14 +534,14 @@ export default function AffectationDefinitivePage() {
                               )
                             }
                           >
-                            <Edit className="mr-2" /> Modifier
+                            <Edit className="mr-2 h-4 w-4" /> Modifier
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(r)}
-                            className="text-red-600"
+                            className="text-destructive-text"
                           >
-                            <Trash2 className="mr-2" /> Supprimer
+                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -568,14 +567,14 @@ export default function AffectationDefinitivePage() {
               disabled={currentPage === 1}
               variant="outline"
             >
-              <ChevronLeft />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
               variant="outline"
             >
-              <ChevronRight />
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

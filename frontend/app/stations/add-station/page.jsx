@@ -31,7 +31,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
+import { Save } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { Field, FormActions, FormSection } from "@/components/ui/form-layout";
+import { StatusDialog } from "@/components/ui/status-dialog";
 
 const stationTypes = ["Urbaine", "Rurale", "Autoroute", "Airport"];
 
@@ -235,256 +240,161 @@ export default function AddStation() {
     router.push("/stations");
   };
 
+  const stationTypeLabels = { Airport: "Aéroport" };
+  const fieldError = (field) => (touched[field] && errors[field]) || undefined;
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/stations"
+        backLabel="Stations"
+        title="Nouvelle station"
+        description="Enregistrez une station-service : code, nom, localisation et type."
+      />
 
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Ajouter une Nouvelle Station
-        </h1>
-        <Button variant="outline" onClick={() => router.push("/stations")}>
-          Retour au Tableau de Bord
-        </Button>
-      </div>
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+        <FormSection title="Identification" description="Le code ne contient que des lettres, des chiffres et des tirets.">
+          <Field label="Code station" htmlFor="code" required error={fieldError("code")}>
+            <Input
+              type="text"
+              id="code"
+              name="code"
+              value={stationData.code}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("code")}
+              aria-invalid={!!fieldError("code")}
+              placeholder="Ex : GD-R3120"
+              disabled={loading}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Nom de la station" htmlFor="name" required error={fieldError("name")}>
+            <Input
+              type="text"
+              id="name"
+              name="name"
+              value={stationData.name}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("name")}
+              aria-invalid={!!fieldError("name")}
+              placeholder="Ex : GD R3120"
+              disabled={loading}
+            />
+          </Field>
+          <Field label="Type de station" htmlFor="type" required error={fieldError("type")}>
+            <Select
+              onValueChange={handleSelectChange}
+              value={stationData.type}
+              onOpenChange={() => !stationData.type && handleBlur("type")}
+              disabled={loading}
+            >
+              <SelectTrigger id="type" aria-invalid={!!fieldError("type")}>
+                <SelectValue placeholder="Sélectionnez le type de station" />
+              </SelectTrigger>
+              <SelectContent>
+                {stationTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {stationTypeLabels[type] || type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </FormSection>
 
-      <Card className="max-w-4xl mx-auto bg-white">
-        <CardHeader>
-          <CardTitle>Détails de la Station</CardTitle>
-          <CardDescription>
-            Entrez les détails de la nouvelle station ci-dessous.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="code">Code Station*</Label>
-                <Input
-                  type="text"
-                  id="code"
-                  name="code"
-                  value={stationData.code}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("code")}
-                  className={
-                    touched.code && errors.code ? "border-red-500" : ""
-                  }
-                  placeholder="Entrez le code de la station"
-                  disabled={loading}
-                />
-                {touched.code && errors.code && (
-                  <p className="text-red-500 text-sm">{errors.code}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Nom Station*</Label>
-                <Input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={stationData.name}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("name")}
-                  className={
-                    touched.name && errors.name ? "border-red-500" : ""
-                  }
-                  placeholder="Entrez le nom de la station"
-                  disabled={loading}
-                />
-                {touched.name && errors.name && (
-                  <p className="text-red-500 text-sm">{errors.name}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Adresse*</Label>
-                <Input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={stationData.address}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("address")}
-                  className={
-                    touched.address && errors.address ? "border-red-500" : ""
-                  }
-                  placeholder="Entrez l'adresse"
-                  disabled={loading}
-                />
-                {touched.address && errors.address && (
-                  <p className="text-red-500 text-sm">{errors.address}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="city">Ville*</Label>
-                <Input
-                  type="text"
-                  id="city"
-                  name="city"
-                  value={stationData.city}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("city")}
-                  className={
-                    touched.city && errors.city ? "border-red-500" : ""
-                  }
-                  placeholder="Entrez la ville"
-                  disabled={loading}
-                />
-                {touched.city && errors.city && (
-                  <p className="text-red-500 text-sm">{errors.city}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state">Wilaya*</Label>
-                <Input
-                  type="text"
-                  id="state"
-                  name="state"
-                  value={stationData.state}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur("state")}
-                  className={
-                    touched.state && errors.state ? "border-red-500" : ""
-                  }
-                  placeholder="Entrez la wilaya"
-                  disabled={loading}
-                />
-                {touched.state && errors.state && (
-                  <p className="text-red-500 text-sm">{errors.state}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Type Station*</Label>
-                <Select
-                
-                  onValueChange={handleSelectChange}
-                  value={stationData.type}
-                  onOpenChange={() => !stationData.type && handleBlur("type")}
-                  disabled={loading}
-                >
-                  <SelectTrigger
-                    className={
-                      touched.type && errors.type ? "border-red-500" : ""
-                    }
-                  >
-                    <SelectValue placeholder="Sélectionnez le type de station" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stationTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {touched.type && errors.type && (
-                  <p className="text-red-500 text-sm">{errors.type}</p>
-                )}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes Additionnelles</Label>
-              <Textarea
-                id="notes"
-                name="notes"
-                value={stationData.notes}
-                onChange={handleInputChange}
-                placeholder="Entrez des informations supplémentaires sur la station"
-                rows={4}
-                disabled={loading}
-              />
-            </div>
-            <div className="flex justify-end space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/stations")}
-                disabled={loading}
-              >
-                Annuler
-              </Button>
-              <Button type="submit" variant='submit' disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Ajout en cours...
-                  </>
-                ) : (
-                  "Ajouter Station"
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-      <div className="mt-4 text-center text-sm text-gray-500">
-        <AlertTriangle className="inline-block mr-1" size={16} />
-        Les champs marqués avec * sont obligatoires.
-      </div>
+        <FormSection title="Localisation" description="Adresse complète de la station.">
+          <Field label="Adresse" htmlFor="address" required full error={fieldError("address")}>
+            <Input
+              type="text"
+              id="address"
+              name="address"
+              value={stationData.address}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("address")}
+              aria-invalid={!!fieldError("address")}
+              placeholder="Entrez l'adresse"
+              disabled={loading}
+            />
+          </Field>
+          <Field label="Ville" htmlFor="city" required error={fieldError("city")}>
+            <Input
+              type="text"
+              id="city"
+              name="city"
+              value={stationData.city}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("city")}
+              aria-invalid={!!fieldError("city")}
+              placeholder="Ex : Béjaïa"
+              disabled={loading}
+            />
+          </Field>
+          <Field label="Wilaya" htmlFor="state" required error={fieldError("state")}>
+            <Input
+              type="text"
+              id="state"
+              name="state"
+              value={stationData.state}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("state")}
+              aria-invalid={!!fieldError("state")}
+              placeholder="Ex : Béjaïa"
+              disabled={loading}
+            />
+          </Field>
+        </FormSection>
 
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-green-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Station Ajoutée avec Succès
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              La station a été ajoutée avec succès. Vous pouvez maintenant la
-              voir dans le tableau de bord des stations.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSuccessConfirm}>
-              Retour au Tableau de Bord
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <FormSection title="Notes" description="Informations utiles pour les gestionnaires.">
+          <Field label="Notes additionnelles" htmlFor="notes" full hint="Optionnel.">
+            <Textarea
+              id="notes"
+              name="notes"
+              value={stationData.notes}
+              onChange={handleInputChange}
+              placeholder="Travaux, horaires particuliers…"
+              rows={4}
+              disabled={loading}
+            />
+          </Field>
+        </FormSection>
 
-      {/* Error Dialog */}
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              Erreur
-            </AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
-              Fermer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <FormActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/stations")} disabled={loading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Ajout en cours…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Ajouter la station
+              </>
+            )}
+          </Button>
+        </FormActions>
+      </form>
+
+      <StatusDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        title="Station ajoutée"
+        description={`La station ${stationData.name} est maintenant disponible dans la liste des stations.`}
+        actionLabel="Voir les stations"
+        onAction={handleSuccessConfirm}
+      />
+      <StatusDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        variant="error"
+        title="Échec de l'ajout"
+        description={errorMessage}
+        actionLabel="Fermer"
+        onAction={() => setShowErrorDialog(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

@@ -1,8 +1,5 @@
 // controllers/authController.js
-const jwt = require("jsonwebtoken");
-
-// Example: a function to fetch the user from DB by ID (adjust as needed)
-const User = require("../models/userModel"); // Replace with your actual User model
+const User = require("../models/userModel");
 
 exports.getMe = async (req, res) => {
   try {

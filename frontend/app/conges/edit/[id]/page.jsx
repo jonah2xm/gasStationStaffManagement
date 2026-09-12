@@ -14,7 +14,8 @@ import {
   Plane,
   File,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CalendarClock } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { ComputedValue, EmployeeIdentity, Field, FileDropzone, FormActions, FormSection, FormSkeleton, InputWithIcon, UnitInput, formatDateFr } from "@/components/ui/form-layout";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusDialog } from "@/components/ui/status-dialog";
 
 export default function EditCongePage() {
   const router = useRouter();
@@ -344,370 +350,162 @@ export default function EditCongePage() {
   };
 
   if (initialLoading) {
-    return (
-      <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="animate-spin h-8 w-8" />
-          <span className="ml-2">Chargement des données...</span>
-        </div>
-      </div>
-    );
+    return <FormSkeleton />;
   }
 
+  const holidaysLeft = selectedPersonnel ? Number(selectedPersonnel.holidaysLeft ?? 0) : null;
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/conges"
+        backLabel="Congés"
+        title="Modifier le congé"
+        meta={<StatusBadge kind="conge" value={formData.typeConge} />}
+        description={
+          selectedPersonnel
+            ? `${selectedPersonnel.firstName} ${selectedPersonnel.lastName} · ${selectedPersonnel.matricule}`
+            : "Modifiez les informations relatives au congé de l'employé."
+        }
+      />
 
-
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Modifier le Congé</h1>
-        <Button variant="outline" onClick={() => router.push("/conges")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Retour à la liste
-        </Button>
-      </div>
-
-      <Card className="max-w-4xl mx-auto bg-white">
-        <CardHeader>
-          <CardTitle>Modifier le Congé</CardTitle>
-          <CardDescription>
-            Modifiez les informations relatives au congé de l'employé.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personnel Display (Read-only) */}
-            <div className="space-y-2">
-              <Label>Employé</Label>
-              <div className="flex items-center p-3 border rounded-md bg-gray-50">
-                <Avatar className="h-8 w-8 mr-3">
-                  <AvatarFallback className="bg-blue-100 text-blue-800">
-                    {selectedPersonnel &&
-                      getInitials(
-                        `${selectedPersonnel.firstName} ${selectedPersonnel.lastName}`
-                      )}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="font-medium text-gray-800">
-                    {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {selectedPersonnel?.matricule}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                L'employé ne peut pas être modifié lors de l'édition.
-              </p>
-            </div>
-
-            {/* Station (Read-only) */}
-            <div className="space-y-2">
-              <Label htmlFor="station">Station</Label>
-              <div className="relative">
-                <Input
-                  value={formData.stationName}
-                  disabled={true}
-                  className="pl-10 bg-gray-50"
-                  placeholder="Station de l'employé"
-                />
-                <Building
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={16}
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                La station est automatiquement définie selon l'employé.
-              </p>
-            </div>
-
-            {/* Type and Duration */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="typeConge">Type de congé*</Label>
-                <Select
-                  value={formData.typeConge}
-                  onValueChange={(value) =>
-                    handleSelectChange(value, "typeConge")
-                  }
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ordinaire">Ordinaire</SelectItem>
-                    <SelectItem value="anticipe">Anticipé</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dureeConge">Durée du congé (jours)*</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    id="dureeConge"
-                    name="dureeConge"
-                    value={formData.dureeConge}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("dureeConge")}
-                    disabled={loading}
-                    className={`pl-10 ${
-                      touched.dureeConge && errors.dureeConge
-                        ? "border-red-500"
-                        : ""
-                    }`}
-                    placeholder="Ex: 15"
-                    min="1"
-                  />
-                  <Clock
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                {touched.dureeConge && errors.dureeConge && (
-                  <p className="text-red-500 text-sm">{errors.dureeConge}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Dates */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="dateDebut">Date de début*</Label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    id="dateDebut"
-                    name="dateDebut"
-                    value={formData.dateDebut}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("dateDebut")}
-                    disabled={loading}
-                    className={`pl-10 ${
-                      touched.dateDebut && errors.dateDebut
-                        ? "border-red-500"
-                        : ""
-                    }`}
-                  />
-                  <Calendar
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                {touched.dateDebut && errors.dateDebut && (
-                  <p className="text-red-500 text-sm">{errors.dateDebut}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dateRetour">Date de retour</Label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    id="dateRetour"
-                    name="dateRetour"
-                    value={formData.dateRetour}
-                    className="pl-10 bg-gray-50"
-                    disabled={true}
-                  />
-                  <Calendar
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Calculée automatiquement selon la date de début et la durée
-                </p>
-              </div>
-            </div>
-
-            {/* Lieu de séjour */}
-            <div className="space-y-2">
-              <Label htmlFor="lieuSejour">Lieu de séjour (optionnel)</Label>
-              <div className="relative">
-                <Input
-                  id="lieuSejour"
-                  name="lieuSejour"
-                  value={formData.lieuSejour}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                  className="pl-10"
-                  placeholder="Ex: Paris, France"
-                />
-                <MapPin
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={16}
-                />
-              </div>
-            </div>
-
-            {/* Nombre de jours restant (display only) */}
-            <div className="space-y-2">
-              <Label>Nombre de jours restant</Label>
-              <div className="flex items-center p-3 border rounded-md bg-gray-50">
-                <Plane className="mr-2 h-5 w-5 text-blue-500" />
-                <span className="font-medium text-blue-600">
-                  {selectedPersonnel?.holidaysLeft} jour
-                  {selectedPersonnel?.holidaysLeft > 1 ? "s" : ""}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500">
-                Ce champ est mis à jour automatiquement pendant la durée du
-                congé
-              </p>
-            </div>
-
-            {/* Document Upload (Required) */}
-          {!existingDocument && (   <div className="space-y-2">
-              <Label htmlFor="document">Document justificatif*</Label>
-              <Input
-                type="file"
-                id="document"
-                name="document"
-                onChange={handleFileChange}
-                disabled={loading}
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+        <FormSection title="Employé" description="L'employé et sa station ne peuvent pas être modifiés.">
+          <Field label="Employé" full>
+            <div className="flex min-h-11 items-center rounded-md border border-dashed border-input bg-background px-2.5 py-1.5">
+              <EmployeeIdentity
+                firstName={selectedPersonnel?.firstName}
+                lastName={selectedPersonnel?.lastName}
+                matricule={selectedPersonnel?.matricule}
+                meta={selectedPersonnel?.poste}
+                size="sm"
+                highlighted
               />
-              {selectedFile && (
-                <p className="text-sm text-gray-500">
-                  Fichier sélectionné: {selectedFile.name} yes
-                </p>
-              )}
-              <p className="text-xs text-gray-500">
-                Un document justificatif est requis.
-              </p>
-            </div>)}
-
-            {/* Existing Document Display */}
-            {existingDocument && (
-              <div className="space-y-2">
-                <Label>Document Existant</Label>
-                <div className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
-                  <div className="flex items-center">
-                    <File className="mr-2 h-5 w-5 text-blue-500" />
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${existingDocument}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-blue-600 hover:underline"
-                    >
-                      Document existant
-                    </a>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExistingDocument(null)}
-                  >
-                    Remplacer
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/conges")}
-                disabled={loading}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Mise à jour...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Mettre à jour le congé
-                  </>
-                )}
-              </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </Field>
+          <Field label="Station">
+            <ComputedValue icon={Building} tag="Automatique">
+              {formData.stationName}
+            </ComputedValue>
+          </Field>
+          <Field label="Solde de congés" hint="Mis à jour automatiquement pendant la durée du congé.">
+            <ComputedValue icon={Plane} tag="Actuel">
+              {holidaysLeft !== null ? `${holidaysLeft} jour${holidaysLeft > 1 ? "s" : ""}` : ""}
+            </ComputedValue>
+          </Field>
+        </FormSection>
 
-      <div className="mt-4 text-center text-sm text-gray-500">
-        <AlertTriangle className="inline-block mr-1" size={16} />
-        Les champs marqués avec * sont obligatoires.
-      </div>
+        <FormSection title="Période" description="Type, durée et date de départ. Le retour est calculé.">
+          <Field label="Type de congé" htmlFor="typeConge" required>
+            <Select
+              value={formData.typeConge}
+              onValueChange={(value) => handleSelectChange(value, "typeConge")}
+              disabled={loading}
+            >
+              <SelectTrigger id="typeConge">
+                <SelectValue placeholder="Sélectionner un type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ordinaire">Ordinaire</SelectItem>
+                <SelectItem value="anticipe">Anticipé</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Durée" htmlFor="dureeConge" required error={touched.dureeConge && errors.dureeConge}>
+            <UnitInput
+              unit="jours"
+              type="number"
+              id="dureeConge"
+              name="dureeConge"
+              value={formData.dureeConge}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("dureeConge")}
+              disabled={loading}
+              invalid={!!(touched.dureeConge && errors.dureeConge)}
+              placeholder="Ex : 15"
+              min="1"
+            />
+          </Field>
+          <Field label="Date de début" htmlFor="dateDebut" required error={touched.dateDebut && errors.dateDebut}>
+            <Input
+              type="date"
+              id="dateDebut"
+              name="dateDebut"
+              value={formData.dateDebut}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("dateDebut")}
+              disabled={loading}
+              aria-invalid={!!(touched.dateDebut && errors.dateDebut)}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Date de retour" hint="Date de début + durée.">
+            <ComputedValue icon={CalendarClock}>{formatDateFr(formData.dateRetour)}</ComputedValue>
+          </Field>
+          <Field label="Lieu de séjour" htmlFor="lieuSejour" full hint="Optionnel.">
+            <InputWithIcon icon={MapPin}>
+              <Input
+                id="lieuSejour"
+                name="lieuSejour"
+                value={formData.lieuSejour}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="Ex : Béjaïa"
+                className="pl-9"
+              />
+            </InputWithIcon>
+          </Field>
+        </FormSection>
 
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-green-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Congé Mis à Jour avec Succès
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Le congé a été mis à jour avec succès pour{" "}
-              {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSuccessConfirm}>
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <FormSection title="Justificatif" description="Conservez le document actuel ou remplacez-le par un nouveau PDF.">
+          <Field label="Document" htmlFor="document" required full>
+            <FileDropzone
+              id="document"
+              file={selectedFile}
+              onFileChange={handleFileChange}
+              onRemove={() => setSelectedFile(null)}
+              disabled={loading}
+              currentFileHref={existingDocument ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${existingDocument}` : undefined}
+            />
+          </Field>
+        </FormSection>
 
-      {/* Error Dialog */}
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              Erreur
-            </AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
-              Fermer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <FormActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/conges")} disabled={loading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Mise à jour…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Enregistrer les modifications
+              </>
+            )}
+          </Button>
+        </FormActions>
+      </form>
+
+      <StatusDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        title="Congé mis à jour"
+        description={`Le congé de ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""} a bien été mis à jour.`}
+        onAction={handleSuccessConfirm}
+      />
+      <StatusDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        variant="error"
+        title="Échec de la mise à jour"
+        description={errorMessage}
+        actionLabel="Fermer"
+        onAction={() => setShowErrorDialog(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

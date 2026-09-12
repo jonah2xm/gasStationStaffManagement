@@ -2,8 +2,7 @@
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { X } from "lucide-react"
+import { Trash2, X } from "lucide-react"
 
 interface CustomAlertDialogProps {
   open: boolean
@@ -110,53 +109,69 @@ export function CustomAlertDialog({
 
   if (!open) return null
 
+  const isDestructive = variant === "destructive"
+
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 animate-in fade-in-0"
       onClick={handleOverlayClick}
     >
-      <Card
+      <div
         ref={contentRef}
-        className="w-full max-w-lg bg-white shadow-lg"
+        className="w-full max-w-md rounded-lg border border-border bg-card p-5 text-card-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95"
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
         aria-describedby="dialog-description"
       >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle id="dialog-title" className="text-lg font-semibold">
-            {title}
-          </CardTitle>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCancel} disabled={loading}>
+        <div className="flex gap-3">
+          {isDestructive && (
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive-subtle" aria-hidden>
+              <Trash2 className="h-[18px] w-[18px] text-destructive" />
+            </span>
+          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <h2 id="dialog-title" className="text-base font-semibold leading-6 text-foreground">
+              {title}
+            </h2>
+            <p id="dialog-description" className="text-[13.5px] leading-5 text-muted-foreground">
+              {description}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-mr-1.5 -mt-1.5 h-[30px] w-[30px]"
+            onClick={handleCancel}
+            disabled={loading}
+          >
             <X className="h-4 w-4" />
             <span className="sr-only">Fermer</span>
           </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p id="dialog-description" className="text-sm text-muted-foreground">
-            {description}
-          </p>
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 space-y-2 space-y-reverse sm:space-y-0">
-            <Button variant="outline" onClick={handleCancel} disabled={loading}>
-              {cancelText}
+        </div>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={handleCancel} disabled={loading}>
+            {cancelText}
+          </Button>
+          {onConfirm && (
+            <Button
+              variant={isDestructive ? "destructive" : "default"}
+              onClick={handleConfirm}
+              disabled={loading}
+            >
+              {loading && (
+                <span
+                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  aria-hidden
+                />
+              )}
+              {confirmText}
             </Button>
-            {onConfirm && (
-              <Button
-                variant={variant === "destructive" ? "destructive" : "default"}
-                onClick={handleConfirm}
-                disabled={loading}
-              >
-                {loading && (
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                )}
-                {confirmText}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

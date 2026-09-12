@@ -14,7 +14,11 @@ import {
     Loader2
 } from "lucide-react";
 import Link from "next/link";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
+import { PageHeader } from "@/components/ui/page-header";
+import { ComputedValue, Field, FormActions, FormSection } from "@/components/ui/form-layout";
+import { EmployeeCombobox } from "@/components/ui/employee-combobox";
 
 export default function AddPointagePage() {
     const router = useRouter();
@@ -88,140 +92,108 @@ export default function AddPointagePage() {
         }
     };
 
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const selectedPerson = personnelList.find((p) => p.matricule === formData.matricule) || null;
+
+    // "07:58" → "16:12" gives "8 h 14"; empty until both times are set and the exit is later.
+    const workedTime = (() => {
+        if (!formData.entryTime || !formData.exitTime) return "";
+        const [entryHours, entryMinutes] = formData.entryTime.split(":").map(Number);
+        const [exitHours, exitMinutes] = formData.exitTime.split(":").map(Number);
+        const minutes = exitHours * 60 + exitMinutes - (entryHours * 60 + entryMinutes);
+        if (minutes <= 0) return "";
+        return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
+    })();
+
     return (
-        <div className="container mx-auto p-6 max-w-2xl bg-gray-50 min-h-screen">
-            <div className="mb-6">
-                <Link href="/pointage-list" className="text-blue-600 hover:text-blue-800 flex items-center gap-2 font-medium transition-colors">
-                    <ArrowLeft size={18} /> Retour à l'historique
-                </Link>
-            </div>
+        <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+            <PageHeader
+                backHref="/pointage-list"
+                backLabel="Pointages"
+                title="Nouveau pointage manuel"
+                description="Enregistrez une présence lorsque l'agent n'a pas pu pointer lui-même."
+            />
 
-            <Card className="shadow-2xl border-none rounded-3xl overflow-hidden">
-                <CardHeader className="bg-blue-600 text-white p-8">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-white/20 p-3 rounded-2xl">
-                            <Plus className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-2xl font-bold">Nouveau Pointage Manuel</CardTitle>
-                            <p className="text-blue-100 text-sm mt-1">Enregistrer une présence manuellement</p>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-8 bg-white">
-                    <form onSubmit={handleSubmit} className="space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2 md:col-span-2">
-                                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                    <UserIcon size={16} className="text-blue-500" /> Personnel
-                                </label>
-                                {fetchingPersonnel ? (
-                                    <div className="h-12 flex items-center px-4 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2 text-blue-500" />
-                                        <span className="text-sm text-gray-400">Chargement...</span>
-                                    </div>
-                                ) : (
-                                    <select
-                                        className="w-full h-12 px-4 rounded-xl border-gray-200 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none text-gray-800 font-medium"
-                                        value={formData.matricule}
-                                        onChange={(e) => setFormData({ ...formData, matricule: e.target.value })}
-                                        required
-                                    >
-                                        <option value="">Sélectionner un employé</option>
-                                        {personnelList.map((p) => (
-                                            <option key={p._id} value={p.matricule}>
-                                                {p.matricule} - {p.lastName.toUpperCase()} {p.firstName} ({p.stationName})
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider pl-1">Liste des comptes personnel actifs</p>
-                            </div>
+            <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+                <FormSection title="Employé" description="Seuls les agents disposant d'un compte personnel apparaissent.">
+                    <Field label="Employé" htmlFor="matricule" required full>
+                        <EmployeeCombobox
+                            id="matricule"
+                            open={pickerOpen}
+                            onOpenChange={setPickerOpen}
+                            people={personnelList}
+                            selected={selectedPerson}
+                            onSelect={(person) => {
+                                setFormData({ ...formData, matricule: person.matricule });
+                                setPickerOpen(false);
+                            }}
+                            loading={fetchingPersonnel}
+                            disabled={loading}
+                        />
+                    </Field>
+                </FormSection>
 
-                            <div className="space-y-2 col-span-2 md:col-span-1">
-                                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                    <CalendarIcon size={16} className="text-blue-500" /> Date
-                                </label>
-                                <Input
-                                    type="date"
-                                    className="h-12 rounded-xl bg-gray-50 border-gray-200 focus:ring-blue-500 font-medium"
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    required
-                                />
-                            </div>
+                <FormSection title="Horaires" description="L'heure de sortie peut être ajoutée plus tard.">
+                    <Field label="Date" htmlFor="date" required>
+                        <Input
+                            type="date"
+                            id="date"
+                            value={formData.date}
+                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                            required
+                            disabled={loading}
+                            className="tabular-nums"
+                        />
+                    </Field>
+                    <Field label="Heure d'entrée" htmlFor="entryTime" required>
+                        <Input
+                            type="time"
+                            id="entryTime"
+                            value={formData.entryTime}
+                            onChange={(e) => setFormData({ ...formData, entryTime: e.target.value })}
+                            required
+                            disabled={loading}
+                            className="tabular-nums"
+                        />
+                    </Field>
+                    <Field label="Heure de sortie" htmlFor="exitTime" hint="Optionnel.">
+                        <Input
+                            type="time"
+                            id="exitTime"
+                            value={formData.exitTime}
+                            onChange={(e) => setFormData({ ...formData, exitTime: e.target.value })}
+                            disabled={loading}
+                            className="tabular-nums"
+                        />
+                    </Field>
+                    <Field label="Temps de présence">
+                        <ComputedValue icon={Clock} placeholder="Entrée et sortie requises">
+                            {workedTime}
+                        </ComputedValue>
+                    </Field>
+                </FormSection>
 
-                            <div className="space-y-2 col-span-2 md:col-span-1">
-                                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                    <Clock size={16} className="text-green-500" /> Heure d'entrée
-                                </label>
-                                <Input
-                                    type="time"
-                                    className="h-12 rounded-xl bg-gray-50 border-gray-200 focus:ring-blue-500 font-medium"
-                                    value={formData.entryTime}
-                                    onChange={(e) => setFormData({ ...formData, entryTime: e.target.value })}
-                                    required
-                                />
-                            </div>
+                <FormActions>
+                    <Button asChild variant="outline">
+                        <Link href="/pointage-list">Annuler</Link>
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                        {loading ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Enregistrement…
+                            </>
+                        ) : (
+                            <>
+                                <Save className="h-4 w-4" />
+                                Enregistrer le pointage
+                            </>
+                        )}
+                    </Button>
+                </FormActions>
+            </form>
 
-                            <div className="space-y-2 col-span-2 md:col-span-1">
-                                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                    <Clock size={16} className="text-orange-500" /> Heure de sortie
-                                </label>
-                                <Input
-                                    type="time"
-                                    className="h-12 rounded-xl bg-gray-50 border-gray-200 focus:ring-blue-500 font-medium"
-                                    value={formData.exitTime}
-                                    onChange={(e) => setFormData({ ...formData, exitTime: e.target.value })}
-                                />
-                                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider pl-1">(Optionnel)</p>
-                            </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-gray-100 flex gap-4">
-                            <Link href="/pointage-list" className="flex-1">
-                                <Button type="button" variant="outline" className="w-full h-14 rounded-2xl text-gray-500 font-bold hover:bg-gray-50 transition-all border-gray-200">
-                                    Annuler
-                                </Button>
-                            </Link>
-                            <Button
-                                type="submit"
-                                className="flex-[2] h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 transform active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                                disabled={loading}
-                            >
-                                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
-                                    <>
-                                        <Save size={20} />
-                                        Enregistrer le pointage
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </form>
-                </CardContent>
-            </Card>
             <Toaster position="bottom-right" />
         </div>
-    );
-}
-
-// Helper icons that were missing
-function Plus(props) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M5 12h14" />
-            <path d="M12 5v14" />
-        </svg>
     );
 }

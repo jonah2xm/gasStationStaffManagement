@@ -4,34 +4,35 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../../lib/utils";
 
-
 const buttonVariants = cva(
-  // base
-  "inline-flex items-center justify-center gap-2 select-none rounded-lg font-medium transition duration-150 ease-in-out " +
-    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
+  // base: 36px control, 8px radius, 2px ink focus ring offset by 2px
+  "inline-flex items-center justify-center gap-[7px] whitespace-nowrap select-none rounded-md text-[13.5px] font-medium transition-colors duration-150 " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
+        // Yellow primary: one per screen.
         default:
-          "bg-sky-600 text-white hover:bg-sky-700 active:scale-[0.98] shadow-sm hover:shadow-md focus-visible:ring-sky-500",
+          "bg-primary font-semibold text-primary-foreground hover:bg-primary-hover disabled:bg-muted disabled:text-ink-500",
         destructive:
-          "bg-red-600 text-white hover:bg-red-700 active:scale-[0.98] shadow-sm hover:shadow-md focus-visible:ring-red-500",
+          "bg-destructive font-semibold text-destructive-foreground hover:bg-destructive-hover disabled:bg-destructive-border",
         outline:
-          "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm focus-visible:ring-slate-400",
+          "border border-input bg-card text-foreground hover:border-ink-400 hover:bg-muted disabled:border-border disabled:bg-ink-50 disabled:text-ink-500",
         secondary:
-          "bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-slate-400",
+          "bg-secondary text-secondary-foreground hover:bg-accent disabled:bg-muted disabled:text-ink-500",
         ghost:
-          "bg-transparent text-slate-700 hover:bg-slate-100",
+          "text-ink-750 hover:bg-muted hover:text-foreground disabled:text-ink-450",
         link:
-          "bg-transparent text-sky-600 underline-offset-4 hover:underline hover:text-sky-700 px-0 py-0",
+          "h-auto px-0 text-info underline-offset-4 hover:text-foreground hover:underline",
+        // Kept for existing forms; same look as the primary action.
         submit:
-          "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-md hover:shadow-lg focus-visible:ring-green-500",
+          "bg-primary font-semibold text-primary-foreground hover:bg-primary-hover disabled:bg-muted disabled:text-ink-500",
       },
       size: {
-        default: "h-11 px-5 py-2 rounded-lg text-sm",
-        sm: "h-9 px-3 rounded-md text-sm",
-        lg: "h-12 px-6 rounded-xl text-base",
-        icon: "h-10 w-10 p-0 rounded-md",
+        default: "h-9 px-3.5",
+        sm: "h-[30px] rounded-[7px] px-2.5 text-[13px]",
+        lg: "h-11 px-5 text-sm",
+        icon: "h-9 w-9 p-0",
       },
     },
     defaultVariants: {

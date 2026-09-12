@@ -25,7 +25,8 @@ import {
   Sparkles,
   SlidersHorizontal,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,37 +61,37 @@ import {
 const notificationTypes = {
   AbsenceAA: {
     label: "Absence AA",
-    color: "bg-yellow-100 text-yellow-800",
+    color: "border-border bg-muted text-ink-750",
     icon: Calendar,
   },
   AbsenceAI: {
     label: "Absence AI",
-    color: "bg-purple-100 text-purple-800",
+    color: "border-border bg-muted text-ink-750",
     icon: Calendar,
   },
   AffectationTemporaire: {
     label: "Affectation Temporaire",
-    color: "bg-blue-100 text-blue-800",
+    color: "border-border bg-muted text-ink-750",
     icon: MapPin,
   },
   Conge: {
     label: "Congé",
-    color: "bg-green-100 text-green-800",
+    color: "border-border bg-muted text-ink-750",
     icon: Plane,
   },
   CongeDays: {
     label: "Jours de Congé",
-    color: "bg-emerald-100 text-emerald-800",
+    color: "border-border bg-muted text-ink-750",
     icon: Calendar,
   },
   AffectationDefinitive: {
     label: "Affectation Définitive",
-    color: "bg-indigo-100 text-indigo-800",
+    color: "border-border bg-muted text-ink-750",
     icon: Building,
   },
   Recuperation: {
     label: "Récupération",
-    color: "bg-orange-100 text-orange-800",
+    color: "border-border bg-muted text-ink-750",
     icon: Clock,
   },
 };
@@ -426,12 +427,12 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.seen).length;
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
 
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-gray-800">Notifications</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Notifications</h1>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="text-sm">
               {unreadCount} non lue{unreadCount > 1 ? "s" : ""}
@@ -463,10 +464,10 @@ export default function NotificationsPage() {
             placeholder="Rechercher dans les notifications..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="pl-10 pr-4 py-2 w-full rounded-full bg-white border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            className="pl-10 pr-4 py-2 w-full rounded-full bg-card border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50"
           />
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -636,25 +637,25 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              <span className="ml-2 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
                 Chargement des notifications...
               </span>
             </div>
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <AlertTriangle className="h-8 w-8 mr-2" />
               <p>{error}</p>
             </div>
           ) : currentNotifications.length === 0 ? (
-            <div className="flex flex-col justify-center items-center h-64 text-gray-500">
-              <Bell className="h-12 w-12 mb-4 text-gray-400" />
+            <div className="flex flex-col justify-center items-center h-64 text-muted-foreground">
+              <Bell className="h-12 w-12 mb-4 text-ink-600" />
               <p className="text-lg mb-2">Aucune notification trouvée</p>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-ink-600 mb-4">
                 {searchTerm || typeFilter.length > 0 || statusFilter
                   ? "Essayez de modifier vos filtres de recherche"
                   : "Vous n'avez aucune notification pour le moment"}
@@ -671,7 +672,7 @@ export default function NotificationsPage() {
               ) : null}
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-border">
               {currentNotifications.map((notification) => {
                 const IconComponent = getNotificationIcon(notification.type);
                 const typeInfo = notificationTypes[notification.type];
@@ -679,9 +680,9 @@ export default function NotificationsPage() {
                 return (
                   <div
                     key={notification._id}
-                    className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                    className={`p-4 hover:bg-background transition-colors cursor-pointer ${
                       !notification.seen
-                        ? "bg-blue-50 border-l-4 border-l-blue-500"
+                        ? "bg-info-subtle border-l-4 border-l-blue-500"
                         : ""
                     }`}
                     onClick={() => handleViewDetails(notification)}
@@ -690,38 +691,38 @@ export default function NotificationsPage() {
                       <div className="flex items-start space-x-3 flex-1">
                         <div
                           className={`p-2 rounded-full ${
-                            typeInfo?.color || "bg-gray-100 text-gray-800"
+                            typeInfo?.color || "bg-muted text-foreground"
                           }`}
                         >
                           <IconComponent className="h-4 w-4" />
                           {notification.type === "AbsenceAI" && (
-                            <Sparkles className="h-2 w-2 absolute -mt-1 -ml-1 text-purple-600" />
+                            <Sparkles className="h-2 w-2 absolute -mt-1 -ml-1 text-violet-text" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <Badge
                               className={
-                                typeInfo?.color || "bg-gray-100 text-gray-800"
+                                typeInfo?.color || "bg-muted text-foreground"
                               }
                               variant="secondary"
                             >
                               {typeInfo?.label || notification.type}
                             </Badge>
                             {!notification.seen && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <div className="w-2 h-2 bg-info rounded-full"></div>
                             )}
                           </div>
                           <p
                             className={`text-sm ${
                               !notification.seen
-                                ? "font-medium text-gray-900"
-                                : "text-gray-700"
+                                ? "font-medium text-foreground"
+                                : "text-ink-800"
                             }`}
                           >
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {formatDate(notification.createdAt)}
                           </p>
                         </div>
@@ -770,7 +771,7 @@ export default function NotificationsPage() {
                                 setNotificationToDelete(notification);
                                 setDeleteDialogOpen(true);
                               }}
-                              className="text-red-600"
+                              className="text-destructive-text"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Supprimer
@@ -832,7 +833,7 @@ export default function NotificationsPage() {
             <AlertDialogAction
               onClick={handleDeleteNotification}
               disabled={actionLoading}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive-hover"
             >
               {actionLoading ? (
                 <>
@@ -870,7 +871,7 @@ export default function NotificationsPage() {
             <AlertDialogAction
               onClick={handleMarkAllAsRead}
               disabled={actionLoading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-info hover:bg-info-text"
             >
               {actionLoading ? (
                 <>

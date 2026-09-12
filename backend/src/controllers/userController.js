@@ -1,4 +1,3 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Personnel = require("../models/personnelModel");
 const mongoose = require("mongoose");
@@ -10,13 +9,6 @@ const cookieOptions = {
   secure: isProduction,
   sameSite: isProduction ? "None" : "lax",
   maxAge: 24 * 60 * 60 * 1000,
-};
-
-// Helper function to generate a JWT token
-const generateToken = (id, username, email, role) => {
-  return jwt.sign({ id, username, email, role }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
-  });
 };
 
 /**
@@ -61,12 +53,11 @@ exports.registerNewUser = async (req, res) => {
 };
 
 /**
- * @desc    Login user and return token
+ * @desc    Login user and start a session
  * @route   POST /api/users/login
  * @access  Public
  */
 exports.loginUser = async (req, res) => {
-  console.log("is production", isProduction);
   try {
     const { username, password } = req.body;
 
@@ -80,15 +71,15 @@ exports.loginUser = async (req, res) => {
         });
       }
 
-      const token = generateToken(
-        user._id,
-        user.username,
-        user.email,
-        user.role,
-      );
-
-      // Store JWT in cookie
-      res.cookie("token", token, cookieOptions);
+      req.session.user = {
+        id: user._id,
+        username: user.username,
+        role: user.role,
+        email: user.email,
+        occupiedStation: user.occupiedStation,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      };
 
       res.json({
         message: "Login successful",

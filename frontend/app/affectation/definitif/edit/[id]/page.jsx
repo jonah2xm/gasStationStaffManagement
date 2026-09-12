@@ -14,7 +14,8 @@ import {
   Upload,
   FileText,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PageHeader } from "@/components/ui/page-header";
+import { ComputedValue, EmployeeIdentity, Field, FileDropzone, FormActions, FormSection, FormSkeleton } from "@/components/ui/form-layout";
+import { StatusDialog } from "@/components/ui/status-dialog";
 
 export default function EditAffectationDefinitivePage() {
   const router = useRouter();
@@ -402,354 +406,151 @@ export default function EditAffectationDefinitivePage() {
   );
 
   if (initialLoading) {
-    return (
-      <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="animate-spin h-8 w-8" />
-          <span className="ml-2">Chargement des données...</span>
-        </div>
-      </div>
-    );
+    return <FormSkeleton />;
   }
 
+  const existingDocumentHref =
+    typeof existingDocument === "string" && existingDocument
+      ? `/document/${encodeURIComponent(existingDocument.replace(/\\/g, "/"))}`
+      : existingDocument?.url;
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/affectation/definitif"
+        backLabel="Affectations définitives"
+        title="Modifier l'affectation définitive"
+        description={
+          selectedPersonnel
+            ? `${selectedPersonnel.firstName} ${selectedPersonnel.lastName} · ${selectedPersonnel.matricule}`
+            : undefined
+        }
+      />
 
-
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Modifier l'Affectation Définitive
-        </h1>
-        <Button
-          variant="outline"
-          onClick={() => router.push("/affectation/definitive")}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Retour à la liste
-        </Button>
-      </div>
-
-      <Card className="max-w-4xl mx-auto bg-white">
-        <CardHeader>
-          <CardTitle>Modifier l'Affectation Définitive</CardTitle>
-          <CardDescription>
-            Modifiez les informations relatives à l'affectation définitive de
-            l'employé.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personnel Display (Read-only) */}
-            <div className="space-y-2">
-              <Label>Employé</Label>
-              <div className="flex items-center p-3 border rounded-md bg-gray-50">
-                <Avatar className="h-8 w-8 mr-3">
-                  <AvatarFallback className="bg-blue-100 text-blue-800">
-                    {selectedPersonnel &&
-                      getInitials(
-                        `${selectedPersonnel.firstName} ${selectedPersonnel.lastName}`
-                      )}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="font-medium text-gray-800">
-                    {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {selectedPersonnel?.matricule}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                L'employé ne peut pas être modifié lors de l'édition.
-              </p>
-            </div>
-
-            {/* Stations */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="originalStation">Station d'origine</Label>
-                <div className="relative">
-                  <Input
-                    id="originalStation"
-                    value={
-                      stations.find((s) => s._id === formData.originalStationId)
-                        ?.name || ""
-                    }
-                    className="pl-10 bg-gray-50"
-                    disabled={true}
-                  />
-                  <Building
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  La station d'origine ne peut pas être modifiée.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="affectedStation">Station d'affectation*</Label>
-                <div className="relative">
-                  <Select
-                    value={formData.affectedStation}
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "affectedStation")
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger
-                      className={`pl-10 ${
-                        touched.affectedStation && errors.affectedStation
-                          ? "border-red-500"
-                          : ""
-                      }`}
-                    >
-                      <SelectValue placeholder="Sélectionner une station" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stations
-                        .filter(
-                          (station) =>
-                            station._id !== formData.originalStationId
-                        )
-                        .map((station) => (
-                          <SelectItem key={station._id} value={station._id}>
-                            {station.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <MapPin
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                {touched.affectedStation && errors.affectedStation && (
-                  <p className="text-red-500 text-sm">
-                    {errors.affectedStation}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Date and Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Date d'affectation*</Label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("startDate")}
-                    disabled={loading}
-                    className={`pl-10 ${
-                      touched.startDate && errors.startDate
-                        ? "border-red-500"
-                        : ""
-                    }`}
-                  />
-                  <Calendar
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                {touched.startDate && errors.startDate && (
-                  <p className="text-red-500 text-sm">{errors.startDate}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Reason */}
-            <div className="space-y-2">
-              <Label htmlFor="description">
-                Motif de l'affectation (optionnel)
-              </Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Précisez le motif de cette affectation définitive..."
-                rows={3}
-                disabled={loading}
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+        <FormSection title="Employé" description="L'employé et la station d'origine ne peuvent pas être modifiés.">
+          <Field label="Employé" full>
+            <div className="flex min-h-11 items-center rounded-md border border-dashed border-input bg-background px-2.5 py-1.5">
+              <EmployeeIdentity
+                firstName={selectedPersonnel?.firstName}
+                lastName={selectedPersonnel?.lastName}
+                matricule={selectedPersonnel?.matricule}
+                meta={selectedPersonnel?.poste}
+                size="sm"
+                highlighted
               />
             </div>
+          </Field>
+        </FormSection>
 
-            {/* Document Upload */}
-            <div className="space-y-2">
-              <Label htmlFor="document">Document justificatif (PDF)</Label>
+        <FormSection title="Affectation" description="Station de destination et date d'effet.">
+          <Field label="Station d'origine">
+            <ComputedValue icon={Building} tag="Fixe">
+              {stations.find((s) => s._id === formData.originalStationId)?.name}
+            </ComputedValue>
+          </Field>
+          <Field
+            label="Station d'affectation"
+            htmlFor="affectedStation"
+            required
+            error={touched.affectedStation && errors.affectedStation}
+          >
+            <Select
+              value={formData.affectedStation}
+              onValueChange={(value) => handleSelectChange(value, "affectedStation")}
+              disabled={loading}
+            >
+              <SelectTrigger id="affectedStation" aria-invalid={!!(touched.affectedStation && errors.affectedStation)}>
+                <SelectValue placeholder="Sélectionner une station" />
+              </SelectTrigger>
+              <SelectContent>
+                {stations
+                  .filter((station) => station._id !== formData.originalStationId)
+                  .map((station) => (
+                    <SelectItem key={station._id} value={station._id}>
+                      {station.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Date d'affectation" htmlFor="startDate" required error={touched.startDate && errors.startDate}>
+            <Input
+              type="date"
+              id="startDate"
+              name="startDate"
+              value={formData.startDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("startDate")}
+              disabled={loading}
+              aria-invalid={!!(touched.startDate && errors.startDate)}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Motif" htmlFor="description" full hint="Optionnel.">
+            <Textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder="Précisez le motif de cette affectation définitive…"
+              rows={3}
+              disabled={loading}
+            />
+          </Field>
+        </FormSection>
 
-              {/* Show existing document if available */}
-              {existingDocument && !file && (
-                <div className="flex items-center p-3 border rounded-md bg-blue-50">
-                  <FileText className="text-blue-500 mr-2" size={16} />
-                  <span className="text-sm text-blue-700">
-                    Document existant: {existingDocument.originalName}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto text-blue-600 hover:text-blue-800"
-                    onClick={() => window.open(existingDocument.url, "_blank")}
-                  >
-                    Voir
-                  </Button>
-                </div>
-              )}
+        <FormSection title="Justificatif" description="Conservez le document actuel ou remplacez-le.">
+          <Field label="Document" htmlFor="document" full error={fileError}>
+            <FileDropzone
+              id="document"
+              file={file}
+              onFileChange={handleFileChange}
+              onRemove={() => setFile(null)}
+              disabled={loading}
+              invalid={!!fileError}
+              hint="PDF uniquement · 5 Mo maximum"
+              currentFileHref={existingDocumentHref}
+            />
+          </Field>
+        </FormSection>
 
-              <div className="flex items-center">
-                <label
-                  htmlFor="document"
-                  className={`flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                    fileError
-                      ? "border-red-500 text-red-500"
-                      : "text-gray-700 hover:bg-gray-50"
-                  } cursor-pointer`}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {file
-                    ? "Changer de fichier"
-                    : existingDocument
-                    ? "Remplacer le document"
-                    : "Télécharger un PDF"}
-                </label>
-                <input
-                  id="document"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  disabled={loading}
-                />
-                {file && (
-                  <div className="ml-4 flex items-center bg-gray-100 px-3 py-1 rounded-md">
-                    <FileText className="text-blue-500 mr-2" size={16} />
-                    <span className="text-sm truncate max-w-[200px]">
-                      {file.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setFile(null)}
-                      className="ml-2 text-gray-500 hover:text-red-500"
-                      disabled={loading}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {fileError && <p className="text-red-500 text-sm">{fileError}</p>}
-              <p className="text-xs text-gray-500">
-                Formats acceptés: PDF uniquement. Taille maximale: 5MB
-              </p>
-            </div>
+        <FormActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/affectation/definitif")} disabled={loading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Mise à jour…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Enregistrer les modifications
+              </>
+            )}
+          </Button>
+        </FormActions>
+      </form>
 
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/affectation-definitive")}
-                disabled={loading}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Mise à jour...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Mettre à jour l'affectation
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <div className="mt-4 text-center text-sm text-gray-500">
-        <AlertTriangle className="inline-block mr-1" size={16} />
-        Les champs marqués avec * sont obligatoires.
-      </div>
-
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-green-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Affectation Définitive Mise à Jour avec Succès
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              L'affectation définitive a été mise à jour avec succès pour{" "}
-              {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSuccessConfirm}>
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Error Dialog */}
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              Erreur
-            </AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
-              Fermer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <StatusDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        title="Affectation mise à jour"
+        description={`L'affectation définitive de ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""} a bien été mise à jour.`}
+        onAction={handleSuccessConfirm}
+      />
+      <StatusDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        variant="error"
+        title="Échec de la mise à jour"
+        description={errorMessage}
+        actionLabel="Fermer"
+        onAction={() => setShowErrorDialog(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

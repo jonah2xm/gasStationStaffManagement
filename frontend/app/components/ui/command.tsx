@@ -15,7 +15,7 @@ const Command = React.forwardRef<
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+      "flex h-full w-full flex-col overflow-hidden rounded-[10px] bg-popover text-popover-foreground",
       className
     )}
     {...props}
@@ -40,12 +40,12 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+  <div className="flex items-center border-b border-border px-3" cmdk-input-wrapper="">
+    <Search className="mr-2 h-4 w-4 shrink-0 text-ink-700" />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-11 w-full rounded-md  py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-ink-600 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -72,7 +72,7 @@ const CommandEmpty = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Empty>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
 >((props, ref) => (
-  <CommandPrimitive.Empty ref={ref} className="py-6 text-center text-sm" {...props} />
+  <CommandPrimitive.Empty ref={ref} className="py-6 text-center text-[13px] text-muted-foreground" {...props} />
 ));
 
 CommandEmpty.displayName = CommandPrimitive.Empty.displayName;
@@ -85,7 +85,7 @@ const CommandGroup = React.forwardRef<
     ref={ref}
     className={cn(
       // simple, neutral group wrapper without complex selectors
-      "overflow-hidden p-1 text-foreground",
+      "overflow-hidden p-[5px] text-foreground",
       className
     )}
     {...props}
@@ -110,8 +110,8 @@ const CommandItem = React.forwardRef<
     ref={ref}
     className={cn(
       // Removed aria-selected:text-accent-foreground to allow custom colors
-      "relative flex cursor-pointer hover:bg-gray-100 focus:bg-gray-100 select-none items-center rounded-sm px-3 py-3 text-sm outline-none " +
-        "aria-selected:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-pointer select-none items-center rounded-[7px] px-2.5 py-2 text-[13.5px] outline-none hover:bg-ink-100 focus:bg-ink-100 " +
+        "aria-selected:bg-ink-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}

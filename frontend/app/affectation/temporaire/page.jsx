@@ -21,7 +21,8 @@ import {
   Building,
   MapPin,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,15 +57,15 @@ import {
 const statusTypes = {
   active: {
     label: "En cours",
-    color: "bg-green-100 text-green-800",
+    color: "border-info-border bg-info-subtle text-info-text",
   },
   upcoming: {
     label: "À venir",
-    color: "bg-blue-100 text-blue-800",
+    color: "border-input bg-card text-ink-750",
   },
   completed: {
     label: "Terminée",
-    color: "bg-gray-100 text-gray-800",
+    color: "border-border bg-muted text-ink-600",
   },
 };
 
@@ -236,7 +237,7 @@ export default function AffectationTemporairePage() {
 
     return (
       <Badge
-        className={statusTypes[status]?.color || "bg-gray-100 text-gray-800"}
+        className={statusTypes[status]?.color || "border-border bg-muted text-ink-600"}
       >
         {statusTypes[status]?.label || "Inconnu"}
       </Badge>
@@ -336,16 +337,15 @@ export default function AffectationTemporairePage() {
   const currentAffectations = sortedAffectations.slice(startIndex, endIndex);
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
 
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Affectations Temporaires
         </h1>
         <Button
           onClick={() => router.push("/affectation/temporaire/add")}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
         >
           <Plus className="mr-2 h-4 w-4" /> Ajouter une Affectation
         </Button>
@@ -358,10 +358,10 @@ export default function AffectationTemporairePage() {
             placeholder="Rechercher par nom, matricule ou station..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            className="pl-10 pr-4 py-2 w-full rounded-full border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50"
           />
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -594,25 +594,25 @@ export default function AffectationTemporairePage() {
         </div>
       )}
 
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              <span className="ml-2 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
                 Chargement des affectations...
               </span>
             </div>
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <AlertTriangle className="h-8 w-8 mr-2" />
               <p>{error}</p>
             </div>
           ) : currentAffectations.length === 0 ? (
-            <div className="flex flex-col justify-center items-center h-64 text-gray-500">
-              <MapPin className="h-12 w-12 mb-4 text-gray-400" />
+            <div className="flex flex-col justify-center items-center h-64 text-muted-foreground">
+              <MapPin className="h-12 w-12 mb-4 text-ink-600" />
               <p className="text-lg mb-2">Aucune affectation trouvée</p>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-ink-600 mb-4">
                 {searchTerm ||
                 statusFilter.length > 0 ||
                 stationFilter.length > 0 ||
@@ -635,7 +635,6 @@ export default function AffectationTemporairePage() {
               ) : (
                 <Button
                   onClick={() => router.push("/affectation/temporaire/add")}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   <Plus className="mr-2 h-4 w-4" /> Ajouter une Affectation
                 </Button>
@@ -716,27 +715,27 @@ export default function AffectationTemporairePage() {
               </TableHeader>
               <TableBody>
                 {currentAffectations.map((affectation) => (
-                  <TableRow key={affectation._id} className="hover:bg-gray-50">
+                  <TableRow key={affectation._id} className="hover:bg-background">
                     <TableCell>
                       <div>
                         <div className="font-semibold">
                           {affectation.personnel.firstName}{" "}
                           {affectation.personnel.lastName}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           {affectation.personnel.matricule}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
-                        <Building className="h-4 w-4 mr-2 text-gray-500" />
+                        <Building className="h-4 w-4 mr-2 text-muted-foreground" />
                         <span>{affectation.originStation.name}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2 text-blue-500" />
+                        <MapPin className="h-4 w-4 mr-2 text-ink-700" />
                         <span>{affectation.affectedStation.name}</span>
                       </div>
                     </TableCell>
@@ -781,7 +780,7 @@ export default function AffectationTemporairePage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(affectation)}
-                            className="text-red-600"
+                            className="text-destructive-text"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer

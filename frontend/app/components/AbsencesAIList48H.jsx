@@ -51,27 +51,27 @@ export function AbsencesAIList48H() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="font-semibold text-gray-800">
+            <TableHead className="font-semibold text-foreground">
               Employee
             </TableHead>
-            <TableHead className="font-semibold text-gray-800">From</TableHead>
-            <TableHead className="font-semibold text-gray-800">To</TableHead>
-            <TableHead className="font-semibold text-gray-800">Date</TableHead>
+            <TableHead className="font-semibold text-foreground">From</TableHead>
+            <TableHead className="font-semibold text-foreground">To</TableHead>
+            <TableHead className="font-semibold text-foreground">Date</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {absences.map((absence) => (
             <TableRow key={absence.id}>
-              <TableCell className="font-medium text-black">
+              <TableCell className="font-medium text-foreground">
                 {absence.employee}
               </TableCell>
-              <TableCell className="font-medium text-black">
+              <TableCell className="font-medium text-foreground">
                 {absence.fromStation}
               </TableCell>
-              <TableCell className="font-medium text-black">
+              <TableCell className="font-medium text-foreground">
                 {absence.toStation}
               </TableCell>
-              <TableCell className="font-medium text-black">
+              <TableCell className="font-medium text-foreground">
                 {" "}
                 {absence.date}
               </TableCell>

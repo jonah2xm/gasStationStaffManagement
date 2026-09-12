@@ -1,9 +1,8 @@
 const mongoose = require("mongoose");
+require("dotenv").config();
 const User = require("./models/userModel"); // adjust path if needed
 
-// 🔴 PUT YOUR REAL MONGO URI HERE
-const MONGO_URI =
-  "mongodb+srv://younesoubelaid2000_db_user:wcjr309PHXc3XsqA@naftalstaffconnect.mwyrovc.mongodb.net/naftalStaffConnect?retryWrites=true&w=majority&appName=naftalStaffConnect";
+const MONGO_URI = process.env.MONGO_URI;
 console.log("MONGO_URI:", MONGO_URI);
 async function createUser() {
   try {

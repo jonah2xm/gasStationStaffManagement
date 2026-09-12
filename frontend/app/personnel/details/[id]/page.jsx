@@ -17,39 +17,49 @@ import {
   UserCheck,
   CalendarDays,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { CalendarX2, Plane } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { DetailItem, DetailList, DetailSection, DetailSkeleton, PageError } from "@/components/ui/detail-layout";
+import { EmployeeIdentity } from "@/components/ui/form-layout";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 // Contract types with their display names and colors
 const contractTypes = {
   cdi: {
     label: "CDI",
-    color: "bg-green-100 text-green-800",
+    color: "border-border bg-muted text-ink-750",
   },
   cdd: {
     label: "CDD",
-    color: "bg-orange-100 text-orange-800",
+    color: "border-border bg-muted text-ink-750",
   },
   stage: {
     label: "Stage",
-    color: "bg-blue-100 text-blue-800",
+    color: "border-border bg-muted text-ink-750",
   },
   interim: {
     label: "Intérim",
-    color: "bg-purple-100 text-purple-800",
+    color: "border-border bg-muted text-ink-750",
   },
 };
 
 // Status types with their colors
 const statusColors = {
-  actif: "bg-green-100 text-green-800",
-  "en congé": "bg-yellow-100 text-yellow-800",
-  "en formation": "bg-blue-100 text-blue-800",
-  inactif: "bg-red-100 text-red-800",
+  actif: "border-success-border bg-success-subtle text-success-text",
+  conge: "border-info-border bg-info-subtle text-info-text",
+  "en congé": "border-info-border bg-info-subtle text-info-text",
+  recuperation: "border-teal-border bg-teal-subtle text-teal-text",
+  ai: "border-destructive-border bg-destructive-subtle text-destructive-text",
+  aa: "border-warning-border bg-warning-subtle text-warning-text",
+  "en formation": "border-border bg-muted text-ink-750",
+  inactif: "border-border bg-muted text-ink-750",
 };
 
 export default function PersonnelDetailsPage() {
@@ -169,281 +179,130 @@ export default function PersonnelDetailsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
-        <span className="mt-4 text-lg text-gray-500">Chargement...</span>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-red-500">
-        <p className="text-xl mb-4">{error}</p>
-        <Button
-          onClick={() => router.push("/personnel")}
-          className="flex items-center"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la liste
-        </Button>
-      </div>
+      <PageError
+        title="Impossible de charger cette fiche"
+        message={error}
+        backHref="/personnel"
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
   if (!personnel) return null;
 
-  // Determine the gradient color based on status
-  const headerGradient = "bg-blue-500";
+  const contractLabel = contractTypes[personnel.contractType?.toLowerCase()]?.label || personnel.contractType;
+  const formatDateTime = (value) =>
+    new Date(value).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  const facts = [
+    { label: "Ancienneté", value: calculateYearsOfService(personnel.hireDate) },
+    { label: "Âge", value: calculateAge(personnel.birthDate) },
+    {
+      label: "Congés restants",
+      value:
+        personnel.holidaysLeft !== undefined && personnel.holidaysLeft !== null
+          ? `${personnel.holidaysLeft} jour${personnel.holidaysLeft > 1 ? "s" : ""}`
+          : "—",
+    },
+  ];
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/personnel")}
-            className="flex items-center"
-          >
-            <ArrowLeft className="mr-2 h-5 w-5" /> Retour
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Détails du Personnel</h1>
-          <div></div>
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/personnel"
+        backLabel="Personnel"
+        title="Fiche agent"
+        actions={
+          <>
+            <Button variant="outline" onClick={() => router.push("/conges/add")}>
+              <Plane className="h-4 w-4" />
+              Nouveau congé
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/absence/aa/add")}>
+              <CalendarX2 className="h-4 w-4" />
+              Nouvelle absence
+            </Button>
+            <Button onClick={() => router.push(`/personnel/edit-personnel/${personnel._id}`)}>
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+          </>
+        }
+      />
+
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5">
+          <EmployeeIdentity
+            firstName={personnel.firstName}
+            lastName={personnel.lastName}
+            matricule={personnel.matricule}
+            meta={[personnel.poste, personnel.stationName].filter(Boolean).join(" · ")}
+            size="lg"
+            highlighted
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge kind="personnel" value={personnel.status || "Actif"} />
+            {contractLabel && (
+              <span className="inline-flex h-6 items-center rounded-sm border border-border bg-muted px-[9px] text-xs font-medium text-ink-750">
+                {contractLabel}
+              </span>
+            )}
+          </div>
         </div>
-
-        <Card className="max-w-4xl mx-auto shadow-2xl">
-          <CardHeader className={`${headerGradient} p-6 rounded-t-lg`}>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold text-white">
-                {personnel.firstName} {personnel.lastName}
-              </CardTitle>
-              <div className="flex space-x-2">
-                <Badge
-                  className={`${
-                    statusColors[personnel.status?.toLowerCase()] ||
-                    "bg-gray-200 text-gray-800"
-                  } text-sm px-3 py-1`}
-                >
-                  {personnel.status || "Non défini"}
-                </Badge>
-                <Badge
-                  className={`${
-                    contractTypes[personnel.contractType?.toLowerCase()]?.color ||
-                    "bg-gray-200 text-gray-800"
-                  } text-sm px-3 py-1`}
-                >
-                  {contractTypes[personnel.contractType?.toLowerCase()]?.label || personnel.contractType}
-                </Badge>
-              </div>
+        <dl className="grid grid-cols-1 divide-y divide-border border-t border-border bg-ink-50 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {facts.map((fact) => (
+            <div key={fact.label} className="px-5 py-3.5">
+              <dt className="text-xs font-medium text-muted-foreground">{fact.label}</dt>
+              <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-foreground">{fact.value}</dd>
             </div>
-          </CardHeader>
-          <CardContent className="p-8 bg-white">
-            <div className="space-y-6">
-              {/* Personal Information */}
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <User className="mr-2 h-5 w-5 text-blue-500" />
-                  Informations Personnelles
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Matricule
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <CreditCard className="mr-2 h-5 w-5 text-gray-500" />
-                      {personnel.matricule}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Nom Complet
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <User className="mr-2 h-5 w-5 text-gray-500" />
-                      {personnel.firstName} {personnel.lastName}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Date de Naissance
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <Calendar className="mr-2 h-5 w-5 text-blue-500" />
-                      {formatDate(personnel.birthDate)}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Âge
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <UserCheck className="mr-2 h-5 w-5 text-green-500" />
-                      {calculateAge(personnel.birthDate)}
-                    </div>
-                  </div>
-                </div>
-              </div>
+          ))}
+        </dl>
+      </section>
 
-              {/* Professional Information */}
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <Briefcase className="mr-2 h-5 w-5 text-blue-500" />
-                  Informations Professionnelles
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Poste
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <Briefcase className="mr-2 h-5 w-5 text-gray-500" />
-                      {personnel.poste}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Type de Contrat
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <FileText className="mr-2 h-5 w-5 text-gray-500" />
-                      {contractTypes[personnel.contractType?.toLowerCase()]?.label || personnel.contractType}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Station
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <Building className="mr-2 h-5 w-5 text-gray-500" />
-                      {personnel.stationName || "Non défini"}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Statut
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <UserCheck className="mr-2 h-5 w-5 text-green-500" />
-                      {personnel.status || "Non défini"}
-                    </div>
-                  </div>
-                </div>
-              </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <DetailSection title="Informations personnelles">
+          <DetailList>
+            <DetailItem label="Matricule">{personnel.matricule}</DetailItem>
+            <DetailItem label="Nom complet">
+              {personnel.firstName} {personnel.lastName}
+            </DetailItem>
+            <DetailItem label="Date de naissance">{formatDate(personnel.birthDate)}</DetailItem>
+            <DetailItem label="Âge">{calculateAge(personnel.birthDate)}</DetailItem>
+          </DetailList>
+        </DetailSection>
 
-              {/* Employment Details */}
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <Calendar className="mr-2 h-5 w-5 text-blue-500" />
-                  Détails de l'Emploi
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Date d'Embauche
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <Calendar className="mr-2 h-5 w-5 text-blue-500" />
-                      {formatDate(personnel.hireDate)}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Ancienneté
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <Clock className="mr-2 h-5 w-5 text-green-500" />
-                      {calculateYearsOfService(personnel.hireDate)}
-                    </div>
-                  </div>
-                  {personnel.decision && (
-                    <div>
-                      <Label className="block text-sm font-semibold text-gray-600">
-                        Décision
-                      </Label>
-                      <div className="mt-1 flex items-center text-lg text-gray-800">
-                        <FileText className="mr-2 h-5 w-5 text-gray-500" />
-                        {personnel.decision}
-                      </div>
-                    </div>
-                  )}
-                  {personnel.holidaysLeft !== undefined && (
-                    <div>
-                      <Label className="block text-sm font-semibold text-gray-600">
-                        Congés Restants
-                      </Label>
-                      <div className="mt-1 flex items-center text-lg text-gray-800">
-                        <CalendarDays className="mr-2 h-5 w-5 text-orange-500" />
-                        {personnel.holidaysLeft} jour{personnel.holidaysLeft > 1 ? 's' : ''}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* System Information */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <Clock className="mr-2 h-5 w-5 text-blue-500" />
-                  Informations Système
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Créé le
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <Clock className="mr-2 h-5 w-5 text-blue-500" />
-                      {new Date(personnel.createdAt).toLocaleString("fr-FR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </div>
-                  </div>
-                  {personnel.updatedAt && personnel.updatedAt !== personnel.createdAt && (
-                    <div>
-                      <Label className="block text-sm font-semibold text-gray-600">
-                        Dernière Modification
-                      </Label>
-                      <div className="mt-1 flex items-center text-lg text-gray-800">
-                        <Clock className="mr-2 h-5 w-5 text-orange-500" />
-                        {new Date(personnel.updatedAt).toLocaleString("fr-FR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/personnel/edit-personnel/${personnel._id}`)}
-                className="flex items-center"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Modifier
-              </Button>
-              <Button
-                onClick={() => router.push("/personnel")}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour à la liste
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <DetailSection title="Poste et affectation">
+          <DetailList>
+            <DetailItem label="Poste">{personnel.poste}</DetailItem>
+            <DetailItem label="Type de contrat">{contractLabel}</DetailItem>
+            <DetailItem label="Station">{personnel.stationName}</DetailItem>
+            <DetailItem label="Statut">
+              <StatusBadge kind="personnel" value={personnel.status || "Actif"} />
+            </DetailItem>
+            <DetailItem label="Date d'embauche">{formatDate(personnel.hireDate)}</DetailItem>
+            <DetailItem label="Décision">{personnel.decision}</DetailItem>
+          </DetailList>
+        </DetailSection>
       </div>
+
+      <DetailSection title="Informations système">
+        <DetailList>
+          <DetailItem label="Créée le">{formatDateTime(personnel.createdAt)}</DetailItem>
+          {personnel.updatedAt && personnel.updatedAt !== personnel.createdAt && (
+            <DetailItem label="Dernière modification">{formatDateTime(personnel.updatedAt)}</DetailItem>
+          )}
+        </DetailList>
+      </DetailSection>
 
       <Toaster position="bottom-left" />
     </div>

@@ -22,7 +22,8 @@ import {
   Plane,
   Building,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,20 +56,20 @@ import {
 
 // Types of authorized absences
 const absenceTypes = {
-  maladie: { label: "Maladie", color: "bg-yellow-100 text-yellow-800" },
-  deces: { label: "Decès", color: "bg-gray-100 text-gray-800" },
-  marriage: { label: "Mariage", color: "bg-pink-100 text-pink-800" },
-  naissance: { label: "Naissance", color: "bg-blue-100 text-blue-800" },
-  pilgrimage: { label: "Pèlerinage", color: "bg-purple-100 text-purple-800" },
-  examen: { label: "Examen", color: "bg-indigo-100 text-indigo-800" },
-  autre: { label: "Autre", color: "bg-gray-100 text-gray-800" },
+  maladie: { label: "Maladie", color: "border-border bg-muted text-ink-750" },
+  deces: { label: "Décès", color: "border-border bg-muted text-ink-750" },
+  marriage: { label: "Mariage", color: "border-border bg-muted text-ink-750" },
+  naissance: { label: "Naissance", color: "border-border bg-muted text-ink-750" },
+  pilgrimage: { label: "Pèlerinage", color: "border-border bg-muted text-ink-750" },
+  examen: { label: "Examen", color: "border-border bg-muted text-ink-750" },
+  autre: { label: "Autre", color: "border-border bg-muted text-ink-750" },
 };
 
 // Status colors
 const statusColors = {
-  approved: "bg-green-100 text-green-800",
-  pending: "bg-blue-100 text-blue-800",
-  rejected: "bg-red-100 text-red-800",
+  approved: "border-success-border bg-success-subtle text-success-text",
+  pending: "border-info-border bg-info-subtle text-info-text",
+  rejected: "border-destructive-border bg-destructive-subtle text-destructive-text",
 };
 
 export default function AbsenceAAListPage() {
@@ -298,15 +299,14 @@ export default function AbsenceAAListPage() {
   const currentAbsences = sortedAbsences.slice(startIndex, endIndex);
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Liste des Absences Autorisées
         </h1>
         <Button
           onClick={() => router.push("/absence/aa/add")}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
         >
           <Plus className="mr-2 h-4 w-4" /> Ajouter une Absence
         </Button>
@@ -319,10 +319,10 @@ export default function AbsenceAAListPage() {
             placeholder="Rechercher par nom ou matricule..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            className="pl-10 pr-4 py-2 w-full rounded-full border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50"
           />
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -514,25 +514,25 @@ export default function AbsenceAAListPage() {
         </div>
       )}
 
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              <span className="ml-2 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
                 Chargement des absences...
               </span>
             </div>
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <AlertTriangle className="h-8 w-8 mr-2" />
               <p>{error}</p>
             </div>
           ) : currentAbsences.length === 0 ? (
-            <div className="flex flex-col justify-center items-center h-64 text-gray-500">
-              <Calendar className="h-12 w-12 mb-4 text-gray-400" />
+            <div className="flex flex-col justify-center items-center h-64 text-muted-foreground">
+              <Calendar className="h-12 w-12 mb-4 text-ink-600" />
               <p className="text-lg mb-2">Aucune absence trouvée</p>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-ink-600 mb-4">
                 {searchTerm ||
                 typeFilter.length > 0 ||
                 statusFilter.length > 0 ||
@@ -555,7 +555,6 @@ export default function AbsenceAAListPage() {
               ) : (
                 <Button
                   onClick={() => router.push("/absence/aa/add")}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   <Plus className="mr-2 h-4 w-4" /> Ajouter une Absence
                 </Button>
@@ -610,7 +609,7 @@ export default function AbsenceAAListPage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button
+                    <Button className="-ml-2.5 h-8 px-2.5 text-[11.5px] font-semibold uppercase tracking-[0.05em] text-ink-750 hover:text-foreground"
                       variant="ghost"
                       onClick={() => handleSort("endDate")}
                     >
@@ -631,10 +630,9 @@ export default function AbsenceAAListPage() {
                     </Button>
                   </TableHead>
                   <TableHead
-                    className="
-                    inline-flex
+                    className="inline-flex
                     items-center
-                    text-gray-500
+                    text-muted-foreground
                     justify-center
                     rounded-md
                     text-sm
@@ -654,27 +652,27 @@ export default function AbsenceAAListPage() {
               </TableHeader>
               <TableBody>
                 {currentAbsences.map((absence) => (
-                  <TableRow key={absence._id} className="hover:bg-gray-50">
+                  <TableRow key={absence._id} className="hover:bg-background">
                     <TableCell>
                       <div>
                         <div>
                           {absence.personnel.firstName}{" "}
                           {absence.personnel.lastName}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           {absence.personnel.matricule}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Building className="inline mr-1" />
+                      
                       {absence.personnel.stationName || "Non défini"}
                     </TableCell>
                     <TableCell>
                       <Badge
                         className={
                           absenceTypes[absence.absenceType]?.color ||
-                          "bg-gray-100 text-gray-800"
+                          "bg-muted text-foreground"
                         }
                       >
                         {absenceTypes[absence.absenceType]?.label || "Autre"}
@@ -682,16 +680,16 @@ export default function AbsenceAAListPage() {
                     </TableCell>
                     <TableCell>
                       {" "}
-                      <Calendar className="inline mr-1" />
+                      
                       {formatDate(absence.startDate)}
                     </TableCell>
                     <TableCell>
                       {" "}
-                      <Calendar className="inline mr-1" />{" "}
+                      
                       {formatDate(absence.endDate)}
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-blue-600">
+                      <span className="font-medium text-info">
                         {calculateDaysBetweenDates(
                           absence.startDate,
                           absence.endDate
@@ -731,7 +729,7 @@ export default function AbsenceAAListPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(absence)}
-                            className="text-red-600"
+                            className="text-destructive-text"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer

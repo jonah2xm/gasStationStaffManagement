@@ -15,7 +15,8 @@ import {
   ArrowLeft,
   Eye,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +60,13 @@ import {
 } from "@/components/ui/command";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { Field, FileDropzone, FormActions, FormSection, FormSkeleton } from "@/components/ui/form-layout";
+import { EmployeeCombobox } from "@/components/ui/employee-combobox";
+import { PageError } from "@/components/ui/detail-layout";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusDialog } from "@/components/ui/status-dialog";
 
 export default function EditAbsenceAIPage() {
   const router = useRouter();
@@ -383,470 +391,227 @@ export default function EditAbsenceAIPage() {
 
   // Show loading state while fetching data
   if (fetchingData) {
-    return (
-      <div className="container mx-auto p-6 bg-gray-50 min-h-screen flex flex-col items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500 mb-4" />
-        <p className="text-lg text-gray-600">Chargement des données...</p>
-      </div>
-    );
+    return <FormSkeleton />;
   }
 
   // Show not found state
   if (notFound) {
     return (
-      <div className="container mx-auto p-6 bg-gray-50 min-h-screen flex flex-col items-center justify-center">
-        <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          Absence non trouvée
-        </h1>
-        <p className="text-gray-600 mb-6">
-          L'absence que vous recherchez n'existe pas ou a été supprimée.
-        </p>
-        <Button
-          onClick={() => router.push("/absence/ai")}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Retour à la liste
-        </Button>
-      </div>
+      <PageError
+        title="Absence non trouvée"
+        message="L'absence que vous recherchez n'existe pas ou a été supprimée."
+        backHref="/absence/ai"
+      />
     );
   }
 
+  const isReprise = operationType === "avisReprise";
+  const operationOptions = [
+    {
+      value: "avisAbsence",
+      title: "Avis d'absence",
+      description: "L'agent est absent sans autorisation. La reprise sera ajoutée plus tard.",
+    },
+    {
+      value: "avisReprise",
+      title: "Avis de reprise",
+      description: "L'agent a repris le travail : renseignez la date de reprise.",
+    },
+  ];
+
+  const handleOperationTypeChange = (value) => {
+    setOperationType(value);
+    // When switching back to an absence notice, clear the return date and its error
+    if (value === "avisAbsence") {
+      setFormData((prev) => ({
+        ...prev,
+        endDate: "",
+      }));
+      setErrors((prev) => {
+        const { endDate, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/absence/ai"
+        backLabel="Absences AI"
+        title={isReprise ? "Modifier l'avis de reprise" : "Modifier l'avis d'absence"}
+        meta={<StatusBadge kind="absenceAI" value={operationType} />}
+        description={
+          selectedPersonnel
+            ? `${selectedPersonnel.firstName} ${selectedPersonnel.lastName} · ${selectedPersonnel.matricule}`
+            : undefined
+        }
+      />
 
-
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          {operationType === "avisReprise"
-            ? "Modifier un Avis de Reprise"
-            : "Modifier une Avis Absence"}
-        </h1>
-        <Button variant="outline" onClick={() => router.push("/absence/ai")}>
-          Retour à la liste
-        </Button>
-      </div>
-
-      <Card className="max-w-4xl mx-auto bg-white">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>
-                {operationType === "avisReprise"
-                  ? "Modifier un Avis de Reprise"
-                  : "Modifier une Avis Absence"}
-              </CardTitle>
-              <CardDescription>
-                {operationType === "avisReprise"
-                  ? "Modifiez les informations relatives à l'avis de reprise d'un employé."
-                  : "Modifiez les informations relatives à l'avis d'absence d'un employé."}
-              </CardDescription>
-            </div>
-            <Badge
-              className={
-                operationType === "avisReprise"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-yellow-100 text-yellow-800"
-              }
-            >
-              {operationType === "avisReprise"
-                ? "Avis de Reprise"
-                : "Avis Absence"}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Operation type selection */}
-            <div className="space-y-2">
-              <Label htmlFor="operationType">Type d'opération*</Label>
-              <Select
-                value={operationType}
-                onValueChange={(value) => {
-                  setOperationType(value);
-                  // When switching types, reset fields and errors
-                  if (value === "avisAbsence") {
-                    setFormData((prev) => ({
-                      ...prev,
-                      endDate: "",
-                    }));
-                    setErrors((prev) => {
-                      const { endDate, ...rest } = prev;
-                      return rest;
-                    });
-                  }
-                }}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez le type d'opération" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="avisAbsence">Avis Absence</SelectItem>
-                  <SelectItem value="avisReprise">Avis de reprise</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Personnel Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="personnel">Employé*</Label>
-              <Popover
-                open={openPersonnelCombobox}
-                onOpenChange={setOpenPersonnelCombobox}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openPersonnelCombobox}
-                    className={`w-full justify-between bg-gray-50${
-                      errors.personnel ? "border-red-500" : ""
-                    }`}
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+        <FormSection title="Type d'avis" description="Passez en avis de reprise quand l'agent revient.">
+          <Field label="Type d'avis" required full>
+            <div role="radiogroup" aria-label="Type d'avis" className="grid gap-3 sm:grid-cols-2">
+              {operationOptions.map((option) => {
+                const checked = operationType === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={checked}
                     disabled={loading}
-                  >
-                    {selectedPersonnel ? (
-                      <div className="flex items-center bg-gray-50">
-                        <Avatar className="h-6 w-6 mr-2">
-                          <AvatarFallback className="bg-blue-100 text-blue-800 text-xs">
-                            {getInitials(
-                              `${selectedPersonnel.firstName} ${selectedPersonnel.lastName}`
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col items-start text-left">
-                          <span className="font-medium text-gray-800">
-                            {selectedPersonnel.firstName}{" "}
-                            {selectedPersonnel.lastName}
-                          </span>
-                          <span className="text-xs text-gray-800">
-                            {selectedPersonnel.matricule}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center text-muted-foreground">
-                        <Search className="mr-2 h-4 w-4" />
-                        Rechercher un employé...
-                      </div>
+                    onClick={() => handleOperationTypeChange(option.value)}
+                    className={cn(
+                      "flex flex-col items-start gap-1 rounded-lg border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60",
+                      checked ? "border-foreground bg-primary-subtle" : "border-input bg-card hover:border-ink-400"
                     )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-[400px] p-0 bg-gray-50"
-                  align="start"
-                >
-                  <Command>
-                    <CommandInput
-                      placeholder="Rechercher par nom ou matricule..."
-                      className="h-9"
-                      value={searchTerm}
-                      onValueChange={setSearchTerm}
-                    />
-                    <CommandList>
-                      <CommandEmpty>
-                        <div className="flex flex-col items-center justify-center py-6 text-center">
-                          <p className="text-sm text-muted-foreground">
-                            Aucun employé trouvé.
-                          </p>
-                        </div>
-                      </CommandEmpty>
-                      <CommandGroup heading="Employés">
-                        {filteredPersonnel.map((person) => (
-                          <CommandItem
-                            key={person._id}
-                            value={`${person.firstName} ${person.lastName} ${person.matricule}`}
-                            onSelect={() => {
-                              setSelectedPersonnel(person);
-                              setOpenPersonnelCombobox(false);
-                              if (errors.personnel) {
-                                setErrors((prev) => ({
-                                  ...prev,
-                                  personnel: "",
-                                }));
-                              }
-                            }}
-                            className="flex items-center py-3 text-gray-800"
-                          >
-                            <Avatar className="h-8 w-8 mr-2">
-                              <AvatarFallback className="bg-blue-100 text-blue-800">
-                                {getInitials(
-                                  `${person.firstName} ${person.lastName}`
-                                )}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-gray-800">
-                                {person.firstName} {person.lastName}
-                              </span>
-                              <span className="text-xs text-gray-800">
-                                {person.matricule} •{" "}
-                                {person.poste || "Non défini"}
-                              </span>
-                            </div>
-                            {selectedPersonnel?._id === person._id && (
-                              <Check className="ml-auto h-4 w-4 text-green-500" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {errors.personnel && (
-                <p className="text-red-500 text-sm">{errors.personnel}</p>
-              )}
+                  >
+                    <span className="flex items-center gap-2 text-[13.5px] font-semibold text-foreground">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "flex h-4 w-4 items-center justify-center rounded-full border",
+                          checked ? "border-foreground" : "border-ink-400"
+                        )}
+                      >
+                        {checked && <span className="h-2 w-2 rounded-full bg-foreground" />}
+                      </span>
+                      {option.title}
+                    </span>
+                    <span className="pl-6 text-xs text-muted-foreground">{option.description}</span>
+                  </button>
+                );
+              })}
             </div>
+          </Field>
+        </FormSection>
 
-            {/* Absence Dates */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Date de début*</Label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("startDate")}
-                    disabled={loading}
-                    className={`pl-10 ${
-                      touched.startDate && errors.startDate
-                        ? "border-red-500"
-                        : ""
-                    }`}
-                  />
-                  <Calendar
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                </div>
-                {touched.startDate && errors.startDate && (
-                  <p className="text-red-500 text-sm">{errors.startDate}</p>
-                )}
-              </div>
+        <FormSection title="Employé" description="L'agent concerné par l'avis.">
+          <Field label="Employé" htmlFor="personnel" required full error={errors.personnel}>
+            <EmployeeCombobox
+              id="personnel"
+              open={openPersonnelCombobox}
+              onOpenChange={setOpenPersonnelCombobox}
+              people={filteredPersonnel}
+              selected={selectedPersonnel}
+              searchValue={searchTerm}
+              onSearchChange={setSearchTerm}
+              onSelect={(person) => {
+                setSelectedPersonnel(person);
+                setOpenPersonnelCombobox(false);
+                if (errors.personnel) {
+                  setErrors((prev) => ({ ...prev, personnel: "" }));
+                }
+              }}
+              disabled={loading}
+              invalid={!!errors.personnel}
+              loading={fetchingPersonnel}
+            />
+          </Field>
+        </FormSection>
 
-              {operationType === "avisReprise" && (
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">Date de reprise*</Label>
-                  <div className="relative">
-                    <Input
-                      type="date"
-                      id="endDate"
-                      name="endDate"
-                      value={formData.endDate}
-                      onChange={handleInputChange}
-                      onBlur={() => handleBlur("endDate")}
-                      disabled={loading}
-                      className={`pl-10 ${
-                        touched.endDate && errors.endDate
-                          ? "border-red-500"
-                          : ""
-                      }`}
-                    />
-                    <Calendar
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      size={16}
-                    />
-                  </div>
-                  {touched.endDate && errors.endDate && (
-                    <p className="text-red-500 text-sm">{errors.endDate}</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optionnel)</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
+        <FormSection
+          title="Dates"
+          description={isReprise ? "Début de l'absence et date de reprise." : "Premier jour d'absence."}
+        >
+          <Field label="Date de début" htmlFor="startDate" required error={touched.startDate && errors.startDate}>
+            <Input
+              type="date"
+              id="startDate"
+              name="startDate"
+              value={formData.startDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("startDate")}
+              disabled={loading}
+              aria-invalid={!!(touched.startDate && errors.startDate)}
+              className="tabular-nums"
+            />
+          </Field>
+          {isReprise && (
+            <Field label="Date de reprise" htmlFor="endDate" required error={touched.endDate && errors.endDate}>
+              <Input
+                type="date"
+                id="endDate"
+                name="endDate"
+                value={formData.endDate}
                 onChange={handleInputChange}
-                placeholder="Informations supplémentaires sur l'absence..."
-                rows={3}
+                onBlur={() => handleBlur("endDate")}
                 disabled={loading}
+                aria-invalid={!!(touched.endDate && errors.endDate)}
+                className="tabular-nums"
               />
-            </div>
+            </Field>
+          )}
+          <Field label="Description" htmlFor="description" full hint="Optionnel.">
+            <Textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder="Informations supplémentaires sur l'absence…"
+              rows={3}
+              disabled={loading}
+            />
+          </Field>
+        </FormSection>
 
-            {/* Document Upload */}
-            <div className="space-y-2">
-              <Label htmlFor="document">Document justificatif (PDF)</Label>
-              <div className="flex items-center">
-                <label
-                  htmlFor="document"
-                  className={`flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                    fileError
-                      ? "border-red-500 text-red-500"
-                      : "text-gray-700 hover:bg-gray-50"
-                  } cursor-pointer`}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {file || existingDocument
-                    ? "Changer de fichier"
-                    : "Télécharger un PDF"}
-                </label>
-                <input
-                  id="document"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  disabled={loading}
-                />
-                {file && (
-                  <div className="ml-4 flex items-center bg-gray-100 px-3 py-1 rounded-md">
-                    <FileText className="text-blue-500 mr-2" size={16} />
-                    <span className="text-sm truncate max-w-[200px]">
-                      {file.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setFile(null)}
-                      className="ml-2 text-gray-500 hover:text-red-500"
-                      disabled={loading}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-                {!file && existingDocument && (
-                  <div className="ml-4 flex items-center bg-gray-100 px-3 py-1 rounded-md">
-                    <FileText className="text-blue-500 mr-2" size={16} />
-                    <span className="text-sm truncate max-w-[200px]">
-                      Document existant
-                    </span>
-                    <a
-                      href={`/absence/ai/document/${encodeURIComponent(
-                        existingDocument
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-2 text-blue-500 hover:text-blue-700"
-                    >
-                      <Eye size={16} />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setExistingDocument(null)}
-                      className="ml-2 text-gray-500 hover:text-red-500"
-                      disabled={loading}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {fileError && <p className="text-red-500 text-sm">{fileError}</p>}
-              <p className="text-xs text-gray-500">
-                Formats acceptés: PDF uniquement. Taille maximale: 5MB
-              </p>
-            </div>
+        <FormSection title="Justificatif" description="Conservez, remplacez ou retirez le document.">
+          <Field label="Document" htmlFor="document" full error={fileError}>
+            <FileDropzone
+              id="document"
+              file={file}
+              onFileChange={handleFileChange}
+              onRemove={() => setFile(null)}
+              disabled={loading}
+              invalid={!!fileError}
+              hint="PDF uniquement · 5 Mo maximum"
+              currentFileHref={
+                existingDocument
+                  ? `/document/${encodeURIComponent(String(existingDocument).replace(/\\/g, "/"))}`
+                  : undefined
+              }
+              onRemoveCurrent={() => setExistingDocument(null)}
+            />
+          </Field>
+        </FormSection>
 
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/absence/ai")}
-                disabled={loading}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Enregistrer les modifications
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <FormActions>
+          <Button type="button" variant="outline" onClick={() => router.push("/absence/ai")} disabled={loading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Enregistrement…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Enregistrer les modifications
+              </>
+            )}
+          </Button>
+        </FormActions>
+      </form>
 
-      <div className="mt-4 text-center text-sm text-gray-500">
-        <AlertTriangle className="inline-block mr-1" size={16} />
-        Les champs marqués avec * sont obligatoires.
-      </div>
-
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-green-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Modifications Enregistrées avec Succès
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Les modifications ont été enregistrées avec succès pour{" "}
-              {selectedPersonnel?.firstName} {selectedPersonnel?.lastName}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSuccessConfirm}>
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Error Dialog */}
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              Erreur
-            </AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
-              Fermer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <StatusDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        title="Modifications enregistrées"
+        description={`Les modifications ont été enregistrées pour ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""}.`}
+        onAction={handleSuccessConfirm}
+      />
+      <StatusDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        variant="error"
+        title="Échec de la mise à jour"
+        description={errorMessage}
+        actionLabel="Fermer"
+        onAction={() => setShowErrorDialog(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

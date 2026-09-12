@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { AlertTriangle, Loader2, ArrowLeft, Save } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,6 +32,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { Field, FormActions, FormSection, FormSkeleton, UnitInput } from "@/components/ui/form-layout";
+import { PageError } from "@/components/ui/detail-layout";
+import { StatusDialog } from "@/components/ui/status-dialog";
 
 const educationLevels = [
   "Baccalauréat",
@@ -427,415 +432,237 @@ export default function EditPersonnel() {
     );
   };
 
+  if (fetchingData) {
+    return <FormSkeleton />;
+  }
+
+  if (fetchError) {
+    return (
+      <PageError
+        title="Impossible de charger cette fiche"
+        message={fetchError}
+        backHref="/personnel"
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
+  const fieldError = (field) => (touched[field] && errors[field]) || undefined;
+  const changed = hasChanges();
+
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref={`/personnel/details/${personnelId}`}
+        backLabel="Fiche agent"
+        title="Modifier l'agent"
+        description={`${personnelData.firstName} ${personnelData.lastName} · ${personnelData.matricule}`}
+      />
 
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Modifier le Personnel
-        </h1>
-        <Button variant="outline" onClick={() => router.push("/personnel")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Retour au Tableau de Bord
-        </Button>
-      </div>
+      <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card shadow-xs">
+        <FormSection title="Identité" description="Le matricule doit être unique et ne contenir que des lettres et des chiffres.">
+          <Field label="Matricule" htmlFor="matricule" required error={fieldError("matricule")}>
+            <Input
+              type="text"
+              id="matricule"
+              name="matricule"
+              value={personnelData.matricule}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("matricule")}
+              aria-invalid={!!fieldError("matricule")}
+              placeholder="Entrez le matricule"
+              disabled={loading}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Date de naissance" htmlFor="birthDate" required error={fieldError("birthDate")}>
+            <Input
+              type="date"
+              id="birthDate"
+              name="birthDate"
+              value={personnelData.birthDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("birthDate")}
+              aria-invalid={!!fieldError("birthDate")}
+              disabled={loading}
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Nom" htmlFor="firstName" required error={fieldError("firstName")}>
+            <Input
+              type="text"
+              id="firstName"
+              name="firstName"
+              value={personnelData.firstName}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("firstName")}
+              aria-invalid={!!fieldError("firstName")}
+              placeholder="Entrez le nom"
+              disabled={loading}
+            />
+          </Field>
+          <Field label="Prénom" htmlFor="lastName" required error={fieldError("lastName")}>
+            <Input
+              type="text"
+              id="lastName"
+              name="lastName"
+              value={personnelData.lastName}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("lastName")}
+              aria-invalid={!!fieldError("lastName")}
+              placeholder="Entrez le prénom"
+              disabled={loading}
+            />
+          </Field>
+        </FormSection>
 
-      {fetchingData ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-          <span className="ml-2 text-gray-500">
-            Chargement des données du personnel...
-          </span>
-        </div>
-      ) : fetchError ? (
-        <div className="flex flex-col items-center justify-center h-64 text-red-500">
-          <AlertTriangle className="h-12 w-12 mb-4" />
-          <p className="text-lg mb-4">{fetchError}</p>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/personnel")}
-            className="flex items-center"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour au Tableau de Bord
+        <FormSection title="Poste et affectation" description="Poste occupé, contrat, décision et station de rattachement.">
+          <Field label="Poste" htmlFor="poste" required error={fieldError("poste")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "poste")}
+              value={personnelData.poste}
+              onOpenChange={() => !personnelData.poste && handleBlur("poste")}
+              disabled={loading}
+            >
+              <SelectTrigger id="poste" aria-invalid={!!fieldError("poste")}>
+                <SelectValue placeholder="Sélectionnez le poste" />
+              </SelectTrigger>
+              <SelectContent>
+                {posts.map((poste) => (
+                  <SelectItem key={poste} value={poste}>
+                    {poste}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Type de contrat" htmlFor="contractType" required error={fieldError("contractType")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "contractType")}
+              value={personnelData.contractType}
+              onOpenChange={() => !personnelData.contractType && handleBlur("contractType")}
+              disabled={loading}
+            >
+              <SelectTrigger id="contractType" aria-invalid={!!fieldError("contractType")}>
+                <SelectValue placeholder="Sélectionnez le type de contrat" />
+              </SelectTrigger>
+              <SelectContent>
+                {contractTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Station" htmlFor="station" required error={fieldError("station")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "station")}
+              value={personnelData.station}
+              onOpenChange={() => !personnelData.station && handleBlur("station")}
+              disabled={loading}
+            >
+              <SelectTrigger id="station" aria-invalid={!!fieldError("station")}>
+                <SelectValue placeholder="Sélectionnez la station" />
+              </SelectTrigger>
+              <SelectContent>
+                {stations.map((station) => (
+                  <SelectItem key={station._id} value={station._id}>
+                    {station.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Décision" htmlFor="decision" required error={fieldError("decision")}>
+            <Select
+              onValueChange={(value) => handleSelectChange(value, "decision")}
+              value={personnelData.decision}
+              onOpenChange={() => !personnelData.decision && handleBlur("decision")}
+              disabled={loading}
+            >
+              <SelectTrigger id="decision" aria-invalid={!!fieldError("decision")}>
+                <SelectValue placeholder="Sélectionnez la décision" />
+              </SelectTrigger>
+              <SelectContent>
+                {stations.map((station) => (
+                  <SelectItem key={station._id} value={station.name}>
+                    {station.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Date de recrutement" htmlFor="hireDate" required error={fieldError("hireDate")}>
+            <Input
+              type="date"
+              id="hireDate"
+              name="hireDate"
+              value={personnelData.hireDate}
+              onChange={handleInputChange}
+              onBlur={() => handleBlur("hireDate")}
+              aria-invalid={!!fieldError("hireDate")}
+              disabled={loading}
+              className="tabular-nums"
+            />
+          </Field>
+        </FormSection>
+
+        <FormSection title="Congés" description="Ajustez le solde de congés restant si nécessaire.">
+          <Field label="Congés restants" htmlFor="holidaysLeft" required error={fieldError("holidaysLeft")}>
+            <UnitInput
+              unit="jours"
+              type="number"
+              id="holidaysLeft"
+              name="holidaysLeft"
+              value={personnelData.holidaysLeft}
+              onChange={handleInputChange}
+              invalid={!!fieldError("holidaysLeft")}
+              min="0"
+              placeholder="Ex : 20"
+              disabled={loading}
+            />
+          </Field>
+        </FormSection>
+
+        <FormActions>
+          {!changed && <span className="text-xs text-muted-foreground">Aucune modification à enregistrer.</span>}
+          <Button type="button" variant="outline" onClick={() => router.push("/personnel")} disabled={loading}>
+            Annuler
           </Button>
-        </div>
-      ) : (
-        <Card className="max-w-4xl mx-auto bg-white">
-          <CardHeader>
-            <CardTitle>Détails du Personnel</CardTitle>
-            <CardDescription>
-              Modifiez les informations du personnel ci-dessous.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="matricule">Matricule*</Label>
-                  <Input
-                    type="text"
-                    id="matricule"
-                    name="matricule"
-                    value={personnelData.matricule}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("matricule")}
-                    className={
-                      touched.matricule && errors.matricule
-                        ? "border-red-500"
-                        : ""
-                    }
-                    placeholder="Entrez le matricule"
-                    disabled={loading}
-                  />
-                  {touched.matricule && errors.matricule && (
-                    <p className="text-red-500 text-sm">{errors.matricule}</p>
-                  )}
-                </div>
+          <Button type="submit" disabled={loading || !changed}>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Mise à jour…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Enregistrer les modifications
+              </>
+            )}
+          </Button>
+        </FormActions>
+      </form>
 
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Nom*</Label>
-                  <Input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={personnelData.firstName}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("firstName")}
-                    className={
-                      touched.firstName && errors.firstName
-                        ? "border-red-500"
-                        : ""
-                    }
-                    placeholder="Entrez le nom"
-                    disabled={loading}
-                  />
-                  {touched.firstName && errors.firstName && (
-                    <p className="text-red-500 text-sm">{errors.firstName}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Prénom*</Label>
-                  <Input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={personnelData.lastName}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("lastName")}
-                    className={
-                      touched.lastName && errors.lastName
-                        ? "border-red-500"
-                        : ""
-                    }
-                    placeholder="Entrez le prénom"
-                    disabled={loading}
-                  />
-                  {touched.lastName && errors.lastName && (
-                    <p className="text-red-500 text-sm">{errors.lastName}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate">Date de Naissance*</Label>
-                  <Input
-                    type="date"
-                    id="birthDate"
-                    name="birthDate"
-                    value={personnelData.birthDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("birthDate")}
-                    className={
-                      touched.birthDate && errors.birthDate
-                        ? "border-red-500"
-                        : ""
-                    }
-                    disabled={loading}
-                  />
-                  {touched.birthDate && errors.birthDate && (
-                    <p className="text-red-500 text-sm">{errors.birthDate}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="hireDate">Date de Recrutement*</Label>
-                  <Input
-                    type="date"
-                    id="hireDate"
-                    name="hireDate"
-                    value={personnelData.hireDate}
-                    onChange={handleInputChange}
-                    onBlur={() => handleBlur("hireDate")}
-                    className={
-                      touched.hireDate && errors.hireDate
-                        ? "border-red-500"
-                        : ""
-                    }
-                    disabled={loading}
-                  />
-                  {touched.hireDate && errors.hireDate && (
-                    <p className="text-red-500 text-sm">{errors.hireDate}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="poste">Poste*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "poste")
-                    }
-                    value={personnelData.poste}
-                    onOpenChange={() =>
-                      !personnelData.poste && handleBlur("poste")
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.poste && errors.poste ? "border-red-500" : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez le Poste" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {posts.map((poste) => (
-                        <SelectItem key={poste} value={poste}>
-                          {poste}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.poste && errors.poste && (
-                    <p className="text-red-500 text-sm">{errors.poste}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contractType">Type de contrat*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "contractType")
-                    }
-                    value={personnelData.contractType}
-                    onOpenChange={() =>
-                      !personnelData.contractType && handleBlur("contractType")
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.contractType && errors.contractType
-                          ? "border-red-500"
-                          : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez le type de contrat" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contractTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.contractType && errors.contractType && (
-                    <p className="text-red-500 text-sm">
-                      {errors.contractType}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="decision">Decision*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "decision")
-                    }
-                    value={personnelData.decision}
-                    onOpenChange={() =>
-                      !personnelData.decision && handleBlur("decision")
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.decision && errors.decision
-                          ? "border-red-500"
-                          : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez la décision" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stations.map((station) => (
-                        <SelectItem key={station._id} value={station.name}>
-                          {station.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.decision && errors.decision && (
-                    <p className="text-red-500 text-sm">{errors.decision}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="station">Station*</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleSelectChange(value, "station")
-                    }
-                    value={personnelData.station}
-                    onOpenChange={() =>
-                      !personnelData.station && handleBlur("station")
-                    }
-                    disabled={loading}
-                  >
-                    <SelectTrigger
-                      className={
-                        touched.station && errors.station
-                          ? "border-red-500"
-                          : ""
-                      }
-                    >
-                      <SelectValue placeholder="Sélectionnez la station" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stations.map((station) => (
-                        <SelectItem key={station._id} value={station._id}>
-                          {station.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {touched.station && errors.station && (
-                    <p className="text-red-500 text-sm">{errors.station}</p>
-                  )}
-                </div>
-
-                {/* Congé restant (jours) */}
-                <div className="space-y-2">
-                  <Label htmlFor="holidaysLeft">Congé restant (jours)</Label>
-                  <Input
-                    type="number"
-                    id="holidaysLeft"
-                    name="holidaysLeft"
-                    value={personnelData.holidaysLeft}
-                    onChange={handleInputChange}
-                    min="0"
-                    placeholder="Ex: 20"
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Modifiez le nombre de jours de congé restant pour ce
-                    personnel.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/personnel")}
-                  disabled={loading}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading || !hasChanges()}
-                  className="bg-blue-500 hover:bg-blue-600"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Mise à jour en cours...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Enregistrer les modifications
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="mt-4 text-center text-sm text-gray-500">
-        <AlertTriangle className="inline-block mr-1" size={16} />
-        Les champs marqués avec * sont obligatoires.
-      </div>
-
-      {/* Success Dialog */}
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-green-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Personnel Mis à Jour avec Succès
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Les informations du personnel ont été mises à jour avec succès.
-              Vous pouvez maintenant retourner au tableau de bord du personnel.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={handleSuccessConfirm}>
-              Retour au Tableau de Bord
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Error Dialog */}
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              Erreur
-            </AlertDialogTitle>
-            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
-              Fermer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <StatusDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        title="Fiche mise à jour"
+        description="Les informations de l'agent ont bien été enregistrées."
+        actionLabel="Retour au personnel"
+        onAction={handleSuccessConfirm}
+      />
+      <StatusDialog
+        open={showErrorDialog}
+        onOpenChange={setShowErrorDialog}
+        variant="error"
+        title="Échec de la mise à jour"
+        description={errorMessage}
+        actionLabel="Fermer"
+        onAction={() => setShowErrorDialog(false)}
+      />
 
       <Toaster position="bottom-left" />
     </div>

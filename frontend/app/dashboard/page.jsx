@@ -1,391 +1,305 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { AccountHeader } from "@/components/account-header"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TableSkeleton } from "@/components/ui/table-skeleton"
+import { StatusBadge, DaysLeftBadge } from "@/components/ui/status-badge"
 import {
-  Users,
-  Briefcase,
-  Calendar,
-  Activity,
+  ArrowLeftRight,
+  BellRing,
+  CalendarCheck,
+  CalendarClock,
   Eye,
-  User,
-  CalendarDays,
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
   Plane,
+  Users,
 } from "lucide-react"
 
-// Components for the tables
-function AbsencesAITable({ absences, loading }) {
-  const formatDate = (dateString) => {
-    if (!dateString) return "Non définie"
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-  }
+// Chart colors from the design tokens (chart-1, chart-2, chart-4).
+const STATUS_COLORS = {
+  actif: "#0F7B55",
+  conge: "#1B63C4",
+  absent: "#DC2626",
+}
 
-  const calculateDaysRemaining = (endDate) => {
-    if (!endDate) return "En cours"
-    const today = new Date()
-    const end = new Date(endDate)
-    const diffTime = end - today
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays > 0 ? `${diffDays} jour(s)` : "Terminé"
-  }
+const formatDate = (dateString) => {
+  if (!dateString) return "—"
+  return new Date(dateString).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+}
 
-  const getOperationTypeBadge = (type) => {
-    const types = {
-      avisAbsence: { label: "Avis Absence", color: "bg-orange-100 text-orange-800" },
-      avisReprise: { label: "Avis Reprise", color: "bg-green-100 text-green-800" },
-    }
+// Whole days from today until the given date; zero or negative once it has passed.
+const daysUntil = (dateString) => Math.ceil((new Date(dateString) - new Date()) / (1000 * 60 * 60 * 24))
 
-    const typeInfo = types[type] || { label: type, color: "bg-gray-100 text-gray-800" }
-    return <Badge className={typeInfo.color}>{typeInfo.label}</Badge>
-  }
+function EmployeeCell({ personnel }) {
+  return (
+    <div className="flex flex-col">
+      <span className="font-medium text-foreground">
+        {personnel?.firstName} {personnel?.lastName}
+      </span>
+      <span className="text-[12.5px] tabular-nums text-muted-foreground">{personnel?.matricule}</span>
+    </div>
+  )
+}
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-32">
-        <Loader2 className="h-6 w-6 animate-spin" />
+function ViewButton({ href, label }) {
+  return (
+    <Button asChild variant="ghost" size="icon" className="h-[30px] w-[30px]">
+      <Link href={href} aria-label={label} title={label}>
+        <Eye className="h-4 w-4" />
+      </Link>
+    </Button>
+  )
+}
+
+function EmptyState({ icon: Icon, title, description }) {
+  return (
+    <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+      <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary">
+        <Icon className="h-5 w-5 text-ink-700" strokeWidth={1.8} />
+      </span>
+      <p className="text-[15px] font-semibold text-foreground">{title}</p>
+      <p className="max-w-[42ch] text-[13.5px] text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
+function KpiCard({ label, value, icon: Icon, loading }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-[12.5px] font-medium text-muted-foreground">{label}</span>
+        <Icon aria-hidden className="h-4 w-4 text-ink-600" strokeWidth={1.9} />
       </div>
-    )
-  }
+      <div className="mt-2.5 text-[28px] font-semibold leading-8 tracking-tight tabular-nums text-foreground">
+        {loading ? <Skeleton className="h-8 w-16" /> : value.toLocaleString("fr-FR")}
+      </div>
+    </Card>
+  )
+}
+
+function SectionCard({ title, description, icon: Icon, className, children }) {
+  return (
+    <Card className={className}>
+      <CardHeader className="flex flex-row items-start gap-3 space-y-0 border-b border-border px-5 py-4">
+        {Icon && (
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary">
+            <Icon aria-hidden className="h-4 w-4 text-ink-750" />
+          </span>
+        )}
+        <div className="flex flex-col gap-0.5">
+          <CardTitle>{title}</CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">{children}</CardContent>
+    </Card>
+  )
+}
+
+function AbsencesAITable({ absences, loading }) {
+  if (loading) return <TableSkeleton rows={4} columns={5} />
 
   if (absences.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
-        <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-        <p>Aucune absence AI trouvée</p>
-      </div>
+      <EmptyState
+        icon={CalendarCheck}
+        title="Aucun avis d'absence à suivre"
+        description="Aucune absence non autorisée n'est ouverte pour le moment."
+      />
     )
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Employé</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Date début</TableHead>
-            <TableHead>Date fin</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {absences.map((absence) => (
-            <TableRow key={absence._id} className="hover:bg-gray-50">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Employé</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead>Début</TableHead>
+          <TableHead>Fin</TableHead>
+          <TableHead>Statut</TableHead>
+          <TableHead className="w-12">
+            <span className="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {absences.map((absence) => {
+          const days = absence.endDate ? daysUntil(absence.endDate) : null
+          return (
+            <TableRow key={absence._id}>
               <TableCell>
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <p className="font-medium">
-                      {absence.personnel?.firstName} {absence.personnel?.lastName}
-                    </p>
-                    <p className="text-sm text-gray-500">{absence.personnel?.matricule}</p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>{getOperationTypeBadge(absence.operationType)}</TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-1">
-                  <CalendarDays className="h-4 w-4 text-gray-400" />
-                  <span>{formatDate(absence.startDate)}</span>
-                </div>
+                <EmployeeCell personnel={absence.personnel} />
               </TableCell>
               <TableCell>
-                <div className="flex items-center space-x-1">
-                  <CalendarDays className="h-4 w-4 text-gray-400" />
-                  <span>{formatDate(absence.endDate)}</span>
-                </div>
+                <StatusBadge kind="absenceAI" value={absence.operationType} />
+              </TableCell>
+              <TableCell className="tabular-nums">{formatDate(absence.startDate)}</TableCell>
+              <TableCell className="tabular-nums">
+                {absence.endDate ? formatDate(absence.endDate) : <span className="text-muted-foreground">Non définie</span>}
               </TableCell>
               <TableCell>
-                <Badge className={absence.endDate ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"}>
-                  {calculateDaysRemaining(absence.endDate)}
-                </Badge>
+                {days === null ? (
+                  <StatusBadge kind="period" value="en cours" />
+                ) : days > 0 ? (
+                  <DaysLeftBadge days={days} />
+                ) : (
+                  <StatusBadge kind="period" value="termine" />
+                )}
               </TableCell>
-              <TableCell>
-                <Button variant="ghost" size="sm">
-                  <Eye className="h-4 w-4" />
-                </Button>
+              <TableCell className="text-right">
+                <ViewButton href={`/absence/ai/${absence._id}`} label="Voir l'avis" />
               </TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          )
+        })}
+      </TableBody>
+    </Table>
   )
 }
 
 function AbsencesAATable({ absences, loading }) {
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-  }
-
-  const calculateDaysRemaining = (endDate) => {
-    const today = new Date()
-    const end = new Date(endDate)
-    const diffTime = end - today
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return Math.max(0, diffDays)
-  }
-
-  const getAbsenceTypeBadge = (type) => {
-    const types = {
-      maladie: { label: "Maladie", color: "bg-red-100 text-red-800" },
-      decés: { label: "Décès", color: "bg-gray-100 text-gray-800" },
-      marriage: { label: "Mariage", color: "bg-pink-100 text-pink-800" },
-      naissance: { label: "Naissance", color: "bg-blue-100 text-blue-800" },
-      examen: { label: "Examen", color: "bg-green-100 text-green-800" },
-      autre: { label: "Autre", color: "bg-yellow-100 text-yellow-800" },
-    }
-
-    const typeInfo = types[type] || { label: type, color: "bg-gray-100 text-gray-800" }
-    return <Badge className={typeInfo.color}>{typeInfo.label}</Badge>
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-32">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    )
-  }
+  if (loading) return <TableSkeleton rows={3} columns={5} />
 
   if (absences.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
-        <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-        <p>Aucune absence AA proche du retour</p>
-      </div>
+      <EmptyState
+        icon={CalendarCheck}
+        title="Aucun retour d'absence prévu"
+        description="Aucune absence autorisée ne se termine dans les 3 prochains jours."
+      />
     )
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px]">Employé</TableHead>
-            <TableHead className="w-[120px]">Type</TableHead>
-            <TableHead className="w-[130px]">Date début</TableHead>
-            <TableHead className="w-[130px]">Date fin</TableHead>
-            <TableHead className="w-[120px]">Jours restants</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Employé</TableHead>
+          <TableHead>Motif</TableHead>
+          <TableHead>Début</TableHead>
+          <TableHead>Fin</TableHead>
+          <TableHead>Jours restants</TableHead>
+          <TableHead className="w-12">
+            <span className="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {absences.map((absence) => (
+          <TableRow key={absence._id}>
+            <TableCell>
+              <EmployeeCell personnel={absence.personnel} />
+            </TableCell>
+            <TableCell>
+              <StatusBadge kind="absenceAA" value={absence.absenceType} />
+            </TableCell>
+            <TableCell className="tabular-nums">{formatDate(absence.startDate)}</TableCell>
+            <TableCell className="tabular-nums">{formatDate(absence.endDate)}</TableCell>
+            <TableCell>
+              <DaysLeftBadge days={daysUntil(absence.endDate)} />
+            </TableCell>
+            <TableCell className="text-right">
+              <ViewButton href={`/absence/aa/details/${absence._id}`} label="Voir l'absence" />
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {absences.map((absence) => (
-            <TableRow key={absence._id} className="hover:bg-gray-50">
-              <TableCell className="py-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {absence.personnel?.firstName} {absence.personnel?.lastName}
-                    </p>
-                    <p className="text-sm text-gray-500">{absence.personnel?.matricule}</p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell className="py-4">{getAbsenceTypeBadge(absence.absenceType)}</TableCell>
-              <TableCell className="py-4">
-                <div className="flex items-center space-x-2">
-                  <CalendarDays className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">{formatDate(absence.startDate)}</span>
-                </div>
-              </TableCell>
-              <TableCell className="py-4">
-                <div className="flex items-center space-x-2">
-                  <CalendarDays className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">{formatDate(absence.endDate)}</span>
-                </div>
-              </TableCell>
-              <TableCell className="py-4">
-                <Badge className="bg-blue-100 text-blue-800 px-3 py-1">
-                  {calculateDaysRemaining(absence.endDate)} jour(s)
-                </Badge>
-              </TableCell>
-              <TableCell className="py-4">
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
 function CongeTable({ conges, loading }) {
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-  }
-
-  const calculateDaysRemaining = (dateRetour) => {
-    const today = new Date()
-    const returnDate = new Date(dateRetour)
-    const diffTime = returnDate - today
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return Math.max(0, diffDays)
-  }
-
-  const getCongeTypeBadge = (type) => {
-    const types = {
-      ordinaire: { label: "Ordinaire", color: "bg-blue-100 text-blue-800" },
-      anticipe: { label: "Anticipé", color: "bg-orange-100 text-orange-800" },
-    }
-
-    const typeInfo = types[type] || { label: type, color: "bg-gray-100 text-gray-800" }
-    return <Badge className={typeInfo.color}>{typeInfo.label}</Badge>
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-32">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    )
-  }
+  if (loading) return <TableSkeleton rows={3} columns={6} />
 
   if (conges.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
-        <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-        <p>Aucun congé proche du retour</p>
-      </div>
+      <EmptyState
+        icon={Plane}
+        title="Aucun retour de congé prévu"
+        description="Aucun agent n'est attendu en reprise dans les 3 prochains jours."
+      />
     )
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px]">Employé</TableHead>
-            <TableHead className="w-[120px]">Type</TableHead>
-            <TableHead className="w-[150px]">Station</TableHead>
-            <TableHead className="w-[130px]">Date début</TableHead>
-            <TableHead className="w-[130px]">Date retour</TableHead>
-            <TableHead className="w-[100px]">Durée</TableHead>
-            <TableHead className="w-[120px]">Jours restants</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Employé</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead>Station</TableHead>
+          <TableHead>Début</TableHead>
+          <TableHead>Retour</TableHead>
+          <TableHead className="text-right">Durée</TableHead>
+          <TableHead>Jours restants</TableHead>
+          <TableHead className="w-12">
+            <span className="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {conges.map((conge) => (
+          <TableRow key={conge._id}>
+            <TableCell>
+              <EmployeeCell personnel={conge.personnel} />
+            </TableCell>
+            <TableCell>
+              <StatusBadge kind="conge" value={conge.typeConge} />
+            </TableCell>
+            <TableCell className="tabular-nums">{conge.stationName}</TableCell>
+            <TableCell className="tabular-nums">{formatDate(conge.dateDebut)}</TableCell>
+            <TableCell className="tabular-nums">{formatDate(conge.dateRetour)}</TableCell>
+            <TableCell className="text-right tabular-nums">{conge.dureeConge} j</TableCell>
+            <TableCell>
+              <DaysLeftBadge days={daysUntil(conge.dateRetour)} />
+            </TableCell>
+            <TableCell className="text-right">
+              <ViewButton href={`/conges/details/${conge._id}`} label="Voir le congé" />
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {conges.map((conge) => (
-            <TableRow key={conge._id} className="hover:bg-gray-50">
-              <TableCell className="py-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {conge.personnel?.firstName} {conge.personnel?.lastName}
-                    </p>
-                    <p className="text-sm text-gray-500">{conge.personnel?.matricule}</p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell className="py-4">{getCongeTypeBadge(conge.typeConge)}</TableCell>
-              <TableCell className="py-4">
-                <div className="flex items-center space-x-2">
-                  <Briefcase className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm font-medium">{conge.stationName}</span>
-                </div>
-              </TableCell>
-              <TableCell className="py-4">
-                <div className="flex items-center space-x-2">
-                  <CalendarDays className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">{formatDate(conge.dateDebut)}</span>
-                </div>
-              </TableCell>
-              <TableCell className="py-4">
-                <div className="flex items-center space-x-2">
-                  <CalendarDays className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm">{formatDate(conge.dateRetour)}</span>
-                </div>
-              </TableCell>
-              <TableCell className="py-4">
-                <Badge className="bg-gray-100 text-gray-800 px-3 py-1">
-                  {conge.dureeConge} jour{conge.dureeConge > 1 ? "s" : ""}
-                </Badge>
-              </TableCell>
-              <TableCell className="py-4">
-                <Badge className="bg-green-100 text-green-800 px-3 py-1">
-                  {calculateDaysRemaining(conge.dateRetour)} jour(s)
-                </Badge>
-              </TableCell>
-              <TableCell className="py-4">
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
-// Status Chart Component
 function StatusChart({ data, loading }) {
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div className="space-y-4">
+        {[0, 1, 2].map((index) => (
+          <div key={index} className="flex items-center justify-between">
+            <Skeleton className="h-2.5 w-24" />
+            <Skeleton className="h-2.5 w-10" />
+          </div>
+        ))}
+        <Skeleton className="h-2 w-full" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {data.map((item, index) => (
-        <div key={index} className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }} />
-            <span className="text-sm font-medium text-gray-700">{item.name}</span>
-          </div>
-          <span className="text-sm font-bold text-gray-800">{item.value}%</span>
+    <div className="space-y-3">
+      {data.map((item) => (
+        <div key={item.name} className="flex items-center gap-2.5">
+          <span aria-hidden className="h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ backgroundColor: item.color }} />
+          <span className="flex-1 text-[13.5px] font-medium text-ink-800">{item.name}</span>
+          <span className="text-[13.5px] font-semibold tabular-nums text-foreground">{item.value} %</span>
         </div>
       ))}
-      <div className="mt-4 pt-4 border-t">
-        <div className="flex space-x-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-          {data.map((item, index) => (
-            <div
-              key={index}
-              className="h-full"
-              style={{
-                backgroundColor: item.color,
-                width: `${item.value}%`,
-              }}
-            />
-          ))}
-        </div>
+      <div className="!mt-5 flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted">
+        {data.map((item) => (
+          <div key={item.name} className="h-full" style={{ backgroundColor: item.color, width: `${item.value}%` }} />
+        ))}
       </div>
     </div>
   )
@@ -411,9 +325,9 @@ export default function DashboardPage() {
 
   // Status chart state
   const [statusData, setStatusData] = useState([
-    { name: "Actif", value: 0, color: "#10B981" },
-    { name: "En congé", value: 0, color: "#F59E0B" },
-    { name: "Absent", value: 0, color: "#EF4444" },
+    { name: "Actif", value: 0, color: STATUS_COLORS.actif },
+    { name: "En congé", value: 0, color: STATUS_COLORS.conge },
+    { name: "Absent", value: 0, color: STATUS_COLORS.absent },
   ])
   const [loadingStatusChart, setLoadingStatusChart] = useState(true)
 
@@ -630,9 +544,9 @@ export default function DashboardPage() {
           const absentPercentage = Math.round((activeAbsences / totalPersonnel) * 100)
 
           setStatusData([
-            { name: "Actif", value: activePercentage, color: "#10B981" },
-            { name: "En congé", value: congePercentage, color: "#F59E0B" },
-            { name: "Absent", value: absentPercentage, color: "#EF4444" },
+            { name: "Actif", value: activePercentage, color: STATUS_COLORS.actif },
+            { name: "En congé", value: congePercentage, color: STATUS_COLORS.conge },
+            { name: "Absent", value: absentPercentage, color: STATUS_COLORS.absent },
           ])
         }
       } catch (err) {
@@ -653,124 +567,59 @@ export default function DashboardPage() {
     }
   }, [router, user])
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
-
   return (
-    <div className="container mx-auto p-6 text-gray-800">
-
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Personnel Dashboard</h1>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Personnel</CardTitle>
-            <Users className="h-5 w-5 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-800">
-              {loadingStats ? <Loader2 className="h-8 w-8 animate-spin" /> : stats.totalPersonnel.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Affectation Temporaire</CardTitle>
-            <Briefcase className="h-5 w-5 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-800">
-              {loadingStats ? (
-                <Loader2 className="h-8 w-8 animate-spin" />
-              ) : (
-                stats.totalAffectationTemp.toLocaleString()
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Conges</CardTitle>
-            <Calendar className="h-5 w-5 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-800">
-              {loadingStats ? <Loader2 className="h-8 w-8 animate-spin" /> : stats.totalConges.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Absences Autorisé</CardTitle>
-            <Activity className="h-5 w-5 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-800">
-              {loadingStats ? <Loader2 className="h-8 w-8 animate-spin" /> : stats.totalAbsencesAA.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 p-6 lg:p-8">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Tableau de bord</h1>
+        <p className="text-[13.5px] text-muted-foreground">
+          Ce qui demande votre attention aujourd'hui : avis d'absence ouverts et retours à prévoir.
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3 mb-6">
-        {/* Absence AI Table */}
-        <Card className="lg:col-span-2 bg-white shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 flex items-center">
-              <AlertTriangle className="mr-2 h-5 w-5 text-orange-500" />
-              Avis Absence AI
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AbsencesAITable absences={absencesAI} loading={loadingAbsences} />
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Total personnel" value={stats.totalPersonnel} icon={Users} loading={loadingStats} />
+        <KpiCard
+          label="Affectations temporaires"
+          value={stats.totalAffectationTemp}
+          icon={ArrowLeftRight}
+          loading={loadingStats}
+        />
+        <KpiCard label="Congés" value={stats.totalConges} icon={Plane} loading={loadingStats} />
+        <KpiCard label="Absences autorisées" value={stats.totalAbsencesAA} icon={CalendarClock} loading={loadingStats} />
+      </div>
 
-        {/* Status Chart */}
-        <Card className="bg-white shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800">Status Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <SectionCard
+          className="lg:col-span-2"
+          icon={BellRing}
+          title="Avis d'absence AI"
+          description="Absences non autorisées ouvertes et reprises récentes."
+        >
+          <AbsencesAITable absences={absencesAI} loading={loadingAbsences} />
+        </SectionCard>
+
+        <SectionCard title="Répartition des statuts" description="Part de l'effectif aujourd'hui.">
+          <div className="p-5">
             <StatusChart data={statusData} loading={loadingStatusChart} />
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       </div>
 
-      {/* Absence AA Table - Full Width */}
-      <div className="grid gap-6 md:grid-cols-1 mb-6">
-        <Card className="bg-white shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 flex items-center">
-              <Clock className="mr-2 h-5 w-5 text-blue-500" />
-              Absence AA - Retour dans 3 jours
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <AbsencesAATable absences={absencesAA} loading={loadingAbsences} />
-          </CardContent>
-        </Card>
-      </div>
+      <SectionCard
+        icon={CalendarClock}
+        title="Absences AA — retour dans 3 jours"
+        description="Absences autorisées qui se terminent bientôt."
+      >
+        <AbsencesAATable absences={absencesAA} loading={loadingAbsences} />
+      </SectionCard>
 
-      {/* Conge Table - Full Width */}
-      <div className="grid gap-6 md:grid-cols-1 mb-6">
-        <Card className="bg-white shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-800 flex items-center">
-              <Plane className="mr-2 h-5 w-5 text-green-500" />
-              Congé - Retour dans 3 jours
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <CongeTable conges={conges} loading={loadingAbsences} />
-          </CardContent>
-        </Card>
-      </div>
+      <SectionCard
+        icon={Plane}
+        title="Congés — retour dans 3 jours"
+        description="Agents attendus en reprise dans les 3 prochains jours."
+      >
+        <CongeTable conges={conges} loading={loadingAbsences} />
+      </SectionCard>
     </div>
   )
 }

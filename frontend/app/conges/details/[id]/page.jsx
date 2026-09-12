@@ -14,23 +14,28 @@ import {
   User,
   FileText,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { DetailItem, DetailList, DetailSection, DetailSkeleton, DocumentLink, PageError } from "@/components/ui/detail-layout";
+import { EmployeeIdentity } from "@/components/ui/form-layout";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 
 // Leave types with their display names and colors
 const leaveTypes = {
   ordinaire: {
     label: "Ordinaire",
-    color: "bg-blue-100 text-blue-800",
+    color: "border-border bg-muted text-ink-750",
   },
   anticipe: {
     label: "Anticipé",
-    color: "bg-orange-100 text-orange-800",
+    color: "border-violet-border bg-violet-subtle text-violet-text",
   },
 };
 
@@ -145,254 +150,103 @@ export default function CongeDetailsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
-        <span className="mt-4 text-lg text-gray-500">Chargement...</span>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-red-500">
-        <p className="text-xl mb-4">{error}</p>
-        <Button
-          onClick={() => router.push("/conges")}
-          className="flex items-center"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la liste
-        </Button>
-      </div>
+      <PageError
+        title="Impossible de charger ce congé"
+        message={error}
+        backHref="/conges"
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
   if (!conge) return null;
 
-  // Determine the gradient color based on status
-  const headerGradient = "bg-blue-500";
-
-  const remainingDays = calculateRemainingDays(
-    conge.dateDebut,
-    conge.dureeConge,
-    conge.status
-  );
+  const remainingDays = calculateRemainingDays(conge.dateDebut, conge.dureeConge, conge.status);
+  const today = new Date();
+  const periodStatus =
+    today < new Date(conge.dateDebut) ? "a venir" : today <= new Date(conge.dateRetour) ? "en cours" : "termine";
+  const formatDateTime = (value) =>
+    new Date(value).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
-      {/* Account header */}
-
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/conges")}
-            className="flex items-center"
-          >
-            <ArrowLeft className="mr-2 h-5 w-5" /> Retour
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
+      <PageHeader
+        backHref="/conges"
+        backLabel="Congés"
+        title="Détails du congé"
+        meta={
+          <>
+            <StatusBadge kind="conge" value={conge.typeConge} />
+            <StatusBadge kind="period" value={periodStatus} />
+          </>
+        }
+        actions={
+          <Button onClick={() => router.push(`/conges/edit/${conge._id}`)}>
+            <Edit className="h-4 w-4" />
+            Modifier
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Détails du Congé</h1>
-          <div></div>
+        }
+      />
+
+      <DetailSection>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <EmployeeIdentity
+            firstName={conge.personnel?.firstName}
+            lastName={conge.personnel?.lastName}
+            matricule={conge.personnel?.matricule}
+            meta={[conge.personnel?.poste, conge.stationName].filter(Boolean).join(" · ")}
+            size="lg"
+            highlighted
+          />
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Jours restants</p>
+            <p className="text-[28px] font-semibold leading-8 tracking-tight tabular-nums text-foreground">
+              {remainingDays} j
+            </p>
+          </div>
         </div>
+      </DetailSection>
 
-        <Card className="max-w-4xl mx-auto shadow-2xl">
-          <CardHeader className={`${headerGradient} p-6 rounded-t-lg`}>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold text-white">
-                Congé
-              </CardTitle>
-              <div className="flex space-x-2">
-                <Badge
-                  className={`${
-                    leaveTypes[conge.typeConge]?.color ||
-                    "bg-gray-200 text-gray-800"
-                  } text-sm px-3 py-1`}
-                >
-                  {leaveTypes[conge.typeConge]?.label || "Type inconnu"}
-                </Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8 bg-white">
-            <div className="space-y-6">
-              {/* Employé Info */}
-              <div className="border-b pb-4">
-                <Label className="block text-sm font-semibold text-gray-600">
-                  Employé
-                </Label>
-                <p className="mt-1 text-lg text-gray-800">
-                  {conge.personnel?.firstName} {conge.personnel?.lastName}
-                </p>
-              </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <DetailSection title="Période" className="xl:col-span-2">
+          <DetailList>
+            <DetailItem label="Type de congé">
+              <StatusBadge kind="conge" value={conge.typeConge} />
+            </DetailItem>
+            <DetailItem label="Durée">
+              {conge.dureeConge} jour{Number.parseInt(conge.dureeConge) > 1 ? "s" : ""}
+            </DetailItem>
+            <DetailItem label="Date de début">{formatDate(conge.dateDebut)}</DetailItem>
+            <DetailItem label="Date de retour">{formatDate(conge.dateRetour)}</DetailItem>
+            <DetailItem label="Station">{conge.stationName}</DetailItem>
+            <DetailItem label="Lieu de séjour">{conge.lieuSejour}</DetailItem>
+          </DetailList>
+        </DetailSection>
 
-              {/* Matricule */}
-              <div className="border-b pb-4">
-                <Label className="block text-sm font-semibold text-gray-600">
-                  Matricule
-                </Label>
-                <p className="mt-1 text-lg text-gray-800">
-                  {conge.personnel?.matricule}
-                </p>
-              </div>
-
-              {/* Poste */}
-              {conge.personnel?.poste && (
-                <div className="border-b pb-4">
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Poste
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <User className="mr-2 h-5 w-5 text-gray-500" />
-                    {conge.personnel.poste}
-                  </div>
-                </div>
-              )}
-
-              {/* Station */}
-              <div className="border-b pb-4">
-                <Label className="block text-sm font-semibold text-gray-600">
-                  Station
-                </Label>
-                <div className="mt-1 flex items-center text-lg text-gray-800">
-                  <Building className="mr-2 h-5 w-5 text-gray-500" />
-                  {conge.stationName || "Non défini"}
-                </div>
-              </div>
-
-              {/* Type and Duration */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Type de congé
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Plane className="mr-2 h-5 w-5 text-blue-500" />
-                    {leaveTypes[conge.typeConge]?.label || "Type inconnu"}
-                  </div>
-                </div>
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Durée du congé
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Clock className="mr-2 h-5 w-5 text-blue-500" />
-                    {conge.dureeConge} jour
-                    {Number.parseInt(conge.dureeConge) > 1 ? "s" : ""}
-                  </div>
-                </div>
-              </div>
-
-              {/* Dates */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Date de début
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Calendar className="mr-2 h-5 w-5 text-blue-500" />
-                    {formatDate(conge.dateDebut)}
-                  </div>
-                </div>
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Date de retour
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Calendar className="mr-2 h-5 w-5 text-green-500" />
-                    {formatDate(conge.dateRetour)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Lieu de séjour */}
-              {conge.lieuSejour && (
-                <div className="border-b pb-4">
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Lieu de séjour
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <MapPin className="mr-2 h-5 w-5 text-blue-500" />
-                    {conge.lieuSejour}
-                  </div>
-                </div>
-              )}
-              {/* Documents */}
-                      {conge.documentPath && (
-                <div className="border-b pb-4">
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Document justificatif
-                  </Label>
-                  <a
-                    href={`/document/${encodeURIComponent(
-                      normalizedDocument
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center text-lg text-blue-600 hover:underline"
-                  >
-                    <FileText className="mr-2 h-5 w-5" />
-                    Voir le document
-                  </a>
-                </div>
-              )}
-
-              {/* Date d'enregistrement */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label className="block text-sm font-semibold text-gray-600">
-                    Enregistré le
-                  </Label>
-                  <div className="mt-1 flex items-center text-lg text-gray-800">
-                    <Clock className="mr-2 h-5 w-5 text-blue-500" />
-                    {new Date(conge.createdAt).toLocaleString("fr-FR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-                {conge.updatedAt && conge.updatedAt !== conge.createdAt && (
-                  <div>
-                    <Label className="block text-sm font-semibold text-gray-600">
-                      Dernière modification
-                    </Label>
-                    <div className="mt-1 flex items-center text-lg text-gray-800">
-                      <Clock className="mr-2 h-5 w-5 text-blue-500" />
-                      {new Date(conge.updatedAt).toLocaleString("fr-FR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/conges/edit/${conge._id}`)}
-                className="flex items-center"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Modifier
-              </Button>
-              <Button
-                onClick={() => router.push("/conges")}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour à la liste
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <DetailSection title="Justificatif">
+          {conge.documentPath ? (
+            <DocumentLink href={`/document/${encodeURIComponent(normalizedDocument)}`} />
+          ) : (
+            <p className="text-[13.5px] text-muted-foreground">Aucun document joint.</p>
+          )}
+          <dl className="mt-5 space-y-4 border-t border-border pt-4">
+            <DetailItem label="Enregistré le">{formatDateTime(conge.createdAt)}</DetailItem>
+            {conge.updatedAt && conge.updatedAt !== conge.createdAt && (
+              <DetailItem label="Dernière modification">{formatDateTime(conge.updatedAt)}</DetailItem>
+            )}
+          </dl>
+        </DetailSection>
       </div>
 
       <Toaster position="bottom-left" />

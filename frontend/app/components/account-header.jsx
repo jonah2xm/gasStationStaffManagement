@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,12 +14,105 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Bell, Settings, LogOut, User, ChevronDown, Check, Building, MapPin } from "lucide-react"
+import { Bell, Settings, LogOut, User, ChevronDown, ChevronRight, Check } from "lucide-react"
 import { getSocket } from "@/utils/socket";
 
+// Breadcrumb labels per route segment; segments without a label (record ids, file names) are skipped.
+const SEGMENT_LABELS = {
+  dashboard: "Tableau de bord",
+  notifications: "Notifications",
+  stations: "Stations",
+  personnel: "Personnel",
+  "pointage-list": "Pointages",
+  conges: "Congés",
+  recuperations: "Récupérations",
+  absence: "Absences",
+  aa: "Absences AA",
+  ai: "Absences AI",
+  affectation: "Affectations",
+  definitif: "Définitives",
+  temporaire: "Temporaires",
+  settings: "Paramètres",
+  profile: "Profil",
+  document: "Document",
+  add: "Ajouter",
+  "add-personnel": "Ajouter",
+  "add-station": "Ajouter",
+  edit: "Modifier",
+  "edit-personnel": "Modifier",
+  "edit-station": "Modifier",
+  details: "Détails",
+}
 
-export function AccountHeader({ name, role, avatarUrl, district, structure }) {
+// Sidebar section each module belongs to, shown as the first crumb.
+const SECTION_LABELS = {
+  dashboard: "Vue d'ensemble",
+  notifications: "Vue d'ensemble",
+  stations: "Organisation",
+  personnel: "Organisation",
+  "pointage-list": "Présence",
+  conges: "Mouvements & absences",
+  recuperations: "Mouvements & absences",
+  absence: "Mouvements & absences",
+  affectation: "Mouvements & absences",
+  settings: "Administration",
+  profile: "Mon compte",
+}
+
+// Crumbs only link to routes that have a page of their own.
+const LINKABLE_PATHS = new Set([
+  "/dashboard",
+  "/notifications",
+  "/stations",
+  "/personnel",
+  "/pointage-list",
+  "/conges",
+  "/recuperations",
+  "/absence/aa",
+  "/absence/ai",
+  "/affectation/definitif",
+  "/affectation/temporaire",
+  "/settings",
+  "/profile",
+])
+
+const ROLE_LABELS = {
+  administrateur: "Administrateur",
+  gestionnaire: "Gestionnaire",
+  "chef station": "Chef station",
+  personnel: "Personnel",
+}
+
+const NOTIFICATION_TYPE_LABELS = {
+  AbsenceAA: "Absence AA",
+  AbsenceAI: "Absence AI",
+  AffectationTemporaire: "Affectation temporaire",
+  AffectationDefinitive: "Affectation définitive",
+  Conge: "Congé",
+  CongeDays: "Jours de congé",
+  Recuperation: "Récupération",
+  MonthlyAccrual: "Acquisition mensuelle",
+}
+
+function buildCrumbs(pathname) {
+  const segments = pathname.split("/").filter(Boolean)
+  const crumbs = []
+  const section = SECTION_LABELS[segments[0]]
+  if (section) crumbs.push({ label: section })
+
+  let path = ""
+  for (const segment of segments) {
+    path += `/${segment}`
+    const label = SEGMENT_LABELS[segment]
+    if (!label) continue
+    crumbs.push({ label, href: LINKABLE_PATHS.has(path) ? path : undefined })
+  }
+  return crumbs
+}
+
+export function AccountHeader({ name, role, avatarUrl }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
@@ -60,7 +153,6 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
 
         const data = await res.json()
         if (data.user) {
-          console.log('data', data)
           // normalize id field so code can reference user.id or user._id
           setUser({ ...data.user, id: data.user._id || data.user.id });
         } else {
@@ -281,6 +373,11 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
     setShowNotifications(!showNotifications)
   }
 
+  const openAllNotifications = () => {
+    setShowNotifications(false)
+    router.push("/notifications")
+  }
+
   // small helpers
   const getInitials = (name) => {
     if (!name) return "U"
@@ -288,6 +385,7 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
       .split(" ")
       .map((n) => n[0])
       .join("")
+      .slice(0, 2)
       .toUpperCase()
   }
 
@@ -297,154 +395,172 @@ export function AccountHeader({ name, role, avatarUrl, district, structure }) {
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
 
     if (diffInHours < 1) return "À l'instant"
-    if (diffInHours < 24) return `Il y a ${diffInHours}h`
+    if (diffInHours < 24) return `Il y a ${diffInHours} h`
 
     const diffInDays = Math.floor(diffInHours / 24)
-    if (diffInDays < 7) return `Il y a ${diffInDays}j`
+    if (diffInDays < 7) return `Il y a ${diffInDays} j`
 
     return date.toLocaleDateString("fr-FR")
   }
 
-  const getNotificationTypeColor = (type) => {
-    const colors = {
-      info: "bg-blue-100 text-blue-800",
-      warning: "bg-yellow-100 text-yellow-800",
-      error: "bg-red-100 text-red-800",
-      success: "bg-green-100 text-green-800",
-    }
-    return colors[type] || colors.info
-  }
-
   const displayName = name || user.username || "Utilisateur"
-  const displayRole = role || user.role || "Invité"
-  const displayDistrict = district || user.district || ""
-  const displayStructure = structure || user.structure || ""
+  const rawRole = role || user.role || ""
+  const displayRole = ROLE_LABELS[rawRole] || rawRole || "Invité"
+  const crumbs = buildCrumbs(pathname)
 
   return (
-    <div className="flex items-center justify-between p-4 bg-white shadow-sm border-b border-gray-200 mb-6 rounded-lg">
-      <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={displayName} />
-            <AvatarFallback className="bg-blue-500 text-white font-semibold">{getInitials(displayName)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="text-lg font-semibold text-gray-800">{displayName}</h2>
-            <p className="text-sm text-gray-600">{displayRole}</p>
-            {(displayDistrict || displayStructure) && (
-              <div className="flex items-center space-x-3 mt-1">
-                {displayDistrict && (
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs text-gray-500">{displayDistrict}</span>
-                  </div>
-                )}
-                {displayStructure && (
-                  <div className="flex items-center space-x-1">
-                    <Building className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs text-gray-500">{displayStructure}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
+      <nav aria-label="Fil d'Ariane" className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+        {crumbs.map((crumb, index) => {
+          const isLast = index === crumbs.length - 1
+          return (
+            <span key={`${crumb.label}-${index}`} className="flex min-w-0 items-center gap-1.5">
+              {index > 0 && <ChevronRight aria-hidden className="h-3.5 w-3.5 shrink-0 text-ink-450" />}
+              {isLast ? (
+                <span aria-current="page" className="truncate font-medium text-foreground">{crumb.label}</span>
+              ) : crumb.href ? (
+                <Link href={crumb.href} className="truncate transition-colors hover:text-foreground">{crumb.label}</Link>
+              ) : (
+                <span className="truncate">{crumb.label}</span>
+              )}
+            </span>
+          )
+        })}
+      </nav>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex shrink-0 items-center gap-2">
         {/* Notifications */}
         <Popover open={showNotifications} onOpenChange={setShowNotifications}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative" onClick={handleNotificationClick} ref={bellRef}>
-              <Bell className="h-5 w-5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={handleNotificationClick}
+              ref={bellRef}
+              aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} non lues` : "Notifications"}
+            >
+              <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
               {unreadCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold tabular-nums text-primary-foreground ring-2 ring-card">
                   {unreadCount > 99 ? "99+" : unreadCount}
-                </Badge>
+                </span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="end">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-gray-800">Notifications</h3>
+          <PopoverContent className="w-[360px] p-0" align="end">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-[15px] font-semibold text-foreground">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="text-xs tabular-nums text-muted-foreground">{unreadCount} non lue{unreadCount > 1 ? "s" : ""}</span>
+                )}
+              </div>
               {unreadCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-blue-600 hover:text-blue-800">
+                <Button variant="ghost" size="sm" onClick={markAllAsRead}>
                   Tout marquer comme lu
                 </Button>
               )}
             </div>
             <div className="max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                  <p>Aucune notification</p>
+                <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary">
+                    <Bell className="h-5 w-5 text-ink-700" strokeWidth={1.8} />
+                  </span>
+                  <p className="text-sm font-semibold text-foreground">Aucune notification</p>
+                  <p className="text-[13px] text-muted-foreground">Vous êtes à jour.</p>
                 </div>
               ) : (
-                <div className="divide-y">
+                <ul>
                   {notifications.map((notification) => (
-                    <div
+                    <li
                       key={notification._id}
-                      className={`p-4 hover:bg-gray-50 transition-colors ${!notification.isRead ? "bg-blue-50" : ""}`}
+                      className="flex gap-3 border-b border-ink-150 px-4 py-3 transition-colors last:border-0 hover:bg-ink-50"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <Badge className={getNotificationTypeColor(notification.type)}>{notification.type}</Badge>
-                            {!notification.isRead && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
-                          </div>
-                          <p className="text-sm font-medium text-gray-800 mb-1">{notification.title}</p>
-                          <p className="text-xs text-gray-600 mb-2">{notification.message}</p>
-                          <p className="text-xs text-gray-500">{formatNotificationDate(notification.createdAt)}</p>
-                        </div>
-                        {!notification.isRead && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => markAsRead(notification._id)}
-                            className="ml-2 p-1 h-auto"
-                          >
-                            <Check className="h-3 w-3" />
-                          </Button>
+                      <span
+                        aria-hidden
+                        className={`mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full ${notification.isRead ? "" : "border border-primary-strong bg-primary"}`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-ink-600">
+                          {NOTIFICATION_TYPE_LABELS[notification.type] || notification.type}
+                        </p>
+                        {notification.title && (
+                          <p className="mt-0.5 text-[13.5px] font-medium text-foreground">{notification.title}</p>
                         )}
+                        <p className={`mt-0.5 text-[13px] leading-[19px] ${notification.isRead ? "text-muted-foreground" : "text-ink-800"}`}>
+                          {notification.message}
+                        </p>
+                        <p className="mt-1 text-xs tabular-nums text-ink-600">{formatNotificationDate(notification.createdAt)}</p>
                       </div>
-                    </div>
+                      {!notification.isRead && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => markAsRead(notification._id)}
+                          className="h-7 w-7 shrink-0"
+                          aria-label="Marquer comme lue"
+                          title="Marquer comme lue"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
+            </div>
+            <div className="border-t border-border p-[5px]">
+              <Button variant="ghost" size="sm" className="w-full" onClick={openAllNotifications}>
+                Voir toutes les notifications
+              </Button>
             </div>
           </PopoverContent>
         </Popover>
 
+        <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+
         {/* User Menu */}
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center space-x-2" ref={menuRef}>
+            <Button variant="ghost" className="h-10 gap-2.5 pl-1.5 pr-2" ref={menuRef}>
               <Avatar className="h-8 w-8">
-                <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={displayName} />
-                <AvatarFallback className="bg-blue-500 text-white text-sm">{getInitials(displayName)}</AvatarFallback>
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                <AvatarFallback className="bg-info text-primary">{getInitials(displayName)}</AvatarFallback>
               </Avatar>
-              <ChevronDown className="h-4 w-4" />
+              <span className="hidden flex-col items-start leading-tight sm:flex">
+                <span className="text-[13.5px] font-medium text-foreground">{displayName}</span>
+                <span className="text-xs font-normal text-muted-foreground">{displayRole}</span>
+              </span>
+              <ChevronDown className="h-4 w-4 text-ink-600" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+            <div className="px-2.5 pb-2">
+              <p className="truncate text-[13.5px] font-medium text-foreground">{displayName}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {[displayRole, user.occupiedStation].filter(Boolean).join(" · ")}
+              </p>
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push("/profile")}>
-              <User className="mr-2 h-4 w-4" />
+              <User className="mr-2 h-4 w-4 text-ink-750" />
               <span>Profil</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push("/settings")}>
-              <Settings className="mr-2 h-4 w-4" />
+              <Settings className="mr-2 h-4 w-4 text-ink-750" />
               <span>Paramètres</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive-text focus:bg-destructive-subtle focus:text-destructive-text">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Se déconnecter</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </header>
   )
 }

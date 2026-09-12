@@ -49,7 +49,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Toaster } from "@/components/ui/toaster";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
@@ -57,25 +58,31 @@ import { saveAs } from "file-saver";
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 
 const getStatusColor = (status) => {
-  switch (status?.toLowerCase()) {
+  switch (status?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()) {
     case "actif":
-      return "bg-green-100 text-green-800";
-    case "en congé":
-      return "bg-yellow-100 text-yellow-800";
-    case "en formation":
-      return "bg-blue-100 text-blue-800";
-    case "inactif":
-      return "bg-red-100 text-red-800";
+      return "border-success-border bg-success-subtle text-success-text";
+    case "conge":
+    case "en conge":
+      return "border-info-border bg-info-subtle text-info-text";
+    case "recuperation":
+    case "en recuperation":
+      return "border-teal-border bg-teal-subtle text-teal-text";
+    case "ai":
+    case "absence ai":
+      return "border-destructive-border bg-destructive-subtle text-destructive-text";
+    case "aa":
+    case "absence aa":
+      return "border-warning-border bg-warning-subtle text-warning-text";
     default:
-      return "bg-gray-100 text-gray-800";
+      return "border-border bg-muted text-ink-750";
   }
 };
 
+// Few days left is worth a warning; otherwise the balance is plain information.
 const getHolidaysLeftColor = (holidaysLeft) => {
-  if (holidaysLeft === null || holidaysLeft === undefined) return "bg-gray-100 text-gray-800";
-  if (holidaysLeft <= 5) return "bg-green-100 text-green-800"
-  if (holidaysLeft <= 15) return "bg-yellow-100 text-yellow-800";
-  return "bg-red-100 text-red-800"; 
+  if (holidaysLeft === null || holidaysLeft === undefined) return "border-border bg-muted text-ink-750";
+  if (holidaysLeft <= 5) return "border-warning-border bg-warning-subtle text-warning-text";
+  return "border-border bg-muted text-ink-750";
 };
 
 export default function EmployeeListPage() {
@@ -361,13 +368,13 @@ export default function EmployeeListPage() {
   ]);
 
   return (
-    <div className="container mx-auto p-6 bg-gray-50 min-h-screen text-gray-800">
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-8 text-foreground">
 
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Liste du Personnel</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Liste du Personnel</h1>
         <div className="flex justify-between items-center mb-8 ">
           <Link href="/personnel/add-personnel" className="mx-5">
-            <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+            <Button>
               <Plus className="mr-2 h-4 w-4" /> Ajouter Personnel
             </Button>
           </Link>
@@ -388,10 +395,10 @@ export default function EmployeeListPage() {
             placeholder="Rechercher personnel..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full bg-white rounded-full border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            className="pl-10 pr-4 py-2 w-full bg-card rounded-full border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50"
           />
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600"
             size={20}
           />
         </div>
@@ -627,17 +634,17 @@ export default function EmployeeListPage() {
         </div>
       )}
 
-      <Card className="bg-white shadow-lg mb-8">
+      <Card className="bg-card shadow-xs mb-8">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-              <span className="ml-2 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">
                 Chargement des données...
               </span>
             </div>
           ) : error ? (
-            <div className="flex justify-center items-center h-64 text-red-500">
+            <div className="flex justify-center items-center h-64 text-destructive-text">
               <p>{error}</p>
               <Button
                 variant="outline"
@@ -648,7 +655,7 @@ export default function EmployeeListPage() {
               </Button>
             </div>
           ) : currentEmployees.length === 0 ? (
-            <div className="flex justify-center items-center h-64 text-gray-500">
+            <div className="flex justify-center items-center h-64 text-muted-foreground">
               <p>Aucun personnel trouvé</p>
             </div>
           ) : (
@@ -727,7 +734,7 @@ export default function EmployeeListPage() {
               </TableHeader>
               <TableBody>
                 {currentEmployees.map((employee) => (
-                  <TableRow key={employee._id} className="hover:bg-gray-50">
+                  <TableRow key={employee._id} className="hover:bg-background">
                     <TableCell className="font-medium">
                       {employee.matricule}
                     </TableCell>
@@ -783,7 +790,7 @@ export default function EmployeeListPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(employee)}
-                            className="text-red-600"
+                            className="text-destructive-text"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
