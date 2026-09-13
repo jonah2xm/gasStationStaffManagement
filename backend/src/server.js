@@ -12,8 +12,8 @@ const stationRoutes = require("./routes/stationRoutes");
 const personnelRouter = require("./routes/personnelRouter");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
-const absenceAARoutes = require("./routes/absenceAARoutes");
-const absenceAIRoutes = require("./routes/absenceAIRoutes");
+const absenceRoutes = require("./routes/absenceRoutes");
+const repriseRoutes = require("./routes/repriseRoutes");
 const affectationTempRoutes = require("./routes/affectationTemporaireRoutes");
 const affectatoinDefinitif = require("./routes/affectationDefinitifRoutes");
 const congeRoutes = require("./routes/congeRoutes");
@@ -22,6 +22,7 @@ const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 const notificationRoutes = require("./routes/notificationRouter");
 const pointageRoutes = require("./routes/pointageRoutes");
+const bordereauRoutes = require("./routes/bordereauRoutes");
 const fs = require("fs"); // <- needed by your debug endpoint below
 
 // Socket.IO / http
@@ -112,8 +113,8 @@ app.get("/", (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/stations", stationRoutes);
 app.use("/api/personnel", personnelRouter);
-app.use("/api/absencesAA", absenceAARoutes);
-app.use("/api/absencesAI", absenceAIRoutes);
+app.use("/api/absences", absenceRoutes);
+app.use("/api/reprises", repriseRoutes);
 app.use("/api/affectationTemp", affectationTempRoutes);
 app.use("/api/affectationDef", affectatoinDefinitif);
 app.use("/api/conges", congeRoutes);
@@ -121,6 +122,7 @@ app.use("/api/recuperations", recuperationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/pointage", pointageRoutes);
+app.use("/api/bordereaux", bordereauRoutes);
 
 // 9. Error handler
 app.use((err, req, res, next) => {

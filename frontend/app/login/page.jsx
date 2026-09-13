@@ -11,17 +11,19 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
 
-function Brand({ size = "md" }) {
+function Brand({ size = "md", onDark = false }) {
   const tile = size === "lg" ? "h-11 w-11" : "h-9 w-9";
   const logo = size === "lg" ? 34 : 28;
   return (
     <div className="flex items-center gap-3">
-      <span className={`flex ${tile} shrink-0 items-center justify-center rounded-[10px] border border-border bg-card p-1`}>
+      <span className={`flex ${tile} shrink-0 items-center justify-center rounded-[10px] border ${onDark ? "border-white/20" : "border-border"} bg-card p-1`}>
         <Image src="/naftalLogo.png" alt="Naftal" width={logo} height={logo} className="object-contain" />
       </span>
       <div className="leading-tight">
-        <p className="text-[15px] font-semibold text-foreground">NSC Portal</p>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Naftal Staff Connect</p>
+        <p className={`text-[15px] font-semibold ${onDark ? "text-white" : "text-brand"}`}>NSC Portal</p>
+        <p className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${onDark ? "text-white/70" : "text-muted-foreground"}`}>
+          Naftal Staff Connect
+        </p>
       </div>
     </div>
   );
@@ -85,29 +87,42 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Brand panel */}
-      <aside className="hidden w-[44%] max-w-[560px] flex-col justify-between border-r border-border bg-card p-10 lg:flex">
-        <Brand size="lg" />
-        <div className="space-y-4">
+      <aside className="relative hidden w-[44%] max-w-[560px] flex-col justify-between overflow-hidden bg-brand p-10 lg:flex">
+        {/* Station NAFTAL sous un voile bleu marine : la photo reste visible, le texte lisible. */}
+        <Image
+          src="/loginPageImage.jpg"
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 1024px) 44vw, 1px"
+          className="object-cover"
+        />
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-brand/95 via-brand/75 to-brand/95" />
+        <div className="relative">
+          <Brand size="lg" onDark />
+        </div>
+        <div className="relative space-y-4">
           <span aria-hidden className="block h-1.5 w-12 rounded-full bg-primary" />
-          <h1 className="max-w-[17ch] text-[32px] font-semibold leading-10 tracking-tight text-foreground">
+          <h1 className="max-w-[17ch] text-[32px] font-semibold leading-10 tracking-tight text-white">
             Le personnel des stations, géré au même endroit.
           </h1>
-          <p className="max-w-[46ch] text-sm leading-6 text-muted-foreground">
+          <p className="max-w-[46ch] text-sm leading-6 text-white/80">
             Congés, absences, affectations et pointages de l'ensemble des stations, avec des statuts à jour en temps réel.
           </p>
         </div>
-        <p className="text-xs tabular-nums text-ink-600">NSC Portal · v2.4.0</p>
+        <p className="relative text-xs tabular-nums text-white/60">NSC Portal · v2.4.0</p>
       </aside>
 
       {/* Sign-in form */}
       <main className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-[380px] space-y-7">
-          <div className="lg:hidden">
-            <Brand />
+          {/* Petit écran : le panneau photo est masqué, la marque garde son fond bleu marine. */}
+          <div className="rounded-xl bg-brand p-4 lg:hidden">
+            <Brand onDark />
           </div>
 
           <div className="space-y-1.5">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Connexion</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-brand">Connexion</h2>
             <p className="text-[13.5px] text-muted-foreground">Accédez à votre espace de gestion.</p>
           </div>
 
@@ -169,7 +184,7 @@ export default function LoginPage() {
 
           <div className="space-y-2 border-t border-border pt-5 text-[13px]">
             <p className="text-muted-foreground">Mot de passe oublié ? Contactez votre administrateur.</p>
-            <Link href="/pointage" className="inline-block font-medium text-foreground underline-offset-4 hover:underline">
+            <Link href="/pointage" className="inline-block font-medium text-brand underline-offset-4 hover:underline">
               Aller à l'espace pointage
             </Link>
           </div>

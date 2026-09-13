@@ -59,6 +59,13 @@ import {
 
 // Notification types with their display names, colors, and icons
 const notificationTypes = {
+  Absence: {
+    label: "Absence",
+    color: "border-border bg-muted text-ink-750",
+    icon: Calendar,
+  },
+  // AbsenceAA / AbsenceAI : types hérités, portés par les notifications
+  // déjà en base avant la fusion des deux sections.
   AbsenceAA: {
     label: "Absence AA",
     color: "border-border bg-muted text-ink-750",

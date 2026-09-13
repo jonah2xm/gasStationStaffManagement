@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TableSkeleton } from "@/components/ui/table-skeleton"
 import { StatusBadge, DaysLeftBadge } from "@/components/ui/status-badge"
+import { Badge } from "@/components/ui/badge"
+import { isAutorisee, isSignaled48h } from "@/lib/absence-motifs"
+import { useCurrentUser } from "@/lib/use-current-user"
+import { sectionRetiree } from "@/lib/acces"
 import {
   ArrowLeftRight,
   BellRing,
@@ -51,7 +55,7 @@ function EmployeeCell({ personnel }) {
 
 function ViewButton({ href, label }) {
   return (
-    <Button asChild variant="ghost" size="icon" className="h-[30px] w-[30px]">
+    <Button asChild variant="ghost" size="icon" className="h-[30px] w-[30px] text-bleu hover:bg-bleu-subtle hover:text-bleu">
       <Link href={href} aria-label={label} title={label}>
         <Eye className="h-4 w-4" />
       </Link>
@@ -76,7 +80,9 @@ function KpiCard({ label, value, icon: Icon, loading }) {
     <Card className="p-4">
       <div className="flex items-center justify-between">
         <span className="text-[12.5px] font-medium text-muted-foreground">{label}</span>
-        <Icon aria-hidden className="h-4 w-4 text-ink-600" strokeWidth={1.9} />
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-bleu-subtle">
+          <Icon aria-hidden className="h-4 w-4 text-bleu" strokeWidth={1.9} />
+        </span>
       </div>
       <div className="mt-2.5 text-[28px] font-semibold leading-8 tracking-tight tabular-nums text-foreground">
         {loading ? <Skeleton className="h-8 w-16" /> : value.toLocaleString("fr-FR")}
@@ -90,8 +96,8 @@ function SectionCard({ title, description, icon: Icon, className, children }) {
     <Card className={className}>
       <CardHeader className="flex flex-row items-start gap-3 space-y-0 border-b border-border px-5 py-4">
         {Icon && (
-          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary">
-            <Icon aria-hidden className="h-4 w-4 text-ink-750" />
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-bleu-subtle">
+            <Icon aria-hidden className="h-4 w-4 text-bleu" />
           </span>
         )}
         <div className="flex flex-col gap-0.5">
@@ -104,77 +110,15 @@ function SectionCard({ title, description, icon: Icon, className, children }) {
   )
 }
 
-function AbsencesAITable({ absences, loading }) {
+function AbsencesTable({ absences, loading }) {
   if (loading) return <TableSkeleton rows={4} columns={5} />
 
   if (absences.length === 0) {
     return (
       <EmptyState
         icon={CalendarCheck}
-        title="Aucun avis d'absence à suivre"
-        description="Aucune absence non autorisée n'est ouverte pour le moment."
-      />
-    )
-  }
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Employé</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Début</TableHead>
-          <TableHead>Fin</TableHead>
-          <TableHead>Statut</TableHead>
-          <TableHead className="w-12">
-            <span className="sr-only">Actions</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {absences.map((absence) => {
-          const days = absence.endDate ? daysUntil(absence.endDate) : null
-          return (
-            <TableRow key={absence._id}>
-              <TableCell>
-                <EmployeeCell personnel={absence.personnel} />
-              </TableCell>
-              <TableCell>
-                <StatusBadge kind="absenceAI" value={absence.operationType} />
-              </TableCell>
-              <TableCell className="tabular-nums">{formatDate(absence.startDate)}</TableCell>
-              <TableCell className="tabular-nums">
-                {absence.endDate ? formatDate(absence.endDate) : <span className="text-muted-foreground">Non définie</span>}
-              </TableCell>
-              <TableCell>
-                {days === null ? (
-                  <StatusBadge kind="period" value="en cours" />
-                ) : days > 0 ? (
-                  <DaysLeftBadge days={days} />
-                ) : (
-                  <StatusBadge kind="period" value="termine" />
-                )}
-              </TableCell>
-              <TableCell className="text-right">
-                <ViewButton href={`/absence/ai/${absence._id}`} label="Voir l'avis" />
-              </TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
-  )
-}
-
-function AbsencesAATable({ absences, loading }) {
-  if (loading) return <TableSkeleton rows={3} columns={5} />
-
-  if (absences.length === 0) {
-    return (
-      <EmptyState
-        icon={CalendarCheck}
-        title="Aucun retour d'absence prévu"
-        description="Aucune absence autorisée ne se termine dans les 3 prochains jours."
+        title="Aucune absence récente"
+        description="Aucune absence n'a été enregistrée pour le moment."
       />
     )
   }
@@ -185,9 +129,8 @@ function AbsencesAATable({ absences, loading }) {
         <TableRow>
           <TableHead>Employé</TableHead>
           <TableHead>Motif</TableHead>
-          <TableHead>Début</TableHead>
-          <TableHead>Fin</TableHead>
-          <TableHead>Jours restants</TableHead>
+          <TableHead>Date d'absence</TableHead>
+          <TableHead>Nature</TableHead>
           <TableHead className="w-12">
             <span className="sr-only">Actions</span>
           </TableHead>
@@ -200,15 +143,64 @@ function AbsencesAATable({ absences, loading }) {
               <EmployeeCell personnel={absence.personnel} />
             </TableCell>
             <TableCell>
-              <StatusBadge kind="absenceAA" value={absence.absenceType} />
+              <StatusBadge kind="absence" value={absence.motif} />
             </TableCell>
-            <TableCell className="tabular-nums">{formatDate(absence.startDate)}</TableCell>
-            <TableCell className="tabular-nums">{formatDate(absence.endDate)}</TableCell>
+            <TableCell className="tabular-nums">{formatDate(absence.date)}</TableCell>
             <TableCell>
-              <DaysLeftBadge days={daysUntil(absence.endDate)} />
+              {isSignaled48h(absence) ? (
+                <Badge className="border-destructive-border bg-destructive-subtle text-destructive-text">
+                  Plus de 48 h
+                </Badge>
+              ) : isAutorisee(absence.motif) ? (
+                <span className="text-[13.5px] text-muted-foreground">Autorisée</span>
+              ) : (
+                <span className="text-[13.5px] text-destructive-text">Non autorisée</span>
+              )}
             </TableCell>
             <TableCell className="text-right">
-              <ViewButton href={`/absence/aa/details/${absence._id}`} label="Voir l'absence" />
+              <ViewButton href={`/absence/details/${absence._id}`} label="Voir l'absence" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+// Absences non autorisées de plus de 48 h, en attente d'un avis de reprise.
+function Absences48HTable({ absences, loading }) {
+  if (loading) return <TableSkeleton rows={3} columns={3} />
+
+  if (absences.length === 0) {
+    return (
+      <EmptyState
+        icon={CalendarCheck}
+        title="Aucune absence à signaler"
+        description="Aucune absence non autorisée ne dépasse 48 heures."
+      />
+    )
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Employé</TableHead>
+          <TableHead>Date d'absence</TableHead>
+          <TableHead className="w-12">
+            <span className="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {absences.map((absence) => (
+          <TableRow key={absence._id}>
+            <TableCell>
+              <EmployeeCell personnel={absence.personnel} />
+            </TableCell>
+            <TableCell className="tabular-nums">{formatDate(absence.date)}</TableCell>
+            <TableCell className="text-right">
+              <ViewButton href={`/absence/details/${absence._id}`} label="Voir l'absence" />
             </TableCell>
           </TableRow>
         ))}
@@ -309,8 +301,8 @@ export default function DashboardPage() {
   const [user, setUser] = useState({})
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [absencesAI, setAbsencesAI] = useState([])
-  const [absencesAA, setAbsencesAA] = useState([])
+  const [absences, setAbsences] = useState([])
+  const [absences48h, setAbsences48h] = useState([])
   const [conges, setConges] = useState([])
   const [loadingAbsences, setLoadingAbsences] = useState(true)
 
@@ -319,9 +311,13 @@ export default function DashboardPage() {
     totalPersonnel: 0,
     totalAffectationTemp: 0,
     totalConges: 0,
-    totalAbsencesAA: 0,
+    totalAbsences: 0,
   })
   const [loadingStats, setLoadingStats] = useState(true)
+
+  // Les affectations ne concernent pas le chef de station (voir lib/acces.js).
+  const connecte = useCurrentUser()
+  const afficherAffectations = connecte !== undefined && !sectionRetiree(connecte?.role, "/affectation")
 
   // Status chart state
   const [statusData, setStatusData] = useState([
@@ -367,18 +363,18 @@ export default function DashboardPage() {
         setLoadingStats(true)
 
         // Fetch all data in parallel
-        const [personnelRes, affectationRes, congeRes, absenceAARes] = await Promise.all([
+        const [personnelRes, affectationRes, congeRes, absenceRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/personnel`, { credentials: "include" }),
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/affectationTemp`, { credentials: "include" }),
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges`, { credentials: "include" }),
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absencesAA`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences`, { credentials: "include" }),
         ])
 
         const newStats = {
           totalPersonnel: 0,
           totalAffectationTemp: 0,
           totalConges: 0,
-          totalAbsencesAA: 0,
+          totalAbsences: 0,
         }
 
         if (personnelRes.ok) {
@@ -396,9 +392,9 @@ export default function DashboardPage() {
           newStats.totalConges = congeData.length || 0
         }
 
-        if (absenceAARes.ok) {
-          const absenceAAData = await absenceAARes.json()
-          newStats.totalAbsencesAA = absenceAAData.length || 0
+        if (absenceRes.ok) {
+          const absenceData = await absenceRes.json()
+          newStats.totalAbsences = absenceData.length || 0
         }
 
         setStats(newStats)
@@ -420,42 +416,30 @@ export default function DashboardPage() {
       try {
         setLoadingAbsences(true)
 
-        // Fetch Absence AI data
-        const aiRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absencesAI/getAI-only`, {
+        // Absences (section unique) + celles signalées au-delà de 48 h
+        const absenceRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences`, {
           credentials: "include",
         })
 
-        // Fetch Absence AA data
-        const aaRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absencesAA`, {
-          credentials: "include",
-        })
+        const absence48hRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences/non-autorisees-48h`,
+          { credentials: "include" }
+        )
 
         // Fetch Conges data
         const congeRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges`, {
           credentials: "include",
         })
 
-        if (aiRes.ok) {
-          const result = await aiRes.json()
-          const aiData=result.data
-          // Filter AI absences: show avisAbsence OR those with endDate
-          const filteredAI = aiData.filter((absence) => {
-            return absence.operationType === "avisAbsence" || absence.endDate
-          })
-          setAbsencesAI(filteredAI)
+        if (absenceRes.ok) {
+          const absenceData = await absenceRes.json()
+          // La liste est déjà triée par date décroissante côté API.
+          setAbsences(absenceData.slice(0, 6))
         }
 
-        if (aaRes.ok) {
-          const aaData = await aaRes.json()
-          // Filter AA absences that have less than 3 days to return
-          const filteredAA = aaData.filter((absence) => {
-            const today = new Date()
-            const endDate = new Date(absence.endDate)
-            const diffTime = endDate - today
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-            return diffDays > 0 && diffDays <= 3
-          })
-          setAbsencesAA(filteredAA)
+        if (absence48hRes.ok) {
+          const result = await absence48hRes.json()
+          setAbsences48h(result.data || [])
         }
 
         if (congeRes.ok) {
@@ -490,11 +474,10 @@ export default function DashboardPage() {
         setLoadingStatusChart(true)
 
         // Fetch all data needed for status calculation
-        const [personnelRes, congeRes, absenceAARes, absenceAIRes] = await Promise.all([
+        const [personnelRes, congeRes, absenceRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/personnel`, { credentials: "include" }),
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges`, { credentials: "include" }),
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absencesAA`, { credentials: "include" }),
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absencesAI`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences`, { credentials: "include" }),
         ])
 
         let totalPersonnel = 0
@@ -517,23 +500,18 @@ export default function DashboardPage() {
           }).length
         }
 
-        if (absenceAARes.ok && absenceAIRes.ok) {
-          const [aaData, aiData] = await Promise.all([absenceAARes.json(), absenceAIRes.json()])
+        if (absenceRes.ok) {
+          const absenceData = await absenceRes.json()
 
-          // Count active AA absences
+          // Une absence ne porte qu'une date : est "en cours" celle du jour.
           const today = new Date()
-          const activeAA = aaData.filter((absence) => {
-            const startDate = new Date(absence.startDate)
-            const endDate = new Date(absence.endDate)
-            return today >= startDate && today <= endDate
-          }).length
+          today.setHours(0, 0, 0, 0)
 
-          // Count active AI absences (avisAbsence without avisReprise)
-          const activeAI = aiData.filter((absence) => {
-            return absence.operationType === "avisAbsence" && !absence.endDate
+          activeAbsences = absenceData.filter((absence) => {
+            const date = new Date(absence.date)
+            date.setHours(0, 0, 0, 0)
+            return date.getTime() === today.getTime()
           }).length
-
-          activeAbsences = activeAA + activeAI
         }
 
         // Calculate percentages
@@ -576,26 +554,28 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={`grid gap-4 sm:grid-cols-2 ${afficherAffectations ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
         <KpiCard label="Total personnel" value={stats.totalPersonnel} icon={Users} loading={loadingStats} />
-        <KpiCard
-          label="Affectations temporaires"
-          value={stats.totalAffectationTemp}
-          icon={ArrowLeftRight}
-          loading={loadingStats}
-        />
+        {afficherAffectations && (
+          <KpiCard
+            label="Affectations temporaires"
+            value={stats.totalAffectationTemp}
+            icon={ArrowLeftRight}
+            loading={loadingStats}
+          />
+        )}
         <KpiCard label="Congés" value={stats.totalConges} icon={Plane} loading={loadingStats} />
-        <KpiCard label="Absences autorisées" value={stats.totalAbsencesAA} icon={CalendarClock} loading={loadingStats} />
+        <KpiCard label="Absences" value={stats.totalAbsences} icon={CalendarClock} loading={loadingStats} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <SectionCard
           className="lg:col-span-2"
           icon={BellRing}
-          title="Avis d'absence AI"
-          description="Absences non autorisées ouvertes et reprises récentes."
+          title="Absences récentes"
+          description="Absences autorisées et non autorisées, les plus récentes en premier."
         >
-          <AbsencesAITable absences={absencesAI} loading={loadingAbsences} />
+          <AbsencesTable absences={absences} loading={loadingAbsences} />
         </SectionCard>
 
         <SectionCard title="Répartition des statuts" description="Part de l'effectif aujourd'hui.">
@@ -607,10 +587,10 @@ export default function DashboardPage() {
 
       <SectionCard
         icon={CalendarClock}
-        title="Absences AA — retour dans 3 jours"
-        description="Absences autorisées qui se terminent bientôt."
+        title="Absences non autorisées de plus de 48 h"
+        description="En attente d'un avis de reprise."
       >
-        <AbsencesAATable absences={absencesAA} loading={loadingAbsences} />
+        <Absences48HTable absences={absences48h} loading={loadingAbsences} />
       </SectionCard>
 
       <SectionCard

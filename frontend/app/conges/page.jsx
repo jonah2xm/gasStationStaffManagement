@@ -20,6 +20,7 @@ import {
   Calendar,
   Clock,
   Plane,
+  Printer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -52,6 +53,7 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 
+import { EnvoyeBadge, VerrouMenuNote } from "@/components/document-verrouille";
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 // Leave types
 const leaveTypes = {
@@ -590,6 +592,7 @@ export default function CongeMainPage() {
                   <TableRow key={r._id} className="hover:bg-background">
                     <TableCell>
                       {r.personnel.firstName} {r.personnel.lastName}
+                      {r.bordereau && <EnvoyeBadge />}
                       <div className="text-sm text-muted-foreground">
                         {r.personnel.matricule}
                       </div>
@@ -635,6 +638,12 @@ export default function CongeMainPage() {
                             <Eye className="mr-2 h-4 w-4" /> Voir
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() => router.push(`/conges/imprimer/${r._id}`)}
+                          >
+                            <Printer className="mr-2 h-4 w-4" /> Imprimer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={Boolean(r.bordereau)}
                             onClick={() => router.push(`/conges/edit/${r._id}`)}
                           >
                             <Edit className="mr-2 h-4 w-4" /> Modifier
@@ -642,10 +651,12 @@ export default function CongeMainPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive-text"
+                            disabled={Boolean(r.bordereau)}
                             onClick={() => handleDeleteClick(r)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                           </DropdownMenuItem>
+                          {r.bordereau && <VerrouMenuNote />}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

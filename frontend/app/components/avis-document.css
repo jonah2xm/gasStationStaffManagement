@@ -1,0 +1,215 @@
+/*
+ * Réplique de « AVIS D'ABSENCE / AVIS DE REPRISE » (Avis D'absence.docx).
+ *
+ * Mesures converties depuis les twips / EMU du .docx :
+ *   page   : 11906 x 16838 tw -> A4 (210 x 297 mm)
+ *   marges : haut 567, droite 1418, bas 709, gauche 1418 tw
+ *            -> 10 / 25 / 12.5 / 25 mm, soit 160 mm de largeur utile
+ *   en-tête: à 709 tw (12.5 mm) du haut de page, logo 1028700 x 323850 EMU
+ *   corps  : Calibri 14 pt gras (sz 28) ; titres 18 pt gras souligné (sz 36)
+ *   cases  : 457200 x ~353000 EMU = 12.7 x 9.8 mm, bordure 9525 EMU = 0.75 pt,
+ *            ancrées à 4219575 EMU = 117.2 mm du bord gauche du corps
+ *   cadre  : 8990 tw de large (158.6 mm), hauteur de ligne 1424 tw (25.1 mm)
+ */
+
+.avis-sheet {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 12.5mm 25mm 12.5mm 25mm;
+  background: #fff;
+  color: #000;
+  font-family: Calibri, "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+  font-size: 14pt;
+  line-height: 1.3;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+.avis-sheet * {
+  box-sizing: border-box;
+  /* Le gabarit applicatif colore le texte en bleu nuit ; ici tout est noir. */
+  color: #000;
+}
+
+/* --- En-tête (header1.xml) -------------------------------------------- */
+
+/* Le logo est posé seul, les trois lignes de raison sociale en dessous. */
+.avis-head {
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.avis-head img {
+  display: block;
+  width: 27.2mm;
+  height: 8.6mm;
+  object-fit: contain;
+  margin-bottom: 2mm;
+}
+
+.avis-head-lines p {
+  margin: 0;
+}
+
+/* --- Date d'émission --------------------------------------------------- */
+
+.avis-date {
+  margin-top: 6mm;
+  text-align: right;
+  font-weight: 700;
+}
+
+/* --- Titres et cases à cocher ------------------------------------------ */
+
+.avis-titles {
+  margin-top: 8mm;
+}
+
+/* Chaque ligne porte sa case, ancrée à 117.2 mm comme dans le .docx. */
+.avis-title-row {
+  position: relative;
+  min-height: 11mm;
+  display: flex;
+  align-items: center;
+}
+
+.avis-title {
+  font-size: 18pt;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.avis-title-center {
+  width: 100%;
+  text-align: center;
+}
+
+.avis-box {
+  position: absolute;
+  left: 117.2mm;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12.7mm;
+  height: 9.8mm;
+  border: 0.75pt solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14pt;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* --- Champs ------------------------------------------------------------ */
+
+.avis-fields {
+  margin-top: 8mm;
+  font-weight: 700;
+}
+
+/* Nom / Prénom / Structure / Motif : une ligne vide les sépare dans le .docx. */
+.avis-field {
+  margin: 0 0 6mm;
+}
+
+/* Fonction et les deux dates sont à interligne 1,5 et sans ligne vide. */
+.avis-field-tight {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --- Cadre Observation ------------------------------------------------- */
+
+.avis-frame {
+  margin-top: 6mm;
+  border: 0.5pt solid #000;
+  min-height: 25.1mm;
+  padding: 1.9mm;
+  font-weight: 700;
+}
+
+.avis-frame-label {
+  margin: 0;
+  font-size: 14pt;
+}
+
+.avis-frame-note {
+  margin: 3mm 0 0;
+  font-size: 10pt;
+}
+
+/* --- Signature --------------------------------------------------------- */
+
+.avis-signature {
+  margin-top: 28mm;
+  font-family: "Book Antiqua", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 12pt;
+}
+
+/* --- Aperçu écran ------------------------------------------------------ */
+
+.avis-preview {
+  background: #f1f1f1;
+  padding: 8mm 0;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+
+.avis-preview .avis-sheet {
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.18);
+}
+
+.avis-scaled {
+  transform-origin: top left;
+}
+
+/* --- Impression -------------------------------------------------------- */
+
+@page {
+  size: A4 portrait;
+  /* Les marges sont portées par .avis-sheet, pas par le navigateur. */
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Le gabarit applicatif enferme les pages dans un conteneur défilant :
+     laissé tel quel, il ne ferait imprimer que la partie visible. */
+  main {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .avis-no-print {
+    display: none !important;
+  }
+
+  .avis-preview {
+    background: none;
+    padding: 0;
+    display: block;
+    overflow: visible;
+  }
+
+  .avis-scaled {
+    transform: none !important;
+  }
+
+  .avis-sheet {
+    width: 210mm;
+    min-height: 0;
+    margin: 0;
+    box-shadow: none !important;
+    page-break-after: avoid;
+  }
+}

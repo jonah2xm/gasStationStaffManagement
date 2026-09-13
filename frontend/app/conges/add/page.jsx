@@ -16,7 +16,8 @@ import {
   Plane,
   File,
   X,
-  Upload,
+  Eye,
+  UserCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -63,9 +64,10 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CalendarClock } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { ComputedValue, Field, FileDropzone, FormActions, FormSection, InputWithIcon, UnitInput, formatDateFr } from "@/components/ui/form-layout";
+import { ComputedValue, Field, FormActions, FormSection, InputWithIcon, UnitInput, formatDateFr } from "@/components/ui/form-layout";
 import { EmployeeCombobox } from "@/components/ui/employee-combobox";
 import { StatusDialog } from "@/components/ui/status-dialog";
+import CongeDocumentPreview from "@/components/conge-document-preview";
 
 export default function AddCongePage() {
   const router = useRouter();
@@ -87,12 +89,13 @@ export default function AddCongePage() {
     dateDebut: "",
     dateRetour: "",
     lieuSejour: "",
+    agentInterimaire: "",
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [nombreJourRestant] = useState(0); // Always starts at 0
-  const [file, setFile] = useState(null);
-  const [fileError, setFileError] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [createdCongeId, setCreatedCongeId] = useState(null);
   const [user, setUser] = useState({});
 
   useEffect(() => {
@@ -303,30 +306,35 @@ const handleSelectById = (id) => {
       isValid = false;
     }
 
-    if (!file) {
-      setFileError("Veuillez télécharger un document");
-      isValid = false;
-    } else {
-      setFileError("");
-    }
-
     return isValid;
   };
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-
-    if (selectedFile && selectedFile.type === "application/pdf") {
-      setFile(selectedFile);
-      setFileError("");
-    } else {
-      setFile(null);
-      setFileError("Seuls les fichiers PDF sont autorisés");
-    }
+  // Document tel qu'il sera imprimé, construit depuis le formulaire.
+  const previewConge = {
+    personnel: selectedPersonnel || {},
+    stationName: formData.stationName || selectedPersonnel?.stationName || "",
+    typeConge: formData.typeConge,
+    dureeConge: formData.dureeConge,
+    dateDebut: formData.dateDebut,
+    dateRetour: formData.dateRetour,
+    lieuSejour: formData.lieuSejour,
+    agentInterimaire: formData.agentInterimaire,
+    nombreJourRestant,
   };
 
-  const handleRemoveFile = () => {
-    setFile(null);
+  const handlePreview = () => {
+    if (!selectedPersonnel) {
+      setErrors((prev) => ({
+        ...prev,
+        personnel: "Veuillez sélectionner un employé",
+      }));
+      toast.error("Sélectionnez un employé pour voir l'aperçu", {
+        duration: 3000,
+        position: "bottom-left",
+      });
+      return;
+    }
+    setShowPreview(true);
   };
 
   const handleSubmit = async (e) => {
@@ -364,8 +372,8 @@ const handleSelectById = (id) => {
       formDataToSend.append("dateDebut", formData.dateDebut);
       formDataToSend.append("dateRetour", formData.dateRetour);
       formDataToSend.append("lieuSejour", formData.lieuSejour);
+      formDataToSend.append("agentInterimaire", formData.agentInterimaire);
       formDataToSend.append("nombreJourRestant", nombreJourRestant.toString());
-      formDataToSend.append("document", file);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges`,
@@ -383,6 +391,8 @@ const handleSelectById = (id) => {
         );
       }
 
+      const saved = await response.json().catch(() => ({}));
+      setCreatedCongeId(saved._id || null);
       setShowSuccessDialog(true);
     } catch (error) {
       console.error("Error recording congé:", error.message);
@@ -412,10 +422,18 @@ const handleSelectById = (id) => {
       dateDebut: "",
       dateRetour: "",
       lieuSejour: "",
+      agentInterimaire: "",
     });
     setTouched({});
     setErrors({});
-    setFile(null);
+  };
+
+  // Ouvre la vue d'impression du congé qui vient d'être enregistré.
+  const handlePrintCreated = () => {
+    setShowSuccessDialog(false);
+    router.push(
+      createdCongeId ? `/conges/imprimer/${createdCongeId}` : "/conges"
+    );
   };
 
   const getInitials = (name) => {
@@ -585,7 +603,7 @@ useEffect(() => {
               {formatDateFr(formData.dateRetour)}
             </ComputedValue>
           </Field>
-          <Field label="Lieu de séjour" htmlFor="lieuSejour" full hint="Optionnel.">
+          <Field label="Lieu de séjour" htmlFor="lieuSejour" hint="Adresse exacte, reprise sur la demande.">
             <InputWithIcon icon={MapPin}>
               <Input
                 id="lieuSejour"
@@ -600,22 +618,32 @@ useEffect(() => {
           </Field>
         </FormSection>
 
-        <FormSection title="Justificatif" description="Demande ou décision signée, au format PDF.">
-          <Field label="Document" htmlFor="document" required full error={fileError}>
-            <FileDropzone
-              id="document"
-              file={file}
-              onFileChange={handleFileChange}
-              onRemove={handleRemoveFile}
-              disabled={loading}
-              invalid={!!fileError}
-            />
+        <FormSection
+          title="Intérim"
+          description="Volet réservé aux postes d'encadrement et de responsabilité. Laissez vide si personne ne remplace l'agent."
+        >
+          <Field label="Agent intérimaire" htmlFor="agentInterimaire" full hint="Nom et qualité de la personne qui assure l'intérim.">
+            <InputWithIcon icon={UserCheck}>
+              <Input
+                id="agentInterimaire"
+                name="agentInterimaire"
+                value={formData.agentInterimaire}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="Ex : BAHI SOFIANE"
+                className="pl-9"
+              />
+            </InputWithIcon>
           </Field>
         </FormSection>
 
         <FormActions>
           <Button type="button" variant="outline" onClick={() => router.push("/conges")} disabled={loading}>
             Annuler
+          </Button>
+          <Button type="button" variant="outline" onClick={handlePreview} disabled={loading}>
+            <Eye className="h-4 w-4" />
+            Aperçu de la demande
           </Button>
           <Button type="submit" disabled={loading}>
             {loading ? (
@@ -637,8 +665,17 @@ useEffect(() => {
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         title="Congé enregistré"
-        description={`Le congé de ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""} a bien été enregistré.`}
-        onAction={handleSuccessConfirm}
+        description={`Le congé de ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""} a bien été enregistré. Vous pouvez imprimer la demande de congé annuel.`}
+        actionLabel="Imprimer la demande"
+        onAction={handlePrintCreated}
+        secondaryLabel="Plus tard"
+        onSecondary={handleSuccessConfirm}
+      />
+
+      <CongeDocumentPreview
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        conge={previewConge}
       />
       <StatusDialog
         open={showErrorDialog}

@@ -378,7 +378,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!user || (user.role !== "administrateur" && user.role !== "chef station")) return;
+      if (!user || user.role !== "administrateur") return;
 
       try {
         const res = await fetch(
@@ -410,7 +410,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const fetchAvailablePersonnel = async () => {
-      if (!user || (user.role !== "administrateur" && user.role !== "chef station")) return;
+      if (!user || user.role !== "administrateur") return;
 
       setPersonnelLoading(true);
       try {
@@ -442,7 +442,7 @@ export default function SettingsPage() {
   }, [user]);
 
   const refreshPersonnel = async () => {
-    if (!user || (user.role !== "administrateur" && user.role !== "chef station")) return;
+    if (!user || user.role !== "administrateur") return;
 
     setPersonnelLoading(true);
     try {
@@ -656,7 +656,9 @@ export default function SettingsPage() {
       }
 
       const data = await res.json();
-      setUsers([...users, data.user]);
+      // POST /register renvoie le nouvel utilisateur à plat, sans enveloppe { user }.
+      const created = data.user ?? data;
+      setUsers((prev) => [...prev, created]);
       setNewUser({
         username: "",
         email: "",
@@ -962,7 +964,8 @@ export default function SettingsPage() {
   }
 
   const isAdmin = user?.role === "administrateur";
-  const canManagePersonnel = isAdmin || user?.role === "chef station";
+  // Comptes de pointage : administrateur uniquement (retirés au chef de station).
+  const canManagePersonnel = isAdmin;
 
   const sections = [
     isAdmin && { id: "utilisateurs", label: "Utilisateurs", hint: "Accès au portail", icon: Users },

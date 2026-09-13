@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   Baby,
+  Ban,
   CalendarDays,
   Clock,
   FileText,
@@ -75,6 +76,9 @@ const PERSONNEL_LEAVE: StatusEntry = { label: "En congé", tone: "info", dot: tr
 const PERSONNEL_RECOVERY: StatusEntry = { label: "En récupération", tone: "teal", dot: true };
 const PERSONNEL_AI: StatusEntry = { label: "Absence AI", tone: "danger", dot: true };
 const PERSONNEL_AA: StatusEntry = { label: "Absence AA", tone: "warning", dot: true };
+// Statut unique depuis la fusion des deux sections d'absence : le motif est
+// porté par l'absence elle-même, plus par le statut de l'agent.
+const PERSONNEL_ABSENT: StatusEntry = { label: "Absent", tone: "warning", dot: true };
 const PERIOD_UPCOMING: StatusEntry = { label: "À venir", tone: "upcoming", dot: true };
 const PERIOD_ONGOING: StatusEntry = { label: "En cours", tone: "info", dot: true };
 
@@ -86,10 +90,19 @@ const STATUS = {
     "en conge": PERSONNEL_LEAVE,
     recuperation: PERSONNEL_RECOVERY,
     "en recuperation": PERSONNEL_RECOVERY,
+    absent: PERSONNEL_ABSENT,
+    // Statuts hérités d'avant la fusion, encore présents en base.
     ai: PERSONNEL_AI,
     "absence ai": PERSONNEL_AI,
     aa: PERSONNEL_AA,
     "absence aa": PERSONNEL_AA,
+    maladie: PERSONNEL_ABSENT,
+    deces: PERSONNEL_ABSENT,
+    marriage: PERSONNEL_ABSENT,
+    mariage: PERSONNEL_ABSENT,
+    naissance: PERSONNEL_ABSENT,
+    examen: PERSONNEL_ABSENT,
+    autre: PERSONNEL_ABSENT,
     "en formation": { label: "En formation", tone: "neutral", dot: true },
     inactif: { label: "Inactif", tone: "neutral", dot: true },
   },
@@ -111,20 +124,19 @@ const STATUS = {
     jour: { label: "Par jour", tone: "neutral", icon: CalendarDays },
     heure: { label: "Par heure", tone: "neutral", icon: Clock },
   },
-  absenceAA: {
+  // Motif d'absence — section unique. "nonAutorisee" est le seul motif non
+  // autorisé, d'où le seul en rouge ; tous les autres sont des absences
+  // autorisées et restent neutres, distinguées par leur icône.
+  absence: {
     maladie: { label: "Maladie", tone: "neutral", icon: Stethoscope },
     deces: { label: "Décès", tone: "neutral", icon: Flower2 },
     marriage: { label: "Mariage", tone: "neutral", icon: Heart },
     mariage: { label: "Mariage", tone: "neutral", icon: Heart },
     naissance: { label: "Naissance", tone: "neutral", icon: Baby },
     examen: { label: "Examen", tone: "neutral", icon: FileText },
-    pilgrimage: { label: "Pèlerinage", tone: "neutral", icon: Landmark },
     pelerinage: { label: "Pèlerinage", tone: "neutral", icon: Landmark },
     autre: { label: "Autre", tone: "neutral", icon: MoreHorizontal },
-  },
-  absenceAI: {
-    avisabsence: { label: "Avis d'absence", tone: "danger" },
-    avisreprise: { label: "Avis de reprise", tone: "success" },
+    nonautorisee: { label: "Non autorisée", tone: "danger", icon: Ban },
   },
   notification: {
     unread: { label: "Non lue", tone: "unread", dot: true },

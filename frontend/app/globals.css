@@ -32,7 +32,21 @@
     --primary-subtle: 255 251 214; /* #FFFBD6 */
     --primary-border: 244 233 160; /* #F4E9A0 */
     --primary-strong: 217 201 0; /* #D9C900 */
+    /* Bleu marine NAFTAL : page de connexion. */
     --brand: 30 58 82; /* #1E3A52 */
+    --brand-foreground: 255 255 255; /* #FFFFFF */
+    --brand-hover: 23 46 66; /* #172E42 */
+    --brand-strong: 16 36 54; /* #102436 */
+    --brand-subtle: 232 238 244; /* #E8EEF4 */
+    --brand-border: 197 212 225; /* #C5D4E1 */
+    --brand-text: 30 58 82; /* #1E3A52 */
+
+    /* Bleu profond : petites touches (icônes du menu, titre, icônes et liens). */
+    --bleu: 11 61 145; /* #0B3D91 */
+    --bleu-strong: 8 46 110; /* #082E6E */
+    --bleu-subtle: 231 238 249; /* #E7EEF9 */
+    --bleu-border: 195 211 238; /* #C3D3EE */
+    --bleu-text: 11 61 145; /* #0B3D91 */
 
     /* Semantic */
     --success: 15 123 85; /* #0F7B55 */

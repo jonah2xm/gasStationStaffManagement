@@ -68,8 +68,8 @@ const LINKABLE_PATHS = new Set([
   "/pointage-list",
   "/conges",
   "/recuperations",
-  "/absence/aa",
-  "/absence/ai",
+  "/absence",
+  "/reprise",
   "/affectation/definitif",
   "/affectation/temporaire",
   "/settings",
@@ -84,6 +84,8 @@ const ROLE_LABELS = {
 }
 
 const NOTIFICATION_TYPE_LABELS = {
+  Absence: "Absence",
+  // Types hérités, encore portés par les notifications déjà en base.
   AbsenceAA: "Absence AA",
   AbsenceAI: "Absence AI",
   AffectationTemporaire: "Affectation temporaire",

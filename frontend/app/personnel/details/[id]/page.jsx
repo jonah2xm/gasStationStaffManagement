@@ -228,7 +228,7 @@ export default function PersonnelDetailsPage() {
               <Plane className="h-4 w-4" />
               Nouveau congé
             </Button>
-            <Button variant="outline" onClick={() => router.push("/absence/aa/add")}>
+            <Button variant="outline" onClick={() => router.push("/absence/add")}>
               <CalendarX2 className="h-4 w-4" />
               Nouvelle absence
             </Button>

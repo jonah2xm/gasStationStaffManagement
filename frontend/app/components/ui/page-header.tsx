@@ -24,7 +24,7 @@ function PageHeader({ title, description, backHref, backLabel = "Retour", meta, 
         {backHref && (
           <Link
             href={backHref}
-            className="inline-flex w-fit items-center gap-1.5 rounded-sm text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex w-fit items-center gap-1.5 rounded-sm text-[13px] font-medium text-bleu transition-colors hover:text-bleu-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ArrowLeft aria-hidden className="h-3.5 w-3.5" />
             {backLabel}

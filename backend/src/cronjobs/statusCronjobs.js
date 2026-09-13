@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 const mongoose = require("mongoose");
-const AbsenceAA = require("../models/absenceAAModel");
-const AbsenceAI = require("../models/absenceAIModel");
+
+
 const AffectationTemporaire = require("../models/affectationTemporaire");
 const Conge = require("../models/congeModel");
 const Personnel = require("../models/personnelModel");
@@ -37,104 +37,10 @@ cron.schedule("53 13 * * *", async () => {
   const allUsers = await Users.find().select("_id").lean();
 
   //
-  // 1. AbsenceAA
+  // Les absences ne sont plus traitées ici : une absence ne porte qu'une
+  // date, sans date de fin. Le retour à "Actif" relèvera de l'avis de
+  // reprise, qui fera l'objet d'une fonctionnalité dédiée.
   //
-  const absAA = await AbsenceAA.aggregate([
-    { $match: { endDate: { $lt: today } } },
-    {
-      $lookup: {
-        from: "personnels",
-        localField: "personnel",
-        foreignField: "_id",
-        as: "personnel",
-      },
-    },
-    { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $ne: "Actif" } } },
-    {
-      $project: {
-        _id: 1,
-        personnel: {
-          _id: 1,
-          firstName: 1,
-          lastName: 1,
-        },
-      },
-    },
-  ]);
-
-  if (absAA.length) {
-    const inserts = [];
-    for (let a of absAA) {
-      const msg = `L'absence AA de ${a.personnel.firstName} ${a.personnel.lastName} est terminée. Statut remis à Actif.`;
-      const url = `/absences/aa/details/${a._id}`;
-
-      for (let u of allUsers) {
-        inserts.push({
-          personnel: u._id,
-          type: "AbsenceAA",
-          reference: a._id,
-          message: msg,
-          detailsUrl: url,
-        });
-      }
-
-      toActivate.add(a.personnel._id);
-    }
-    if (inserts.length) await Notification.insertMany(inserts);
-  }
-
-  //
-  // 2. AbsenceAI
-  //
-  const absAI = await AbsenceAI.aggregate([
-    {
-      $match: {
-        endDate: { $exists: true, $lt: today },
-      },
-    },
-    {
-      $lookup: {
-        from: "personnels",
-        localField: "personnel",
-        foreignField: "_id",
-        as: "personnel",
-      },
-    },
-    { $unwind: "$personnel" },
-    { $match: { "personnel.status": { $ne: "Actif" } } },
-    {
-      $project: {
-        _id: 1,
-        personnel: {
-          _id: 1,
-          firstName: 1,
-          lastName: 1,
-        },
-      },
-    },
-  ]);
-
-  if (absAI.length) {
-    const inserts = [];
-    for (let a of absAI) {
-      const msg = `L'avis d'absence AI de ${a.personnel.firstName} ${a.personnel.lastName} est terminé. Statut remis à Actif.`;
-      const url = `/absences/ai/details/${a._id}`;
-
-      for (let u of allUsers) {
-        inserts.push({
-          personnel: u._id,
-          type: "AbsenceAI",
-          reference: a._id,
-          message: msg,
-          detailsUrl: url,
-        });
-      }
-
-      toActivate.add(a.personnel._id);
-    }
-    if (inserts.length) await Notification.insertMany(inserts);
-  }
 
   //
   // 3. AffectationTemporaire

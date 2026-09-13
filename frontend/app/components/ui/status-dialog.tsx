@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -22,10 +23,13 @@ interface StatusDialogProps {
   description?: React.ReactNode;
   actionLabel?: string;
   onAction?: () => void;
+  /** Optional second button, shown to the left of the main action. */
+  secondaryLabel?: React.ReactNode;
+  onSecondary?: () => void;
 }
 
 // Result dialog after a save: green check for success, red triangle for errors.
-function StatusDialog({ open, onOpenChange, variant = "success", title, description, actionLabel = "OK", onAction }: StatusDialogProps) {
+function StatusDialog({ open, onOpenChange, variant = "success", title, description, actionLabel = "OK", onAction, secondaryLabel, onSecondary }: StatusDialogProps) {
   const success = variant === "success";
   const Icon = success ? CheckCircle2 : AlertTriangle;
   return (
@@ -46,6 +50,9 @@ function StatusDialog({ open, onOpenChange, variant = "success", title, descript
           </AlertDialogHeader>
         </div>
         <AlertDialogFooter>
+          {secondaryLabel && (
+            <AlertDialogCancel onClick={onSecondary}>{secondaryLabel}</AlertDialogCancel>
+          )}
           <AlertDialogAction
             onClick={onAction}
             className={success ? undefined : "border border-input bg-card font-medium text-foreground hover:bg-muted"}

@@ -1,0 +1,289 @@
+/*
+ * Réplique de « BORDEREAU D'ENVOI » (bordereau d'envoi.doc).
+ *
+ * Mesures converties depuis les twips du .docx (1 mm = 56.7 tw) et relevées
+ * sur le rendu PDF de Word :
+ *   page    : 11906 x 16838 tw -> A4 ; marges gauche 540 tw (9.5 mm),
+ *             droite 386 tw (6.8 mm) ; en-tête à 720 tw (12.7 mm)
+ *   en-tête : logo 55.55 x 27 pt (19.6 x 9.5 mm), lignes Arial gras 8 pt
+ *   date    : Times New Roman gras 14 pt
+ *   titre   : Arial Black 22 pt, espacement 94/20 = 4.7 pt
+ *   dest.   : Book Antiqua gras 18 pt
+ *   tableau : 10727 tw, colonnes 725 / 5103 / 709 / 4190 tw ;
+ *             bordure extérieure sz 18 = 2.25 pt, intérieure sz 6 = 0.75 pt ;
+ *             lignes de 658 tw, 6389 tw (112.7 mm) et d'une ligne vide
+ *   corps   : Bookman Old Style 14 pt, interligne relevé 6.64 mm
+ *   pied    : trait sur toute la largeur, Arial 8 / 9 pt centré
+ */
+
+.bd-sheet {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 12.6mm 6.8mm 5mm 9.5mm;
+  background: #fff;
+  color: #000;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+.bd-sheet * {
+  box-sizing: border-box;
+  /* Le gabarit applicatif colore le texte en bleu nuit ; ici tout est noir. */
+  color: #000;
+}
+
+/* Remise à zéro sans spécificité (:where) : les marges des blocs ci-dessous
+   (.bd-date, .bd-title, .bd-intro…) doivent l'emporter. */
+:where(.bd-sheet) :where(p, h1) {
+  margin: 0;
+}
+
+/* --- En-tête (header1.xml) -------------------------------------------- */
+
+.bd-head {
+  font-family: Arial, "Liberation Sans", Helvetica, sans-serif;
+  font-size: 8pt;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.bd-head img {
+  display: block;
+  width: 20mm;
+  height: 9.8mm;
+  object-fit: fill;
+  margin-bottom: 1mm;
+}
+
+/* --- Date ---------------------------------------------------------------- */
+
+.bd-date {
+  margin-top: 4mm;
+  padding-right: 10mm;
+  text-align: right;
+  font-size: 14pt;
+  font-weight: 700;
+}
+
+/* --- Titre et destinataire --------------------------------------------- */
+
+.bd-title {
+  margin-top: 6mm;
+  text-align: center;
+  font-family: "Arial Black", "Arial Bold", Gadget, sans-serif;
+  font-size: 22pt;
+  font-weight: 900;
+  letter-spacing: 4.7pt;
+  line-height: 1.15;
+}
+
+.bd-recipient {
+  margin-top: 1.3mm;
+  text-align: center;
+  font-family: "Book Antiqua", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 18pt;
+  font-weight: 700;
+}
+
+.bd-intro {
+  margin-top: 10.5mm;
+  margin-left: 5.4mm;
+  font-family: "Bookman Old Style", "URW Bookman", Georgia, serif;
+  font-size: 14pt;
+  font-weight: 700;
+}
+
+/* --- Tableau ------------------------------------------------------------ */
+
+.bd-table {
+  width: 191mm;
+  margin: 0.6mm 0 0 1.9mm;
+  border: 2.25pt solid #000;
+}
+
+.bd-row {
+  display: grid;
+  grid-template-columns: 13.1mm 90.8mm 12.4mm 1fr;
+}
+
+/* Filets verticaux intérieurs, continus d'une catégorie à l'autre. */
+.bd-row > .bd-cell + .bd-cell {
+  border-left: 0.75pt solid #000;
+}
+
+.bd-row-head {
+  min-height: 12.5mm;
+  border-bottom: 2.25pt solid #000;
+  font-size: 14pt;
+  font-weight: 700;
+}
+
+.bd-row-head > .bd-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.bd-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 117mm;
+  font-family: "Bookman Old Style", "URW Bookman", Georgia, serif;
+  font-size: 14pt;
+  line-height: 6.64mm;
+}
+
+.bd-row-cat > .bd-cell {
+  padding-top: 3mm;
+}
+
+.bd-row-cat:first-child > .bd-cell {
+  padding-top: 7mm;
+}
+
+.bd-row-fill {
+  flex: 1 0 auto;
+}
+
+.bd-row-foot {
+  min-height: 6.3mm;
+  border-top: 0.75pt solid #000;
+}
+
+/* « 1. Avis d'absence » : numéro gras plus petit, comme la liste Word. */
+.bd-cat {
+  padding-left: 2.5mm;
+}
+
+.bd-cat-num {
+  display: inline-block;
+  width: 6mm;
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+/* « 1.1. Nom » : numéro à 8.9 mm, nom à 27.2 mm, retour à la ligne à 16 mm. */
+.bd-agent {
+  padding-left: 16mm;
+  text-indent: -7.1mm;
+}
+
+.bd-agent-num {
+  display: inline-block;
+  width: 18.3mm;
+  text-indent: 0;
+}
+
+/* NB se place face au premier agent, une ligne sous la catégorie. */
+.bd-nb {
+  padding-left: 2.2mm;
+}
+
+.bd-nb::before {
+  content: "";
+  display: block;
+  height: 6.64mm;
+}
+
+/* --- Responsable -------------------------------------------------------- */
+
+.bd-responsable {
+  margin-top: 7mm;
+  font-size: 13pt;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* --- Pied de page (footer1.xml) ---------------------------------------- */
+
+.bd-foot {
+  margin-top: auto;
+  padding-top: 8mm;
+  text-align: center;
+  font-family: Arial, "Liberation Sans", Helvetica, sans-serif;
+  font-size: 9pt;
+  line-height: 1.2;
+}
+
+/* Le trait du .docx va de -50 pt à 562 pt : presque toute la page. */
+.bd-foot::before {
+  content: "";
+  display: block;
+  width: 206.4mm;
+  margin: 0 0 2mm -8.1mm;
+  border-top: 0.75pt solid #000;
+}
+
+.bd-foot-1 {
+  font-size: 8pt;
+}
+
+.bd-sheet .bd-mail {
+  color: #0000ff;
+  text-decoration: underline;
+}
+
+/* --- Aperçu écran ------------------------------------------------------ */
+
+.bd-preview {
+  background: #f1f1f1;
+  padding: 8mm 0;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+
+.bd-preview .bd-sheet {
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.18);
+}
+
+/* --- Impression -------------------------------------------------------- */
+
+@page {
+  size: A4 portrait;
+  /* Les marges sont portées par .bd-sheet, pas par le navigateur. */
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Le gabarit applicatif enferme les pages dans un conteneur défilant :
+     laissé tel quel, il ne ferait imprimer que la partie visible. */
+  main {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .bd-no-print {
+    display: none !important;
+  }
+
+  .bd-preview {
+    background: none;
+    padding: 0;
+    display: block;
+    overflow: visible;
+  }
+
+  .bd-sheet {
+    width: 210mm;
+    /* Un peu moins qu'une page : les arrondis ne poussent pas une page blanche. */
+    min-height: 296mm;
+    margin: 0;
+    box-shadow: none !important;
+  }
+}

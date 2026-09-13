@@ -13,6 +13,7 @@ import {
   Plane,
   User,
   FileText,
+  Printer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -25,6 +26,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { DetailItem, DetailList, DetailSection, DetailSkeleton, DocumentLink, PageError } from "@/components/ui/detail-layout";
 import { EmployeeIdentity } from "@/components/ui/form-layout";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { VerrouNotice } from "@/components/document-verrouille";
+import { bordereauVerrou } from "@/lib/bordereau";
 
 
 // Leave types with their display names and colors
@@ -99,7 +102,9 @@ export default function CongeDetailsPage() {
         const data = await response.json();
         console.log('data',data)
         setConge(data);
-        setNormalizedDocument(data.documentPath.replace(/\\/g, "/"));
+        // Les congés enregistrés avant la génération automatique ont encore un
+        // justificatif téléversé ; les nouveaux n'en ont pas.
+        setNormalizedDocument(data.documentPath ? data.documentPath.replace(/\\/g, "/") : "");
         setError(null);
       } catch (err) {
         console.error("Error fetching congé details:", err);
@@ -192,12 +197,23 @@ export default function CongeDetailsPage() {
           </>
         }
         actions={
-          <Button onClick={() => router.push(`/conges/edit/${conge._id}`)}>
-            <Edit className="h-4 w-4" />
-            Modifier
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => router.push(`/conges/imprimer/${conge._id}`)}>
+              <Printer className="h-4 w-4" />
+              Imprimer
+            </Button>
+            <Button
+              disabled={Boolean(conge.bordereau)}
+              onClick={() => router.push(`/conges/edit/${conge._id}`)}
+            >
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+          </>
         }
       />
+
+      <VerrouNotice verrou={bordereauVerrou(conge)} />
 
       <DetailSection>
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -231,14 +247,27 @@ export default function CongeDetailsPage() {
             <DetailItem label="Date de retour">{formatDate(conge.dateRetour)}</DetailItem>
             <DetailItem label="Station">{conge.stationName}</DetailItem>
             <DetailItem label="Lieu de séjour">{conge.lieuSejour}</DetailItem>
+            <DetailItem label="Agent intérimaire">
+              {conge.agentInterimaire || "Aucun"}
+            </DetailItem>
           </DetailList>
         </DetailSection>
 
-        <DetailSection title="Justificatif">
-          {conge.documentPath ? (
-            <DocumentLink href={`/document/${encodeURIComponent(normalizedDocument)}`} />
-          ) : (
-            <p className="text-[13.5px] text-muted-foreground">Aucun document joint.</p>
+        <DetailSection title="Document">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => router.push(`/conges/imprimer/${conge._id}`)}
+          >
+            <Printer className="h-4 w-4" />
+            Imprimer la demande
+          </Button>
+          {/* Justificatif téléversé : uniquement pour les congés enregistrés
+              avant la génération automatique de la demande. */}
+          {conge.documentPath && (
+            <div className="mt-4">
+              <DocumentLink href={`/document/${encodeURIComponent(normalizedDocument)}`} />
+            </div>
           )}
           <dl className="mt-5 space-y-4 border-t border-border pt-4">
             <DetailItem label="Enregistré le">{formatDateTime(conge.createdAt)}</DetailItem>

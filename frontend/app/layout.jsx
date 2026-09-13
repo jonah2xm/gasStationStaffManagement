@@ -15,14 +15,19 @@ import {
   Fuel,
   History,
   LayoutDashboard,
+  LogIn,
   PanelLeftClose,
   PanelLeftOpen,
   Plane,
+  Send,
   Settings,
+  ShieldAlert,
   Users,
 } from "lucide-react";
 import { AccountHeader } from "./components/account-header";
 import { cn } from "@/lib/utils";
+import { oublierUtilisateur, useCurrentUser } from "@/lib/use-current-user";
+import { sectionRestreinte, sectionRetiree } from "@/lib/acces";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
@@ -54,14 +59,9 @@ const NAV_SECTIONS = [
     items: [
       { href: "/conges", label: "Congés", icon: Plane },
       { href: "/recuperations", label: "Récupérations", icon: History },
-      {
-        label: "Absences",
-        icon: CalendarX2,
-        children: [
-          { href: "/absence/aa", label: "Absences AA" },
-          { href: "/absence/ai", label: "Absences AI" },
-        ],
-      },
+      { href: "/absence", label: "Absences", icon: CalendarX2 },
+      { href: "/reprise", label: "Avis de reprise", icon: LogIn },
+      { href: "/envoi", label: "Envois", icon: Send },
       {
         label: "Affectations",
         icon: ArrowLeftRight,
@@ -90,7 +90,7 @@ function isActivePath(pathname, href) {
 }
 
 function NavIcon({ icon: Icon }) {
-  return <Icon aria-hidden className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />;
+  return <Icon aria-hidden className="h-[18px] w-[18px] shrink-0 text-bleu" strokeWidth={1.75} />;
 }
 
 function NavLink({ href, label, icon, active, collapsed }) {
@@ -173,6 +173,22 @@ function NavGroup({ item, pathname, collapsed }) {
 
 function Sidebar() {
   const pathname = usePathname();
+  const user = useCurrentUser();
+
+  // Menu filtré selon le rôle. Tant que le rôle n'est pas connu, les sections
+  // restreintes restent masquées plutôt que d'apparaître puis disparaître.
+  const estVisible = (href) =>
+    user === undefined ? !sectionRestreinte(href) : !sectionRetiree(user?.role, href);
+  const sections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items
+      .map((item) =>
+        item.children
+          ? { ...item, children: item.children.filter((child) => estVisible(child.href)) }
+          : item
+      )
+      .filter((item) => (item.children ? item.children.length > 0 : estVisible(item.href))),
+  })).filter((section) => section.items.length > 0);
 
   // Collapsed state survives refreshes; read it after mount so server and client markup match.
   const [collapsed, setCollapsed] = useState(false);
@@ -210,7 +226,7 @@ function Sidebar() {
         </span>
         {!collapsed && (
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-[15px] font-semibold text-foreground">NSC Portal</p>
+            <p className="truncate text-[15px] font-semibold text-bleu">NSC Portal</p>
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-muted">
               Naftal Staff Connect
             </p>
@@ -222,7 +238,7 @@ function Sidebar() {
         aria-label="Navigation principale"
         className="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 [scrollbar-color:rgb(var(--sidebar-border))_transparent] [scrollbar-width:thin]"
       >
-        {NAV_SECTIONS.map((section, index) => (
+        {sections.map((section, index) => (
           <div key={section.label}>
             {collapsed ? (
               <div aria-hidden className={cn("mx-2 h-px", index === 0 ? "my-2" : "my-3 bg-sidebar-border")} />
@@ -273,21 +289,61 @@ function Sidebar() {
   );
 }
 
+/**
+ * Bloque les pages d'une section retirée au rôle connecté (voir lib/acces.js).
+ * Les autres pages s'affichent sans attendre le chargement du rôle.
+ */
+function AccesGuard({ pathname, children }) {
+  const user = useCurrentUser();
+
+  if (!sectionRestreinte(pathname)) return children;
+  // Rôle en cours de chargement : rien n'est affiché, rien n'est chargé.
+  if (user === undefined) return null;
+  if (!sectionRetiree(user?.role, pathname)) return children;
+
+  return (
+    <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
+      <ShieldAlert aria-hidden className="h-10 w-10 text-muted-foreground" strokeWidth={1.5} />
+      <h1 className="text-lg font-semibold text-foreground">Accès non autorisé</h1>
+      <p className="text-[13.5px] text-muted-foreground">
+        Cette section n’est pas disponible pour votre rôle.
+      </p>
+      <Link
+        href="/dashboard"
+        className="text-[13.5px] font-medium text-foreground underline underline-offset-4"
+      >
+        Retour au tableau de bord
+      </Link>
+    </div>
+  );
+}
+
 export default function RootLayout({ children }) {
   const pathname = usePathname();
-  const isPublicPage = PUBLIC_PATHS.includes(pathname);
+
+  // Déconnexion : l'utilisateur mis en cache ne doit pas survivre au retour sur
+  // la page de connexion, sinon le compte suivant hériterait de son rôle.
+  useEffect(() => {
+    if (pathname === "/login") oublierUtilisateur();
+  }, [pathname]);
+  // Les vues d'impression sont rendues seules, sans barre latérale ni en-tête :
+  // seule la feuille doit partir à l'imprimante.
+  const isBarePage =
+    PUBLIC_PATHS.includes(pathname) || /\/imprimer(\/|$)/.test(pathname);
 
   return (
     <html lang="fr" className={inter.variable}>
       <body className="overflow-hidden">
-        {isPublicPage ? (
+        {isBarePage ? (
           <main className="h-screen overflow-y-auto">{children}</main>
         ) : (
           <div className="flex h-screen">
             <Sidebar />
             <div className="flex min-w-0 flex-1 flex-col">
               <AccountHeader />
-              <main className="flex-1 overflow-y-auto">{children}</main>
+              <main className="flex-1 overflow-y-auto">
+                <AccesGuard pathname={pathname}>{children}</AccesGuard>
+              </main>
             </div>
           </div>
         )}

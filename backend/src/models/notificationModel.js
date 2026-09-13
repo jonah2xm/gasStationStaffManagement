@@ -10,6 +10,9 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     enum: [
+      "Absence",
+      // AbsenceAA / AbsenceAI : conservés pour les notifications déjà en base,
+      // émises avant la fusion des deux sections en une seule.
       "AbsenceAA",
       "AbsenceAI",
       "AffectationTemporaire",

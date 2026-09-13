@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const Users = require("../models/userModel");
 const Notification = require("../models/notificationModel");
+const { refuserCongeEnvoye } = require("../utils/verrouEnvoi");
 
 // Helper: insert notifications and emit them via Socket.IO (per-user rooms)
 async function createAndEmitNotifications(req, notifications) {
@@ -53,11 +54,13 @@ exports.addConge = async (req, res) => {
       dateDebut,
       dateRetour,
       lieuSejour,
+      agentInterimaire,
       nombreJourRestant,
     } = req.body;
 
-    // 1) Champs obligatoires
-    if (!personnelId || !stationName || !req.file) {
+    // 1) Champs obligatoires (le justificatif n'est plus televerse :
+    //    la demande est generee puis imprimee depuis l'application)
+    if (!personnelId || !stationName) {
       return res.status(400).json({ message: "Champs requis manquants." });
     }
 
@@ -109,8 +112,9 @@ exports.addConge = async (req, res) => {
       dateDebut,
       dateRetour,
       lieuSejour,
+      agentInterimaire: agentInterimaire || "",
       nombreJourRestant,
-      documentPath: req.file.path
+      ...(req.file ? { documentPath: req.file.path } : {}),
     });
     const savedConge = await conge.save();
 
@@ -173,6 +177,7 @@ exports.addConge = async (req, res) => {
       dateDebut: pop.dateDebut,
       dateRetour: pop.dateRetour,
       lieuSejour: pop.lieuSejour,
+      agentInterimaire: pop.agentInterimaire,
       nombreJourRestant: pop.nombreJourRestant,
       createdAt: pop.createdAt,
       updatedAt: pop.updatedAt,
@@ -209,7 +214,10 @@ exports.getAllConges = async (req, res) => {
       dateDebut: c.dateDebut,
       dateRetour: c.dateRetour,
       lieuSejour: c.lieuSejour,
+      agentInterimaire: c.agentInterimaire,
       nombreJourRestant: c.nombreJourRestant,
+      // Un congé envoyé sur un bordereau est verrouillé.
+      bordereau: c.bordereau || null,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     }));
@@ -224,8 +232,13 @@ exports.getAllConges = async (req, res) => {
 // GET /api/conges/:id
 exports.getCongeById = async (req, res) => {
   try {
+    // poste / hireDate / contractType alimentent la demande de congé imprimable
     const c = await Conge.findById(req.params.id)
-      .populate("personnelId", "firstName lastName matricule")
+      .populate(
+        "personnelId",
+        "firstName lastName matricule poste hireDate contractType holidaysLeft"
+      )
+      .populate("bordereau", "createdAt stationName")
       .lean();
 
     if (!c) {
@@ -241,8 +254,10 @@ exports.getCongeById = async (req, res) => {
       dateDebut: c.dateDebut,
       dateRetour: c.dateRetour,
       lieuSejour: c.lieuSejour,
+      agentInterimaire: c.agentInterimaire,
       nombreJourRestant: c.nombreJourRestant,
       documentPath: c.documentPath,
+      bordereau: c.bordereau || null,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     });
@@ -257,6 +272,13 @@ exports.getCongeById = async (req, res) => {
 // DELETE /api/conges/:id
 exports.deleteConge = async (req, res) => {
   try {
+    // 0) Un congé envoyé sur un bordereau ne peut pas être supprimé.
+    const existant = await Conge.findById(req.params.id).select("bordereau").lean();
+    if (!existant) {
+      return res.status(404).json({ message: "Congé non trouvé" });
+    }
+    if (await refuserCongeEnvoye(req, res, existant)) return;
+
     // 1) Supprimer et récupérer l’ancien document
     const conge = await Conge.findByIdAndDelete(req.params.id).lean();
     if (!conge) {
@@ -344,6 +366,7 @@ exports.updateConge = async (req, res) => {
       dateDebut,
       dateRetour,
       lieuSejour,
+      agentInterimaire,
       nombreJourRestant,
     } = req.body;
 
@@ -352,6 +375,9 @@ exports.updateConge = async (req, res) => {
     if (!conge) {
       return res.status(404).json({ message: "Congé non trouvé" });
     }
+
+    // Un congé envoyé sur un bordereau ne peut plus être modifié.
+    if (await refuserCongeEnvoye(req, res, conge)) return;
 
     // 2) Charge le personnel
     const personnel = await Personnel.findById(personnelId);
@@ -418,6 +444,7 @@ exports.updateConge = async (req, res) => {
     conge.dateDebut = dateDebut;
     conge.dateRetour = dateRetour;
     conge.lieuSejour = lieuSejour;
+    conge.agentInterimaire = agentInterimaire || "";
     conge.nombreJourRestant = nombreJourRestant;
     let documentPath = conge.documentPath;
 
@@ -458,6 +485,7 @@ exports.updateConge = async (req, res) => {
       dateDebut: pop.dateDebut,
       dateRetour: pop.dateRetour,
       lieuSejour: pop.lieuSejour,
+      agentInterimaire: pop.agentInterimaire,
       nombreJourRestant: pop.nombreJourRestant,
       documentPath: pop.documentPath,
       createdAt: pop.createdAt,

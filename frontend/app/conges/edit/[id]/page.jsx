@@ -13,6 +13,8 @@ import {
   MapPin,
   Plane,
   File,
+  Eye,
+  UserCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -46,9 +48,12 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CalendarClock } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { ComputedValue, EmployeeIdentity, Field, FileDropzone, FormActions, FormSection, FormSkeleton, InputWithIcon, UnitInput, formatDateFr } from "@/components/ui/form-layout";
+import { ComputedValue, EmployeeIdentity, Field, FormActions, FormSection, FormSkeleton, InputWithIcon, UnitInput, formatDateFr } from "@/components/ui/form-layout";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { StatusDialog } from "@/components/ui/status-dialog";
+import CongeDocumentPreview from "@/components/conge-document-preview";
+import { DocumentVerrouillePage } from "@/components/document-verrouille";
+import { bordereauVerrou } from "@/lib/bordereau";
 
 export default function EditCongePage() {
   const router = useRouter();
@@ -71,12 +76,13 @@ export default function EditCongePage() {
     dateDebut: "",
     dateRetour: "",
     lieuSejour: "",
+    agentInterimaire: "",
     personnelId: "",
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [nombreJourRestant, setNombreJourRestant] = useState(0);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [existingDocument, setExistingDocument] = useState(null);
   const [user, setUser] = useState({});
   useEffect(() => {
@@ -159,6 +165,7 @@ export default function EditCongePage() {
             ? new Date(data.dateRetour).toISOString().split("T")[0]
             : "",
           lieuSejour: data.lieuSejour || "",
+          agentInterimaire: data.agentInterimaire || "",
         });
 
         setSelectedPersonnel(personnelData);
@@ -260,21 +267,20 @@ export default function EditCongePage() {
       }
     });
 
-    // Check if document is provided (either existing or new file)
-    if (!existingDocument && !selectedFile) {
-      toast.error("Un document justificatif est requis", {
-        duration: 3000,
-        position: "bottom-left",
-      });
-      isValid = false;
-    }
-
     return isValid;
   };
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    setSelectedFile(file);
+  // Document tel qu'il sera imprimé, construit depuis le formulaire.
+  const previewConge = {
+    personnel: selectedPersonnel || {},
+    stationName: formData.stationName,
+    typeConge: formData.typeConge,
+    dureeConge: formData.dureeConge,
+    dateDebut: formData.dateDebut,
+    dateRetour: formData.dateRetour,
+    lieuSejour: formData.lieuSejour,
+    agentInterimaire: formData.agentInterimaire,
+    nombreJourRestant,
   };
 
   const handleSubmit = async (e) => {
@@ -298,10 +304,8 @@ export default function EditCongePage() {
       dataToSend.append("dateDebut", formData.dateDebut);
       dataToSend.append("dateRetour", formData.dateRetour);
       dataToSend.append("lieuSejour", formData.lieuSejour);
+      dataToSend.append("agentInterimaire", formData.agentInterimaire);
       dataToSend.append("personnelId", formData.personnelId);
-      if (selectedFile) {
-        dataToSend.append("document", selectedFile);
-      }
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges/${congeId}`,
@@ -351,6 +355,19 @@ export default function EditCongePage() {
 
   if (initialLoading) {
     return <FormSkeleton />;
+  }
+
+  // Demande déjà envoyée sur un bordereau : pas de formulaire.
+  const verrou = bordereauVerrou(originalData);
+  if (verrou) {
+    return (
+      <DocumentVerrouillePage
+        verrou={verrou}
+        title="Modifier le congé"
+        backHref={`/conges/details/${congeId}`}
+        backLabel="Détails du congé"
+      />
+    );
   }
 
   const holidaysLeft = selectedPersonnel ? Number(selectedPersonnel.holidaysLeft ?? 0) : null;
@@ -442,7 +459,7 @@ export default function EditCongePage() {
           <Field label="Date de retour" hint="Date de début + durée.">
             <ComputedValue icon={CalendarClock}>{formatDateFr(formData.dateRetour)}</ComputedValue>
           </Field>
-          <Field label="Lieu de séjour" htmlFor="lieuSejour" full hint="Optionnel.">
+          <Field label="Lieu de séjour" htmlFor="lieuSejour" hint="Adresse exacte, reprise sur la demande.">
             <InputWithIcon icon={MapPin}>
               <Input
                 id="lieuSejour"
@@ -457,22 +474,46 @@ export default function EditCongePage() {
           </Field>
         </FormSection>
 
-        <FormSection title="Justificatif" description="Conservez le document actuel ou remplacez-le par un nouveau PDF.">
-          <Field label="Document" htmlFor="document" required full>
-            <FileDropzone
-              id="document"
-              file={selectedFile}
-              onFileChange={handleFileChange}
-              onRemove={() => setSelectedFile(null)}
-              disabled={loading}
-              currentFileHref={existingDocument ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${existingDocument}` : undefined}
-            />
+        <FormSection
+          title="Intérim"
+          description="Volet réservé aux postes d'encadrement et de responsabilité. Laissez vide si personne ne remplace l'agent."
+        >
+          <Field label="Agent intérimaire" htmlFor="agentInterimaire" full hint="Nom et qualité de la personne qui assure l'intérim.">
+            <InputWithIcon icon={UserCheck}>
+              <Input
+                id="agentInterimaire"
+                name="agentInterimaire"
+                value={formData.agentInterimaire}
+                onChange={handleInputChange}
+                disabled={loading}
+                placeholder="Ex : BAHI SOFIANE"
+                className="pl-9"
+              />
+            </InputWithIcon>
           </Field>
+          {/* Justificatif téléversé avant la génération automatique. */}
+          {existingDocument && (
+            <Field label="Justificatif d'origine" full hint="Document téléversé lors de l'enregistrement de ce congé.">
+              <a
+                href={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${existingDocument.replace(/\\/g, "/")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-[13.5px] text-foreground underline underline-offset-2"
+              >
+                <File className="h-4 w-4" />
+                Ouvrir le document
+              </a>
+            </Field>
+          )}
         </FormSection>
 
         <FormActions>
           <Button type="button" variant="outline" onClick={() => router.push("/conges")} disabled={loading}>
             Annuler
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setShowPreview(true)} disabled={loading}>
+            <Eye className="h-4 w-4" />
+            Aperçu de la demande
           </Button>
           <Button type="submit" disabled={loading}>
             {loading ? (
@@ -494,8 +535,20 @@ export default function EditCongePage() {
         open={showSuccessDialog}
         onOpenChange={setShowSuccessDialog}
         title="Congé mis à jour"
-        description={`Le congé de ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""} a bien été mis à jour.`}
-        onAction={handleSuccessConfirm}
+        description={`Le congé de ${selectedPersonnel?.firstName ?? ""} ${selectedPersonnel?.lastName ?? ""} a bien été mis à jour. Vous pouvez réimprimer la demande.`}
+        actionLabel="Imprimer la demande"
+        onAction={() => {
+          setShowSuccessDialog(false);
+          router.push(`/conges/imprimer/${congeId}`);
+        }}
+        secondaryLabel="Plus tard"
+        onSecondary={handleSuccessConfirm}
+      />
+
+      <CongeDocumentPreview
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        conge={previewConge}
       />
       <StatusDialog
         open={showErrorDialog}
