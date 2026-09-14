@@ -8,7 +8,6 @@ import {
   MapPin,
   Plane,
   Building,
-  Clock,
   Eye,
   EyeOff,
   Trash2,
@@ -96,10 +95,16 @@ const notificationTypes = {
     color: "border-border bg-muted text-ink-750",
     icon: Building,
   },
-  Recuperation: {
-    label: "Récupération",
-    color: "border-border bg-muted text-ink-750",
-    icon: Clock,
+  // Alertes du suivi des documents.
+  SuiviConge: {
+    label: "Suivi des congés",
+    color: "border-warning-border bg-warning-subtle text-warning-text",
+    icon: Plane,
+  },
+  SuiviAbsence: {
+    label: "Suivi des absences et reprises",
+    color: "border-warning-border bg-warning-subtle text-warning-text",
+    icon: Calendar,
   },
 };
 

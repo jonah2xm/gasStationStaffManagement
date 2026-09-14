@@ -60,6 +60,7 @@ exports.getEligibles = async (req, res) => {
       byPersonnel.get(key).absencesOuvertes.push({
         _id: absence._id,
         date: absence.date,
+        duree: absence.duree ?? null,
         motif: absence.motif,
         description: absence.description,
         document: absence.document,

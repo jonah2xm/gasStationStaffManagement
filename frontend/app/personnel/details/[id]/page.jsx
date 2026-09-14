@@ -55,7 +55,6 @@ const statusColors = {
   actif: "border-success-border bg-success-subtle text-success-text",
   conge: "border-info-border bg-info-subtle text-info-text",
   "en congé": "border-info-border bg-info-subtle text-info-text",
-  recuperation: "border-teal-border bg-teal-subtle text-teal-text",
   ai: "border-destructive-border bg-destructive-subtle text-destructive-text",
   aa: "border-warning-border bg-warning-subtle text-warning-text",
   "en formation": "border-border bg-muted text-ink-750",

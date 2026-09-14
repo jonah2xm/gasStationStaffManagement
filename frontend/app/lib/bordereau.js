@@ -5,6 +5,10 @@
 
 export const DESTINATION = "Agence COM Oran";
 
+// Circuit de l'agence vers le District CBR (bordereaux CBR).
+export const EXPEDITEUR_CBR = "Agence COM Oran";
+export const DESTINATION_CBR = "District CBR";
+
 export const TYPES_DOCUMENT = {
   absence: {
     label: "Avis d’absence",
@@ -48,16 +52,25 @@ export function nomAgent(personnel) {
     .join(" ");
 }
 
-/** Un agent par ligne, avec le nombre de pièces qui le concernent. */
-function agentsDe(documents) {
+/**
+ * Un agent par ligne, avec le nombre de pièces qui le concernent. Sur un
+ * bordereau CBR, qui regroupe plusieurs stations, la station suit le nom.
+ */
+function agentsDe(documents, avecStation = false) {
   const parAgent = new Map();
   for (const doc of documents) {
-    const key = doc.personnel?._id
+    const station = avecStation ? doc.stationName || "" : "";
+    const agent = doc.personnel?._id
       ? String(doc.personnel._id)
       : `sans-agent-${doc._id}`;
+    const key = `${agent}|${station}`;
+    // Espaces insécables : « GD R3120 » ne se coupe jamais en fin de ligne.
+    const nom = station
+      ? `${nomAgent(doc.personnel)} — ${station.replace(/ /g, " ")}`
+      : nomAgent(doc.personnel);
     const entry = parAgent.get(key);
     if (entry) entry.nombre += 1;
-    else parAgent.set(key, { key, nom: nomAgent(doc.personnel), nombre: 1 });
+    else parAgent.set(key, { key, nom, nombre: 1 });
   }
   return [...parAgent.values()].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
 }
@@ -78,7 +91,7 @@ export function categoriesBordereau(bordereau) {
       numero: index + 1,
       designation: c.designation,
       nb: c.documents.length,
-      agents: agentsDe(c.documents),
+      agents: agentsDe(c.documents, bordereau.circuit === "cbr"),
     }));
 }
 

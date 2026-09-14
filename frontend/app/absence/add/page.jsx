@@ -25,7 +25,14 @@ import {
 } from "@/components/ui/form-layout";
 import { EmployeeCombobox } from "@/components/ui/employee-combobox";
 import { StatusDialog } from "@/components/ui/status-dialog";
-import { ABSENCE_MOTIFS, MOTIF_NON_AUTORISE, motifLabel } from "@/lib/absence-motifs";
+import {
+  ABSENCE_MOTIFS,
+  DUREE_MAX,
+  MOTIF_NON_AUTORISE,
+  dateRetourEstimee,
+  dureeValide,
+  motifLabel,
+} from "@/lib/absence-motifs";
 import AvisDocumentPreview from "@/components/avis-document-preview";
 
 export default function AddAbsencePage() {
@@ -40,6 +47,7 @@ export default function AddAbsencePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState({
     date: "",
+    duree: "",
     motif: "",
     description: "",
   });
@@ -101,9 +109,12 @@ export default function AddAbsencePage() {
     if (!formData.motif) {
       nextErrors.motif = "Le motif est requis";
     }
+    if (!dureeValide(formData.duree)) {
+      nextErrors.duree = `Nombre entier de jours, de 1 à ${DUREE_MAX}`;
+    }
 
     setErrors(nextErrors);
-    setTouched({ date: true, motif: true });
+    setTouched({ date: true, motif: true, duree: true });
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -123,6 +134,7 @@ export default function AddAbsencePage() {
       const payload = {
         personnelId: selectedPersonnel._id,
         date: formData.date,
+        duree: formData.duree === "" ? null : Number(formData.duree),
         motif: formData.motif,
         description: formData.description,
       };
@@ -293,6 +305,41 @@ export default function AddAbsencePage() {
                 ))}
               </SelectContent>
             </Select>
+          </Field>
+          <Field
+            label="Durée (jours)"
+            htmlFor="duree"
+            error={touched.duree && errors.duree}
+            hint="Optionnel — jours calendaires, jour d'absence compris."
+          >
+            <Input
+              type="number"
+              id="duree"
+              name="duree"
+              min={1}
+              max={DUREE_MAX}
+              step={1}
+              inputMode="numeric"
+              value={formData.duree}
+              onChange={handleInputChange}
+              disabled={loading}
+              aria-invalid={!!(touched.duree && errors.duree)}
+              placeholder="Ex : 3"
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Date retour estimé">
+            <ComputedValue
+              tag="Automatique"
+              placeholder="Renseignez la date et la durée"
+            >
+              {dateRetourEstimee(formData)?.toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </ComputedValue>
           </Field>
 
           {nonAutorisee && (

@@ -2,7 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const Absence = require("../models/absenceModel");
-const { MOTIFS, MOTIF_NON_AUTORISE } = require("../models/absenceModel");
+const { MOTIFS, MOTIF_NON_AUTORISE, DUREE_MAX } = require("../models/absenceModel");
 const Reprise = require("../models/repriseModel");
 const Personnel = require("../models/personnelModel");
 const Users = require("../models/userModel");
@@ -82,6 +82,21 @@ async function scopeToStation(req, query) {
   return query;
 }
 
+/**
+ * Durée d'absence facultative : vide → null, sinon un entier de 1 à DUREE_MAX.
+ * Renvoie { duree } ou { erreur }.
+ */
+function lireDuree(valeur) {
+  if (valeur === undefined || valeur === null || String(valeur).trim() === "") {
+    return { duree: null };
+  }
+  const duree = Number(valeur);
+  if (!Number.isInteger(duree) || duree < 1 || duree > DUREE_MAX) {
+    return { erreur: `La durée doit être un nombre entier de jours, de 1 à ${DUREE_MAX}` };
+  }
+  return { duree };
+}
+
 /** Début du jour, pour comparer des dates sans tenir compte de l'heure. */
 function startOfDay(value) {
   const d = new Date(value);
@@ -99,6 +114,10 @@ exports.createAbsence = async (req, res) => {
     }
     if (!MOTIFS.includes(motif)) {
       return res.status(400).json({ message: "Motif d'absence invalide" });
+    }
+    const { duree, erreur: erreurDuree } = lireDuree(req.body.duree);
+    if (erreurDuree) {
+      return res.status(400).json({ message: erreurDuree });
     }
 
     const personnel = await Personnel.findById(personnelId);
@@ -125,6 +144,7 @@ exports.createAbsence = async (req, res) => {
     const created = await Absence.create({
       personnel: personnelId,
       date: absenceDate,
+      duree,
       motif,
       description: description || "",
       document: req.file ? req.file.path.replace(/\\/g, "/") : "",
@@ -250,6 +270,10 @@ exports.updateAbsence = async (req, res) => {
     if (!MOTIFS.includes(motif)) {
       return res.status(400).json({ message: "Motif d'absence invalide" });
     }
+    const { duree, erreur: erreurDuree } = lireDuree(req.body.duree);
+    if (erreurDuree) {
+      return res.status(400).json({ message: erreurDuree });
+    }
 
     const absence = await Absence.findById(req.params.id);
     if (!absence) {
@@ -278,6 +302,7 @@ exports.updateAbsence = async (req, res) => {
 
     absence.personnel = personnelId;
     absence.date = absenceDate;
+    absence.duree = duree;
     absence.motif = motif;
     absence.description = description || "";
 

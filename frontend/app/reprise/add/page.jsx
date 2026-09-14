@@ -18,7 +18,7 @@ import {
 import { EmployeeCombobox } from "@/components/ui/employee-combobox";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { StatusDialog } from "@/components/ui/status-dialog";
-import { motifLabel } from "@/lib/absence-motifs";
+import { dateRetourEstimee, motifLabel, valeurChampDate } from "@/lib/absence-motifs";
 import AvisDocumentPreview from "@/components/avis-document-preview";
 
 const formatDate = (value) =>
@@ -39,6 +39,8 @@ export default function AddReprisePage() {
   const [selectedPersonnel, setSelectedPersonnel] = useState(null);
   const [openCombobox, setOpenCombobox] = useState(false);
   const [dateReprise, setDateReprise] = useState("");
+  // Date de reprise reprise du retour estimé de l'absence, non retouchée.
+  const [retourPreRempli, setRetourPreRempli] = useState(false);
   const [errors, setErrors] = useState({});
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
@@ -234,6 +236,14 @@ export default function AddReprisePage() {
                 setSelectedPersonnel(person);
                 setOpenCombobox(false);
                 setErrors((prev) => ({ ...prev, personnel: "" }));
+                // Pré-remplit la reprise avec le retour estimé de la dernière
+                // absence ouverte, si sa durée est renseignée (modifiable).
+                const ouvertes = [...(person?.absencesOuvertes || [])].sort(
+                  (a, b) => new Date(a.date) - new Date(b.date)
+                );
+                const retour = dateRetourEstimee(ouvertes[ouvertes.length - 1]);
+                setDateReprise(retour ? valeurChampDate(retour) : "");
+                setRetourPreRempli(Boolean(retour));
               }}
               disabled={loading || noEligibles}
               invalid={!!errors.personnel}
@@ -303,7 +313,7 @@ export default function AddReprisePage() {
             error={errors.dateReprise}
             hint={
               selectedPersonnel && !errors.dateReprise
-                ? `${closedCount} absence${closedCount > 1 ? "s" : ""} ${closedCount > 1 ? "seront clôturées" : "sera clôturée"
+                ? `${retourPreRempli ? "Pré-remplie avec la date de retour estimé de l'absence. " : ""}${closedCount} absence${closedCount > 1 ? "s" : ""} ${closedCount > 1 ? "seront clôturées" : "sera clôturée"
                 }, et l'agent repassera « Actif ».`
                 : undefined
             }
@@ -314,6 +324,7 @@ export default function AddReprisePage() {
               value={dateReprise}
               onChange={(e) => {
                 setDateReprise(e.target.value);
+                setRetourPreRempli(false);
                 setErrors((prev) => ({ ...prev, dateReprise: "" }));
               }}
               disabled={loading || noEligibles}

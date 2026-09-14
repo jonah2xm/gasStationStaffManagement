@@ -1,5 +1,6 @@
 // models/repriseModel.js
 const mongoose = require("mongoose");
+const { STATUTS_GESTION } = require("../utils/suivi");
 
 /**
  * Avis de reprise — clôture les absences ouvertes d'un agent.
@@ -37,6 +38,35 @@ const RepriseSchema = new mongoose.Schema(
       ref: "Bordereau",
       default: null,
     },
+    // Suivi côté gestionnaire (voir utils/suivi.js) : non reçu → reçu →
+    // non délivré → délivré à la direction CBR. Absent : « non reçu ».
+    statutGestion: {
+      type: String,
+      enum: STATUTS_GESTION,
+      default: "non_recu",
+    },
+    statutGestionLe: {
+      type: Date,
+      default: null,
+    },
+    statutGestionPar: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    // Bordereau d'envoi au District CBR (bordereauCbrModel.js). Tant qu'il est
+    // renseigné, le statut ne revient ni à « reçu » ni à « non reçu ».
+    bordereauCbr: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "BordereauCbr",
+      default: null,
+    },
+    // Statut avant l'inclusion dans le bordereau CBR, rétabli à son annulation.
+    statutAvantCbr: {
+      type: String,
+      enum: [...STATUTS_GESTION, null],
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -44,6 +74,8 @@ const RepriseSchema = new mongoose.Schema(
 RepriseSchema.index({ personnel: 1, dateReprise: -1 });
 // Avis restant à envoyer, pour la page Envois.
 RepriseSchema.index({ bordereau: 1, personnel: 1 });
+// Documents d'un bordereau CBR.
+RepriseSchema.index({ bordereauCbr: 1 });
 
 RepriseSchema.set("toJSON", { virtuals: true });
 RepriseSchema.set("toObject", { virtuals: true });

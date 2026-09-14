@@ -11,9 +11,9 @@ import {
   Bell,
   CalendarX2,
   ChevronDown,
+  ClipboardCheck,
   Clock,
   Fuel,
-  History,
   LayoutDashboard,
   LogIn,
   PanelLeftClose,
@@ -58,10 +58,10 @@ const NAV_SECTIONS = [
     label: "Mouvements & absences",
     items: [
       { href: "/conges", label: "Congés", icon: Plane },
-      { href: "/recuperations", label: "Récupérations", icon: History },
       { href: "/absence", label: "Absences", icon: CalendarX2 },
-      { href: "/reprise", label: "Avis de reprise", icon: LogIn },
+      { href: "/reprise", label: "reprise", icon: LogIn },
       { href: "/envoi", label: "Envois", icon: Send },
+      { href: "/suivi", label: "Suivi des documents", icon: ClipboardCheck, badge: "suivi" },
       {
         label: "Affectations",
         icon: ArrowLeftRight,
@@ -93,16 +93,40 @@ function NavIcon({ icon: Icon }) {
   return <Icon aria-hidden className="h-[18px] w-[18px] shrink-0 text-bleu" strokeWidth={1.75} />;
 }
 
-function NavLink({ href, label, icon, active, collapsed }) {
+function NavLink({ href, label, icon, active, collapsed, badge }) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
       title={collapsed ? label : undefined}
-      className={cn(navItemBase, active ? navItemActive : navItemIdle, collapsed && "justify-center px-0")}
+      className={cn(navItemBase, "relative", active ? navItemActive : navItemIdle, collapsed && "justify-center px-0")}
     >
       <NavIcon icon={icon} />
-      {collapsed ? <span className="sr-only">{label}</span> : <span className="truncate">{label}</span>}
+      {collapsed ? (
+        <span className="sr-only">
+          {label}
+          {badge ? ` (${badge.valeur} en alerte)` : ""}
+        </span>
+      ) : (
+        <span className="truncate">{label}</span>
+      )}
+      {badge &&
+        (collapsed ? (
+          <span
+            aria-hidden
+            className={cn("absolute right-3.5 top-1.5 h-2 w-2 rounded-full", badge.retard ? "bg-destructive" : "bg-warning")}
+          />
+        ) : (
+          <span
+            title={`${badge.valeur} document${badge.valeur > 1 ? "s" : ""} en alerte`}
+            className={cn(
+              "ml-auto rounded-full px-1.5 text-[11px] font-semibold leading-5 tabular-nums text-white",
+              badge.retard ? "bg-destructive" : "bg-warning"
+            )}
+          >
+            {badge.valeur}
+          </span>
+        ))}
     </Link>
   );
 }
@@ -171,9 +195,37 @@ function NavGroup({ item, pathname, collapsed }) {
   );
 }
 
+/** Pastille du menu Suivi : documents en alerte, actualisée à chaque navigation. */
+function useAlertesSuivi(user, pathname) {
+  const [resume, setResume] = useState(null);
+  const role = user?.role;
+
+  useEffect(() => {
+    if (!role || role === "personnel") {
+      setResume(null);
+      return;
+    }
+    let actif = true;
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/suivi/resume`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (actif) setResume(data);
+      })
+      .catch(() => { });
+    return () => {
+      actif = false;
+    };
+  }, [role, pathname]);
+
+  return resume && resume.nbAlertes > 0
+    ? { valeur: resume.nbAlertes, retard: resume.nbEnRetard > 0 }
+    : null;
+}
+
 function Sidebar() {
   const pathname = usePathname();
   const user = useCurrentUser();
+  const alertesSuivi = useAlertesSuivi(user, pathname);
 
   // Menu filtré selon le rôle. Tant que le rôle n'est pas connu, les sections
   // restreintes restent masquées plutôt que d'apparaître puis disparaître.
@@ -259,6 +311,7 @@ function Sidebar() {
                       icon={item.icon}
                       active={isActivePath(pathname, item.href)}
                       collapsed={collapsed}
+                      badge={item.badge === "suivi" ? alertesSuivi : null}
                     />
                   )}
                 </li>

@@ -59,6 +59,7 @@ import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 const leaveTypes = {
   ordinaire: { label: "Ordinaire", color: "border-border bg-muted text-ink-750" },
   anticipe: { label: "Anticipé", color: "border-violet-border bg-violet-subtle text-violet-text" },
+  recuperation: { label: "Récupération", color: "border-teal-border bg-teal-subtle text-teal-text" },
 };
 const getLeaveStatusLabel = (dateDebut, dateRetour) => {
   const today = new Date();

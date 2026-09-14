@@ -73,6 +73,14 @@
 
 /* --- Titre et destinataire --------------------------------------------- */
 
+/* Bordereau CBR : numéro à gauche, date à droite, sur la même ligne. */
+.bd-date-numero {
+  display: flex;
+  justify-content: space-between;
+  gap: 6mm;
+  padding-left: 5.4mm;
+}
+
 .bd-title {
   margin-top: 6mm;
   text-align: center;

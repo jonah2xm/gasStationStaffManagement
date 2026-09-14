@@ -7,6 +7,9 @@
  */
 const SECTIONS_RETIREES = {
   "chef station": ["/stations", "/pointage-list", "/affectation"],
+  // Le suivi des documents concerne les chefs de station, les gestionnaires
+  // et les administrateurs.
+  personnel: ["/suivi"],
 };
 
 const couvre = (section, pathname) =>

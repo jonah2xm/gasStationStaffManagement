@@ -1,7 +1,7 @@
 "use client";
 
 import "./bordereau-document.css";
-import { categoriesBordereau, DESTINATION } from "@/lib/bordereau";
+import { categoriesBordereau, DESTINATION, EXPEDITEUR_CBR } from "@/lib/bordereau";
 
 /**
  * Réplique imprimable du « BORDEREAU D'ENVOI » NAFTAL (bordereau d'envoi.doc).
@@ -10,6 +10,10 @@ import { categoriesBordereau, DESTINATION } from "@/lib/bordereau";
  * Oran. La colonne DESIGNATION liste une catégorie par type de document, un
  * agent par ligne (« (2) » quand il a plusieurs pièces) ; NB compte les pièces
  * de chaque catégorie. N° et OBSERVATION restent vides, comme sur l'exemple.
+ *
+ * Bordereau CBR (circuit "cbr") : l'en-tête nomme l'Agence COM Oran, le
+ * destinataire est le District CBR, le numéro précède la date et chaque agent
+ * est suivi de sa station.
  */
 
 const formatDate = (value) => {
@@ -27,17 +31,31 @@ export default function BordereauDocument({ bordereau, className = "", style }) 
   if (!bordereau) return null;
 
   const categories = categoriesBordereau(bordereau);
+  const cbr = bordereau.circuit === "cbr";
 
   return (
     <div className={`bd-sheet ${className}`.trim()} style={style}>
       <header className="bd-head">
         {/* Logo extrait du modèle Word (word/media/image1.png) */}
         <img src="/bordereau-entete.png" alt="NAFTAL" />
-        <p>District Commercialisation SBA</p>
-        <p>{String(bordereau.stationName || "").toUpperCase()}</p>
+        {cbr ? (
+          <p>{bordereau.expediteur || EXPEDITEUR_CBR}</p>
+        ) : (
+          <>
+            <p>District Commercialisation SBA</p>
+            <p>{String(bordereau.stationName || "").toUpperCase()}</p>
+          </>
+        )}
       </header>
 
-      <p className="bd-date">Oran, le {formatDate(bordereau.createdAt)}</p>
+      {cbr ? (
+        <div className="bd-date bd-date-numero">
+          <span>N° {bordereau.reference}</span>
+          <span>Oran, le {formatDate(bordereau.createdAt)}</span>
+        </div>
+      ) : (
+        <p className="bd-date">Oran, le {formatDate(bordereau.createdAt)}</p>
+      )}
 
       <h1 className="bd-title">BORDEREAU D’ENVOI</h1>
       <p className="bd-recipient">{bordereau.destination || DESTINATION}</p>

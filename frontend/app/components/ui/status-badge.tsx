@@ -2,8 +2,6 @@ import * as React from "react";
 import {
   Baby,
   Ban,
-  CalendarDays,
-  Clock,
   FileText,
   Flower2,
   Heart,
@@ -73,7 +71,6 @@ interface StatusEntry {
 
 const PERSONNEL_ACTIVE: StatusEntry = { label: "Actif", tone: "success", dot: true };
 const PERSONNEL_LEAVE: StatusEntry = { label: "En congé", tone: "info", dot: true };
-const PERSONNEL_RECOVERY: StatusEntry = { label: "En récupération", tone: "teal", dot: true };
 const PERSONNEL_AI: StatusEntry = { label: "Absence AI", tone: "danger", dot: true };
 const PERSONNEL_AA: StatusEntry = { label: "Absence AA", tone: "warning", dot: true };
 // Statut unique depuis la fusion des deux sections d'absence : le motif est
@@ -88,8 +85,6 @@ const STATUS = {
     actif: PERSONNEL_ACTIVE,
     conge: PERSONNEL_LEAVE,
     "en conge": PERSONNEL_LEAVE,
-    recuperation: PERSONNEL_RECOVERY,
-    "en recuperation": PERSONNEL_RECOVERY,
     absent: PERSONNEL_ABSENT,
     // Statuts hérités d'avant la fusion, encore présents en base.
     ai: PERSONNEL_AI,
@@ -119,10 +114,7 @@ const STATUS = {
   conge: {
     ordinaire: { label: "Ordinaire", tone: "neutral" },
     anticipe: { label: "Anticipé", tone: "violet" },
-  },
-  recuperation: {
-    jour: { label: "Par jour", tone: "neutral", icon: CalendarDays },
-    heure: { label: "Par heure", tone: "neutral", icon: Clock },
+    recuperation: { label: "Récupération", tone: "teal" },
   },
   // Motif d'absence — section unique. "nonAutorisee" est le seul motif non
   // autorisé, d'où le seul en rouge ; tous les autres sont des absences
@@ -137,6 +129,22 @@ const STATUS = {
     pelerinage: { label: "Pèlerinage", tone: "neutral", icon: Landmark },
     autre: { label: "Autre", tone: "neutral", icon: MoreHorizontal },
     nonautorisee: { label: "Non autorisée", tone: "danger", icon: Ban },
+  },
+  // Suivi des documents : statut (chef de station : non délivré / délivré ;
+  // gestionnaire : non reçu → non délivré → délivré ; « recu » ne sert qu'au
+  // libellé « Réceptionné » d'un bordereau). La couleur forte
+  // est portée par l'échéance, le statut reste sobre.
+  suivi: {
+    non_recu: { label: "Non reçu", tone: "neutral", dot: true },
+    recu: { label: "Réceptionné", tone: "info", dot: true },
+    non_delivre: { label: "Non délivré", tone: "upcoming", dot: true },
+    delivre: { label: "Délivré", tone: "success", dot: true },
+  },
+  echeance: {
+    en_retard: { label: "En retard", tone: "danger", dot: true },
+    proche: { label: "Proche de l'échéance", tone: "warning", dot: true },
+    dans_les_delais: { label: "Dans les délais", tone: "success", dot: true },
+    delivre: { label: "Délivré", tone: "neutral" },
   },
   notification: {
     unread: { label: "Non lue", tone: "unread", dot: true },

@@ -17,12 +17,13 @@ const repriseRoutes = require("../src/routes/repriseRoutes");
 const affectationTempRoutes = require("../src/routes/affectationTemporaireRoutes");
 const affectatoinDefinitif = require("../src/routes/affectationDefinitifRoutes");
 const congeRoutes = require("../src/routes/congeRoutes");
-const recuperationRoutes = require("../src/routes/recuperationRoutes");
 const path = require("path");
 const authRoutes = require("../src/routes/authRoutes");
 const notificationRoutes = require("../src/routes/notificationRouter");
 const pointageRoutes = require("../src/routes/pointageRoutes");
 const bordereauRoutes = require("../src/routes/bordereauRoutes");
+const suiviRoutes = require("../src/routes/suiviRoutes");
+const bordereauCbrRoutes = require("../src/routes/bordereauCbrRoutes");
 
 const fs = require("fs");
 
@@ -73,6 +74,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 require("../src/cronjobs/statusCronjobs");
+require("../src/cronjobs/suiviCronjobs");
 
 // 5. Session middleware (must come before routes)
 app.use(
@@ -140,11 +142,12 @@ app.use("/api/reprises", repriseRoutes);
 app.use("/api/affectationTemp", affectationTempRoutes);
 app.use("/api/affectationDef", affectatoinDefinitif);
 app.use("/api/conges", congeRoutes);
-app.use("/api/recuperations", recuperationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/pointage", pointageRoutes);
 app.use("/api/bordereaux", bordereauRoutes);
+app.use("/api/suivi", suiviRoutes);
+app.use("/api/bordereaux-cbr", bordereauCbrRoutes);
 
 // 9. Error handler
 app.use((err, req, res, next) => {

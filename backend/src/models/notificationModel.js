@@ -19,8 +19,10 @@ const notificationSchema = new mongoose.Schema({
       "Conge",
       "CongeDays",
       "AffectationDefinitive",
-      "Recuperation",
       "MonthlyAccrual",
+      // Alertes du suivi des documents (utils/suiviDocuments.js).
+      "SuiviConge",
+      "SuiviAbsence",
     ],
     required: true,
   },
@@ -36,6 +38,11 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: true, // URL or relative path where the UI can show details
   },
+  // Clé d'une alerte de suivi : une même alerte n'est notifiée qu'une fois
+  // par destinataire.
+  cle: {
+    type: String,
+  },
   seen: {
     type: Boolean,
     default: false,
@@ -48,5 +55,10 @@ const notificationSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+notificationSchema.index(
+  { personnel: 1, cle: 1 },
+  { unique: true, partialFilterExpression: { cle: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("Notification", notificationSchema);

@@ -268,6 +268,21 @@ exports.getBordereaux = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    // Bordereaux dont au moins un document a été réceptionné : plus annulables.
+    const ids = list.map((b) => b._id);
+    const recu = { bordereau: { $in: ids }, statutGestion: { $nin: [null, "non_recu"] } };
+    const recus = new Set(
+      (
+        await Promise.all([
+          Absence.distinct("bordereau", recu),
+          Reprise.distinct("bordereau", recu),
+          Conge.distinct("bordereau", recu),
+        ])
+      )
+        .flat()
+        .map(String)
+    );
+
     return res.status(200).json(
       list.map((b) => ({
         _id: b._id,
@@ -278,6 +293,7 @@ exports.getBordereaux = async (req, res) => {
         nbAbsences: (b.absences || []).length,
         nbReprises: (b.reprises || []).length,
         nbConges: (b.conges || []).length,
+        recu: recus.has(String(b._id)),
       }))
     );
   } catch (error) {
@@ -328,6 +344,20 @@ exports.annulerBordereau = async (req, res) => {
 
     if (!bordereau) {
       return res.status(404).json({ message: "Bordereau non trouvé" });
+    }
+
+    // Déjà réceptionné par le gestionnaire : la station ne peut plus l'annuler.
+    const recu = { bordereau: bordereau._id, statutGestion: { $nin: [null, "non_recu"] } };
+    const dejaRecus = await Promise.all([
+      Absence.exists(recu),
+      Reprise.exists(recu),
+      Conge.exists(recu),
+    ]);
+    if (dejaRecus.some(Boolean)) {
+      return res.status(409).json({
+        message:
+          "Ce bordereau a déjà été réceptionné par le gestionnaire : il ne peut plus être annulé.",
+      });
     }
 
     const liberes = await Promise.all([

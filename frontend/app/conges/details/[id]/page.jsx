@@ -40,6 +40,10 @@ const leaveTypes = {
     label: "Anticipé",
     color: "border-violet-border bg-violet-subtle text-violet-text",
   },
+  recuperation: {
+    label: "Récupération",
+    color: "border-teal-border bg-teal-subtle text-teal-text",
+  },
 };
 
 export default function CongeDetailsPage() {

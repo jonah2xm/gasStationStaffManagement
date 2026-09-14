@@ -405,7 +405,14 @@ export default function EditCongePage() {
               {formData.stationName}
             </ComputedValue>
           </Field>
-          <Field label="Solde de congés" hint="Mis à jour automatiquement pendant la durée du congé.">
+          <Field
+            label="Solde de congés"
+            hint={
+              formData.typeConge === "recuperation"
+                ? "Une récupération ne consomme pas le solde de congés."
+                : "Mis à jour automatiquement pendant la durée du congé."
+            }
+          >
             <ComputedValue icon={Plane} tag="Actuel">
               {holidaysLeft !== null ? `${holidaysLeft} jour${holidaysLeft > 1 ? "s" : ""}` : ""}
             </ComputedValue>
@@ -425,6 +432,7 @@ export default function EditCongePage() {
               <SelectContent>
                 <SelectItem value="ordinaire">Ordinaire</SelectItem>
                 <SelectItem value="anticipe">Anticipé</SelectItem>
+                <SelectItem value="recuperation">Récupération</SelectItem>
               </SelectContent>
             </Select>
           </Field>

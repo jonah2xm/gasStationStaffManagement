@@ -28,7 +28,14 @@ import {
 import { StatusDialog } from "@/components/ui/status-dialog";
 import { DocumentVerrouillePage } from "@/components/document-verrouille";
 import { bordereauVerrou } from "@/lib/bordereau";
-import { ABSENCE_MOTIFS, MOTIF_NON_AUTORISE } from "@/lib/absence-motifs";
+import {
+  ABSENCE_MOTIFS,
+  DUREE_MAX,
+  MOTIF_NON_AUTORISE,
+  dateRetourEstimee,
+  dureeValide,
+  valeurChampDate,
+} from "@/lib/absence-motifs";
 
 export default function EditAbsencePage() {
   const router = useRouter();
@@ -43,6 +50,7 @@ export default function EditAbsencePage() {
   const [formData, setFormData] = useState({
     personnelId: "",
     date: "",
+    duree: "",
     motif: "",
     description: "",
   });
@@ -69,8 +77,10 @@ export default function EditAbsencePage() {
         setAbsence(data);
         setFormData({
           personnelId: data.personnel?._id || "",
-          // <input type="date"> attend un format YYYY-MM-DD.
-          date: data.date ? new Date(data.date).toISOString().split("T")[0] : "",
+          // <input type="date"> attend un format YYYY-MM-DD, pris dans le
+          // fuseau local (toISOString décalerait d'un jour à Alger).
+          date: valeurChampDate(data.date),
+          duree: data.duree ? String(data.duree) : "",
           motif: data.motif || "",
           description: data.description || "",
         });
@@ -106,8 +116,11 @@ export default function EditAbsencePage() {
     const nextErrors = {};
     if (!formData.date) nextErrors.date = "La date d'absence est requise";
     if (!formData.motif) nextErrors.motif = "Le motif est requis";
+    if (!dureeValide(formData.duree)) {
+      nextErrors.duree = `Nombre entier de jours, de 1 à ${DUREE_MAX}`;
+    }
     setErrors(nextErrors);
-    setTouched({ date: true, motif: true });
+    setTouched({ date: true, motif: true, duree: true });
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -127,6 +140,7 @@ export default function EditAbsencePage() {
       const payload = {
         personnelId: formData.personnelId,
         date: formData.date,
+        duree: formData.duree === "" ? null : Number(formData.duree),
         motif: formData.motif,
         description: formData.description,
       };
@@ -257,6 +271,41 @@ export default function EditAbsencePage() {
                 ))}
               </SelectContent>
             </Select>
+          </Field>
+          <Field
+            label="Durée (jours)"
+            htmlFor="duree"
+            error={touched.duree && errors.duree}
+            hint="Optionnel — jours calendaires, jour d'absence compris."
+          >
+            <Input
+              type="number"
+              id="duree"
+              name="duree"
+              min={1}
+              max={DUREE_MAX}
+              step={1}
+              inputMode="numeric"
+              value={formData.duree}
+              onChange={handleInputChange}
+              disabled={loading}
+              aria-invalid={!!(touched.duree && errors.duree)}
+              placeholder="Ex : 3"
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="Date retour estimé">
+            <ComputedValue
+              tag="Automatique"
+              placeholder="Renseignez la date et la durée"
+            >
+              {dateRetourEstimee(formData)?.toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </ComputedValue>
           </Field>
 
           {nonAutorisee && (

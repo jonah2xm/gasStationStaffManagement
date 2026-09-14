@@ -1,4 +1,5 @@
 const Conge = require("../models/congeModel");
+const { TYPES_CONGE, joursDecomptes } = require("../models/congeModel");
 const Personnel = require("../models/personnelModel");
 const fs = require("fs");
 const path = require("path");
@@ -63,6 +64,9 @@ exports.addConge = async (req, res) => {
     if (!personnelId || !stationName) {
       return res.status(400).json({ message: "Champs requis manquants." });
     }
+    if (typeConge !== undefined && !TYPES_CONGE.includes(typeConge)) {
+      return res.status(400).json({ message: "Type de congé invalide." });
+    }
 
     // 2) Charge le personnel
     const personnel = await Personnel.findById(personnelId);
@@ -70,10 +74,11 @@ exports.addConge = async (req, res) => {
       return res.status(404).json({ message: "Personnel non trouvé" });
     }
 
-    // 3) Vérifie holidaysLeft
+    // 3) Vérifie holidaysLeft (une récupération ne le consomme pas)
+    const joursDuSolde = joursDecomptes(typeConge, dureeConge);
     if (
       typeof personnel.holidaysLeft === "number" &&
-      personnel.holidaysLeft < Number(dureeConge)
+      personnel.holidaysLeft < joursDuSolde
     ) {
       return res
         .status(400)
@@ -86,21 +91,17 @@ exports.addConge = async (req, res) => {
     const end = new Date(dateRetour);
     const isInPeriod = today >= start && today <= end;
 
-    const lastConge = await Conge.findOne({ personnelId })
-      .sort({ dateDebut: -1 })
-      .lean();
-    if (lastConge) {
-      const ls = new Date(lastConge.dateDebut),
-        le = new Date(lastConge.dateRetour);
-      const overlaps =
-        (start >= ls && start <= le) ||
-        (end >= ls && end <= le) ||
-        (start <= ls && end >= le);
-      if (overlaps) {
-        return res.status(400).json({
-          message: "L'employé a déjà un congé entre ces dates.",
-        });
-      }
+    // Tous les congés de l'agent, pas seulement le plus récent : un congé
+    // antérieur au dernier enregistré peut aussi chevaucher (bornes incluses).
+    const chevauchement = await Conge.exists({
+      personnelId,
+      dateDebut: { $lte: end },
+      dateRetour: { $gte: start },
+    });
+    if (chevauchement) {
+      return res.status(400).json({
+        message: "L'employé a déjà un congé entre ces dates.",
+      });
     }
 
     // 5) Création du congé
@@ -121,7 +122,7 @@ exports.addConge = async (req, res) => {
     // 6) Mise à jour holidaysLeft et status si nécessaire
     const newHolidaysLeft =
       typeof personnel.holidaysLeft === "number"
-        ? personnel.holidaysLeft - Number(dureeConge)
+        ? personnel.holidaysLeft - joursDuSolde
         : undefined;
     const shouldChangeStatus = isInPeriod && personnel.status === "Actif";
 
@@ -295,9 +296,10 @@ exports.deleteConge = async (req, res) => {
     // 3) Mettre à jour le personnel : status = Actif + holidaysLeft
     if (conge.personnelId) {
       const personnel = await Personnel.findById(conge.personnelId);
+      // Une récupération n'avait rien décompté : rien à rendre.
       const addedDays =
         typeof personnel.holidaysLeft === "number"
-          ? Number(conge.dureeConge)
+          ? joursDecomptes(conge.typeConge, conge.dureeConge)
           : 0;
       const newHolidaysLeft =
         typeof personnel.holidaysLeft === "number"
@@ -370,6 +372,10 @@ exports.updateConge = async (req, res) => {
       nombreJourRestant,
     } = req.body;
 
+    if (typeConge !== undefined && !TYPES_CONGE.includes(typeConge)) {
+      return res.status(400).json({ message: "Type de congé invalide." });
+    }
+
     // 1) Charge l'ancien congé
     const conge = await Conge.findById(req.params.id);
     if (!conge) {
@@ -390,9 +396,10 @@ exports.updateConge = async (req, res) => {
       return res.status(400).json({ message: "L'employé n'est pas actif." });
     }
 
-    // 4) Recalcul holidaysLeft
-    const oldDuree = Number(conge.dureeConge);
-    const newDuree = Number(dureeConge);
+    // 4) Recalcul holidaysLeft : rend les jours décomptés par l'ancien congé,
+    //    retire ceux du nouveau (0 pour une récupération).
+    const oldDuree = joursDecomptes(conge.typeConge, conge.dureeConge);
+    const newDuree = joursDecomptes(typeConge ?? conge.typeConge, dureeConge);
     const recalculatedHolidaysLeft =
       (typeof personnel.holidaysLeft === "number"
         ? personnel.holidaysLeft
@@ -400,7 +407,7 @@ exports.updateConge = async (req, res) => {
       oldDuree -
       newDuree;
 
-    if (recalculatedHolidaysLeft < 0) {
+    if (newDuree > 0 && recalculatedHolidaysLeft < 0) {
       return res
         .status(400)
         .json({ message: "Le congé demandé dépasse le congé restant." });
@@ -413,27 +420,17 @@ exports.updateConge = async (req, res) => {
     const isInPeriod = today >= start && today <= end;
 
     // 6) **Chevauchement** hors ce congé‐ci
-    const lastConge = await Conge.findOne({
+    const chevauchement = await Conge.exists({
       personnelId,
       _id: { $ne: req.params.id },
-    })
-      .sort({ dateDebut: -1 })
-      .lean();
+      dateDebut: { $lte: end },
+      dateRetour: { $gte: start },
+    });
 
-    if (lastConge) {
-      const lastStart = new Date(lastConge.dateDebut);
-      const lastEnd = new Date(lastConge.dateRetour);
-
-      const overlaps =
-        (start >= lastStart && start <= lastEnd) ||
-        (end >= lastStart && end <= lastEnd) ||
-        (start <= lastStart && end >= lastEnd);
-
-      if (overlaps) {
-        return res.status(400).json({
-          message: "L'employé a déjà un congé entre ces dates.",
-        });
-      }
+    if (chevauchement) {
+      return res.status(400).json({
+        message: "L'employé a déjà un congé entre ces dates.",
+      });
     }
 
     // 7) Applique la mise à jour

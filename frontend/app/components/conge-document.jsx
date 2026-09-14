@@ -53,11 +53,14 @@ export default function CongeDocument({ conge, className = "", style }) {
     .filter(Boolean)
     .join(" ");
 
-  // Le formulaire ne connaît que le congé annuel ; l'anticipation est précisée.
+  // Le formulaire ne connaît que le congé annuel ; l'anticipation et la
+  // récupération sont précisées.
   const droitsConge =
     conge.typeConge === "anticipe"
       ? "CONGÉ ANNUEL PAR ANTICIPATION"
-      : "CONGÉ ANNUEL";
+      : conge.typeConge === "recuperation"
+        ? "RÉCUPÉRATION"
+        : "CONGÉ ANNUEL";
 
   const jours = Number(conge.dureeConge) || 0;
 

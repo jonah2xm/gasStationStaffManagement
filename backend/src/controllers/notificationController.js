@@ -1,4 +1,5 @@
 const Notification = require("../models/notificationModel");
+const { synchroniserAlertesSuivi } = require("../utils/suiviDocuments");
 
 // Create a new notification
 exports.createNotification = async (req, res) => {
@@ -58,6 +59,11 @@ exports.deleteNotification = async (req, res) => {
 exports.getNotificationsOverview = async (req, res) => {
   try {
     const userId = req.session.user.id;
+
+    // Alertes du suivi des documents dues depuis le dernier passage.
+    await synchroniserAlertesSuivi({ io: req.app && req.app.get("io") }).catch((err) =>
+      console.error("Synchronisation des alertes de suivi :", err)
+    );
 
     // total notifications
     const total = await Notification.countDocuments({ personnel: userId });

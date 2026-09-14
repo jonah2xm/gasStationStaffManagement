@@ -6,6 +6,7 @@ import { Edit, AlertTriangle, Printer } from "lucide-react";
 import toast from "react-hot-toast";
 import { Toaster } from "@/components/ui/toaster";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import {
@@ -20,7 +21,13 @@ import { EmployeeIdentity } from "@/components/ui/form-layout";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { VerrouNotice } from "@/components/document-verrouille";
 import { bordereauVerrou } from "@/lib/bordereau";
-import { isAutorisee, isSignaled48h } from "@/lib/absence-motifs";
+import {
+  dateRetourEstimee,
+  isAutorisee,
+  isRetourDepasse,
+  isSignaled48h,
+  libelleDuree,
+} from "@/lib/absence-motifs";
 
 export default function AbsenceDetailsPage() {
   const router = useRouter();
@@ -170,6 +177,21 @@ export default function AbsenceDetailsPage() {
             </DetailItem>
             <DetailItem label="Date d'absence">
               {formatDate(absence.date)}
+            </DetailItem>
+            <DetailItem label="Durée">{libelleDuree(absence.duree)}</DetailItem>
+            <DetailItem label="Date retour estimé">
+              {dateRetourEstimee(absence) ? (
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  {formatDate(dateRetourEstimee(absence))}
+                  {isRetourDepasse(absence) && (
+                    <Badge className="border-warning-border bg-warning-subtle text-warning-text">
+                      Retour dépassé
+                    </Badge>
+                  )}
+                </span>
+              ) : (
+                "—"
+              )}
             </DetailItem>
             <DetailItem label="Station">
               {absence.personnel?.stationName}

@@ -94,6 +94,8 @@ export default function AddCongePage() {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [nombreJourRestant] = useState(0); // Always starts at 0
+  // Une récupération ne consomme pas le solde de congés.
+  const horsSolde = formData.typeConge === "recuperation";
   const [showPreview, setShowPreview] = useState(false);
   const [createdCongeId, setCreatedCongeId] = useState(null);
   const [user, setUser] = useState({});
@@ -353,7 +355,10 @@ const handleSelectById = (id) => {
       "dureeConge",
       formData.dureeConge
     );
-    if (selectedPersonnel.holidaysLeft - parseInt(formData.dureeConge) < 0) {
+    if (
+      !horsSolde &&
+      selectedPersonnel.holidaysLeft - parseInt(formData.dureeConge) < 0
+    ) {
       toast.error("Le nombre de jours restants est insuffisant pour ce congé", {
         duration: 3000,
         position: "bottom-left",
@@ -505,7 +510,8 @@ useEffect(() => {
 
   const holidaysLeft = selectedPersonnel ? Number(selectedPersonnel.holidaysLeft ?? 0) : null;
   const requestedDays = Number.parseInt(formData.dureeConge);
-  const balanceAfter = holidaysLeft !== null && !Number.isNaN(requestedDays) ? holidaysLeft - requestedDays : null;
+  const balanceAfter =
+    holidaysLeft !== null && !horsSolde && !Number.isNaN(requestedDays) ? holidaysLeft - requestedDays : null;
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-6 lg:p-8">
@@ -543,9 +549,11 @@ useEffect(() => {
             label="Solde de congés"
             error={balanceAfter !== null && balanceAfter < 0 ? "Solde insuffisant pour cette durée" : undefined}
             hint={
-              balanceAfter !== null
-                ? `Après ce congé : ${balanceAfter} jour${Math.abs(balanceAfter) > 1 ? "s" : ""}`
-                : "Mis à jour automatiquement pendant la durée du congé."
+              horsSolde
+                ? "Une récupération ne consomme pas le solde de congés."
+                : balanceAfter !== null
+                  ? `Après ce congé : ${balanceAfter} jour${Math.abs(balanceAfter) > 1 ? "s" : ""}`
+                  : "Mis à jour automatiquement pendant la durée du congé."
             }
           >
             <ComputedValue icon={Plane} tag="Actuel" placeholder="—">
@@ -567,6 +575,7 @@ useEffect(() => {
               <SelectContent>
                 <SelectItem value="ordinaire">Ordinaire</SelectItem>
                 <SelectItem value="anticipe">Anticipé</SelectItem>
+                <SelectItem value="recuperation">Récupération</SelectItem>
               </SelectContent>
             </Select>
           </Field>

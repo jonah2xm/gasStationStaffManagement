@@ -40,6 +40,56 @@ export function isOuverte(absence) {
   return Boolean(absence) && !absence.reprise;
 }
 
+// Durée d'absence facultative, en jours calendaires entiers.
+export const DUREE_MAX = 365;
+
+/** "" (non renseignée) ou un entier de 1 à DUREE_MAX. */
+export function dureeValide(valeur) {
+  if (valeur === "" || valeur === null || valeur === undefined) return true;
+  const n = Number(valeur);
+  return Number.isInteger(n) && n >= 1 && n <= DUREE_MAX;
+}
+
+export function libelleDuree(duree) {
+  return duree ? `${duree} jour${duree > 1 ? "s" : ""}` : "—";
+}
+
+/** Date locale depuis une date d'API ou la valeur "AAAA-MM-JJ" d'un champ date. */
+function dateLocale(valeur) {
+  if (!valeur) return null;
+  const m = typeof valeur === "string" && /^(\d{4})-(\d{2})-(\d{2})$/.exec(valeur);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(valeur);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Valeur "AAAA-MM-JJ" d'un <input type="date">, dans le fuseau local. */
+export function valeurChampDate(valeur) {
+  const d = dateLocale(valeur);
+  if (!d) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Date de retour estimée : le lendemain du dernier jour d'absence, soit la
+ * date d'absence + la durée (3 jours à partir du 14 → retour le 17).
+ * null sans durée valide.
+ */
+export function dateRetourEstimee({ date, duree } = {}) {
+  const d = dateLocale(date);
+  if (!d || !duree || !dureeValide(duree)) return null;
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + Number(duree));
+  return d;
+}
+
+/** Absence toujours ouverte alors que sa date de retour estimée est arrivée. */
+export function isRetourDepasse(absence) {
+  if (!isOuverte(absence)) return false;
+  const retour = dateRetourEstimee(absence);
+  return Boolean(retour) && Date.now() >= retour.getTime();
+}
+
 /**
  * Une absence non autorisée devient signalable passé 48 h, tant qu'elle est
  * ouverte : un avis de reprise la fait sortir du signalement.

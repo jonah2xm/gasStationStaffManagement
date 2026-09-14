@@ -54,7 +54,9 @@ import { EnvoyeBadge, VerrouMenuNote } from "@/components/document-verrouille";
 import { bordereauVerrou } from "@/lib/bordereau";
 import {
   ABSENCE_MOTIFS,
+  dateRetourEstimee,
   isAutorisee,
+  isRetourDepasse,
   isSignaled48h,
   motifLabel,
 } from "@/lib/absence-motifs";
@@ -191,6 +193,13 @@ export default function AbsenceListPage() {
   const sorted = [...filtered].sort((a, b) => {
     let av;
     let bv;
+    if (sortConfig.key === "retour") {
+      // Absences sans durée toujours en fin de liste, quel que soit le sens.
+      const ra = dateRetourEstimee(a);
+      const rb = dateRetourEstimee(b);
+      if (!ra || !rb) return ra ? -1 : rb ? 1 : 0;
+      return sortConfig.direction === "asc" ? ra - rb : rb - ra;
+    }
     switch (sortConfig.key) {
       case "employee":
         av = `${a.personnel?.lastName || ""} ${a.personnel?.firstName || ""}`;
@@ -402,6 +411,7 @@ export default function AbsenceListPage() {
                   { key: "station", label: "Station" },
                   { key: "motif", label: "Motif" },
                   { key: "date", label: "Date d'absence" },
+                  { key: "retour", label: "Date retour estimé" },
                 ].map((item) => (
                   <DropdownMenuRadioItem key={item.key} value={item.key}>
                     {item.label}{" "}
@@ -505,6 +515,7 @@ export default function AbsenceListPage() {
                     { key: "station", label: "Station" },
                     { key: "motif", label: "Motif" },
                     { key: "date", label: "Date d'absence" },
+                    { key: "retour", label: "Date retour estimé" },
                   ].map((col) => (
                     <TableHead key={col.key}>
                       <Button
@@ -542,6 +553,23 @@ export default function AbsenceListPage() {
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {formatDate(a.date)}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {dateRetourEstimee(a) ? (
+                        <>
+                          {formatDate(dateRetourEstimee(a))}
+                          <div className="text-xs text-muted-foreground">
+                            {a.duree} jour{a.duree > 1 ? "s" : ""}
+                          </div>
+                          {isRetourDepasse(a) && (
+                            <Badge className="mt-1 border-warning-border bg-warning-subtle text-warning-text">
+                              Retour dépassé
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {isSignaled48h(a) ? (

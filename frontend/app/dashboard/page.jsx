@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TableSkeleton } from "@/components/ui/table-skeleton"
 import { StatusBadge, DaysLeftBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
-import { isAutorisee, isSignaled48h } from "@/lib/absence-motifs"
+import { dateRetourEstimee, isAutorisee, isSignaled48h } from "@/lib/absence-motifs"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { sectionRetiree } from "@/lib/acces"
 import {
@@ -19,6 +19,7 @@ import {
   CalendarCheck,
   CalendarClock,
   Eye,
+  LogIn,
   Plane,
   Users,
 } from "lucide-react"
@@ -39,8 +40,79 @@ const formatDate = (dateString) => {
   })
 }
 
-// Whole days from today until the given date; zero or negative once it has passed.
-const daysUntil = (dateString) => Math.ceil((new Date(dateString) - new Date()) / (1000 * 60 * 60 * 24))
+const JOUR = 24 * 60 * 60 * 1000
+// Retours affichés : aujourd'hui et les 3 jours suivants.
+const FENETRE_RETOUR = 3
+
+const minuit = (date) => {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// Jours calendaires d'aujourd'hui jusqu'à la date : 0 aujourd'hui, négatif une fois passée.
+const joursAvant = (date) => Math.round((minuit(date) - minuit(new Date())) / JOUR)
+
+const nomComplet = (p) => `${p?.lastName || ""} ${p?.firstName || ""}`.trim()
+
+/**
+ * Agents attendus en reprise, quel que soit le motif de leur départ : fin de
+ * congé, retour estimé d'une absence encore ouverte (date + durée), fin
+ * d'affectation temporaire.
+ */
+function construireRetours({ conges = [], absences = [], affectations = [] }) {
+  const retours = []
+
+  for (const c of conges) {
+    if (!c.dateRetour) continue
+    retours.push({
+      cle: `conge:${c._id}`,
+      type: "conge",
+      valeur: c.typeConge,
+      personnel: c.personnel,
+      station: c.station?.name || c.stationName,
+      depuis: c.dateDebut,
+      retour: c.dateRetour,
+      href: `/conges/details/${c._id}`,
+    })
+  }
+
+  for (const a of absences) {
+    // Une absence clôturée par un avis de reprise n'attend plus de retour.
+    if (a.reprise) continue
+    const retour = dateRetourEstimee(a)
+    if (!retour) continue
+    retours.push({
+      cle: `absence:${a._id}`,
+      type: "absence",
+      valeur: a.motif,
+      personnel: a.personnel,
+      station: a.personnel?.stationName,
+      depuis: a.date,
+      retour,
+      estime: true,
+      href: `/absence/details/${a._id}`,
+    })
+  }
+
+  for (const t of affectations) {
+    if (!t.endDate) continue
+    retours.push({
+      cle: `affectation:${t._id}`,
+      type: "affectation",
+      personnel: t.personnel,
+      station: [t.affectedStation?.name, t.originStation?.name].filter(Boolean).join(" → "),
+      depuis: t.startDate,
+      retour: t.endDate,
+      href: "/affectation/temporaire",
+    })
+  }
+
+  return retours
+    .map((r) => ({ ...r, jours: joursAvant(r.retour) }))
+    .filter((r) => r.jours >= 0 && r.jours <= FENETRE_RETOUR)
+    .sort((a, b) => a.jours - b.jours || nomComplet(a.personnel).localeCompare(nomComplet(b.personnel), "fr"))
+}
 
 function EmployeeCell({ personnel }) {
   return (
@@ -209,14 +281,30 @@ function Absences48HTable({ absences, loading }) {
   )
 }
 
-function CongeTable({ conges, loading }) {
+const LIBELLES_RETOUR = {
+  conge: { libelle: "Congé", voir: "Voir le congé" },
+  absence: { libelle: "Absence", voir: "Voir l'absence" },
+  affectation: { libelle: "Affectation temporaire", voir: "Voir les affectations temporaires" },
+}
+
+function MotifRetour({ retour }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[13.5px] font-medium text-foreground">{LIBELLES_RETOUR[retour.type].libelle}</span>
+      {retour.type === "conge" && <StatusBadge kind="conge" value={retour.valeur} />}
+      {retour.type === "absence" && <StatusBadge kind="absence" value={retour.valeur} />}
+    </div>
+  )
+}
+
+function RetoursTable({ retours, loading }) {
   if (loading) return <TableSkeleton rows={3} columns={6} />
 
-  if (conges.length === 0) {
+  if (retours.length === 0) {
     return (
       <EmptyState
-        icon={Plane}
-        title="Aucun retour de congé prévu"
+        icon={LogIn}
+        title="Aucun retour prévu"
         description="Aucun agent n'est attendu en reprise dans les 3 prochains jours."
       />
     )
@@ -227,11 +315,10 @@ function CongeTable({ conges, loading }) {
       <TableHeader>
         <TableRow>
           <TableHead>Employé</TableHead>
-          <TableHead>Type</TableHead>
+          <TableHead>Motif</TableHead>
           <TableHead>Station</TableHead>
-          <TableHead>Début</TableHead>
+          <TableHead>Depuis</TableHead>
           <TableHead>Retour</TableHead>
-          <TableHead className="text-right">Durée</TableHead>
           <TableHead>Jours restants</TableHead>
           <TableHead className="w-12">
             <span className="sr-only">Actions</span>
@@ -239,23 +326,25 @@ function CongeTable({ conges, loading }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {conges.map((conge) => (
-          <TableRow key={conge._id}>
+        {retours.map((retour) => (
+          <TableRow key={retour.cle}>
             <TableCell>
-              <EmployeeCell personnel={conge.personnel} />
+              <EmployeeCell personnel={retour.personnel} />
             </TableCell>
             <TableCell>
-              <StatusBadge kind="conge" value={conge.typeConge} />
+              <MotifRetour retour={retour} />
             </TableCell>
-            <TableCell className="tabular-nums">{conge.stationName}</TableCell>
-            <TableCell className="tabular-nums">{formatDate(conge.dateDebut)}</TableCell>
-            <TableCell className="tabular-nums">{formatDate(conge.dateRetour)}</TableCell>
-            <TableCell className="text-right tabular-nums">{conge.dureeConge} j</TableCell>
+            <TableCell>{retour.station || "—"}</TableCell>
+            <TableCell className="tabular-nums">{formatDate(retour.depuis)}</TableCell>
+            <TableCell className="tabular-nums">
+              {formatDate(retour.retour)}
+              {retour.estime && <div className="text-xs text-muted-foreground">Estimé (durée de l'absence)</div>}
+            </TableCell>
             <TableCell>
-              <DaysLeftBadge days={daysUntil(conge.dateRetour)} />
+              <DaysLeftBadge days={retour.jours} />
             </TableCell>
             <TableCell className="text-right">
-              <ViewButton href={`/conges/details/${conge._id}`} label="Voir le congé" />
+              <ViewButton href={retour.href} label={LIBELLES_RETOUR[retour.type].voir} />
             </TableCell>
           </TableRow>
         ))}
@@ -303,7 +392,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [absences, setAbsences] = useState([])
   const [absences48h, setAbsences48h] = useState([])
-  const [conges, setConges] = useState([])
+  const [retours, setRetours] = useState([])
   const [loadingAbsences, setLoadingAbsences] = useState(true)
 
   // Statistics state
@@ -318,6 +407,7 @@ export default function DashboardPage() {
   // Les affectations ne concernent pas le chef de station (voir lib/acces.js).
   const connecte = useCurrentUser()
   const afficherAffectations = connecte !== undefined && !sectionRetiree(connecte?.role, "/affectation")
+  const retoursVisibles = afficherAffectations ? retours : retours.filter((r) => r.type !== "affectation")
 
   // Status chart state
   const [statusData, setStatusData] = useState([
@@ -408,7 +498,7 @@ export default function DashboardPage() {
     fetchStats()
   }, [user])
 
-  // Fetch absences and conges data
+  // Absences récentes, absences de plus de 48 h et retours à prévoir
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return
@@ -416,44 +506,32 @@ export default function DashboardPage() {
       try {
         setLoadingAbsences(true)
 
-        // Absences (section unique) + celles signalées au-delà de 48 h
-        const absenceRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences`, {
-          credentials: "include",
-        })
+        const [absenceRes, absence48hRes, congeRes, affectationRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences/non-autorisees-48h`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges`, { credentials: "include" }),
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/affectationTemp`, { credentials: "include" }),
+        ])
 
-        const absence48hRes = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/absences/non-autorisees-48h`,
-          { credentials: "include" }
-        )
+        const absenceData = absenceRes.ok ? await absenceRes.json() : []
+        const congeData = congeRes.ok ? await congeRes.json() : []
+        const affectationData = affectationRes.ok ? await affectationRes.json() : []
 
-        // Fetch Conges data
-        const congeRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges`, {
-          credentials: "include",
-        })
-
-        if (absenceRes.ok) {
-          const absenceData = await absenceRes.json()
-          // La liste est déjà triée par date décroissante côté API.
-          setAbsences(absenceData.slice(0, 6))
-        }
+        // La liste est déjà triée par date décroissante côté API.
+        setAbsences(absenceData.slice(0, 6))
 
         if (absence48hRes.ok) {
           const result = await absence48hRes.json()
           setAbsences48h(result.data || [])
         }
 
-        if (congeRes.ok) {
-          const congeData = await congeRes.json()
-          // Filter conges that have less than 3 days to return
-          const filteredConges = congeData.filter((conge) => {
-            const today = new Date()
-            const returnDate = new Date(conge.dateRetour)
-            const diffTime = returnDate - today
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-            return diffDays > 0 && diffDays <= 3
+        setRetours(
+          construireRetours({
+            conges: Array.isArray(congeData) ? congeData : [],
+            absences: Array.isArray(absenceData) ? absenceData : [],
+            affectations: Array.isArray(affectationData) ? affectationData : [],
           })
-          setConges(filteredConges)
-        }
+        )
       } catch (err) {
         console.error("Error fetching data:", err)
       } finally {
@@ -594,11 +672,15 @@ export default function DashboardPage() {
       </SectionCard>
 
       <SectionCard
-        icon={Plane}
-        title="Congés — retour dans 3 jours"
-        description="Agents attendus en reprise dans les 3 prochains jours."
+        icon={LogIn}
+        title="Retours dans les 3 prochains jours"
+        description={
+          afficherAffectations
+            ? "Agents attendus en reprise : fin de congé, retour estimé d'une absence ou fin d'affectation temporaire."
+            : "Agents attendus en reprise : fin de congé ou retour estimé d'une absence."
+        }
       >
-        <CongeTable conges={conges} loading={loadingAbsences} />
+        <RetoursTable retours={retoursVisibles} loading={loadingAbsences} />
       </SectionCard>
     </div>
   )

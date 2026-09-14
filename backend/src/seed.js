@@ -13,7 +13,6 @@ const AbsenceAI = require("./models/absenceAIModel");
 const AffectationTemporaire = require("./models/affectationTemporaire");
 const AffectationDefinitif = require("./models/affectatoinDefinitifModel");
 const Conge = require("./models/congeModel");
-const Recuperation = require("./models/recuperationModel");
 const Pointage = require("./models/pointageModel");
 const Notification = require("./models/notificationModel");
 
@@ -391,50 +390,6 @@ async function seedConges(personnel) {
   console.log("Conges: ready");
 }
 
-async function seedRecuperations(personnel) {
-  if ((await Recuperation.countDocuments()) === 0) {
-    await Recuperation.insertMany([
-      {
-        personnelId: personnel[2]._id,
-        stationName: personnel[2].stationName,
-        typeRecuperation: "jour",
-        dureeRecuperation: 2,
-        dateDebut: daysFromNow(-6),
-        dateRetour: daysFromNow(-4),
-        documentPath: "seed/recuperation-1.pdf",
-      },
-      {
-        personnelId: personnel[5]._id,
-        stationName: personnel[5].stationName,
-        typeRecuperation: "heure",
-        dureeRecuperation: 4,
-        dateDebut: daysFromNow(-1),
-        dateRetour: daysFromNow(-1),
-        documentPath: "seed/recuperation-2.pdf",
-      },
-      {
-        personnelId: personnel[8]._id,
-        stationName: personnel[8].stationName,
-        typeRecuperation: "jour",
-        dureeRecuperation: 1,
-        dateDebut: daysFromNow(3),
-        dateRetour: daysFromNow(4),
-        documentPath: "seed/recuperation-3.pdf",
-      },
-      {
-        personnelId: personnel[12]._id,
-        stationName: personnel[12].stationName,
-        typeRecuperation: "heure",
-        dureeRecuperation: 8,
-        dateDebut: daysFromNow(-15),
-        dateRetour: daysFromNow(-15),
-        documentPath: "seed/recuperation-4.pdf",
-      },
-    ]);
-  }
-  console.log("Recuperations: ready");
-}
-
 async function seedPointages(personnel, users) {
   const pointageUsers = users.filter((u) => u.role === "personnel");
   if (pointageUsers.length === 0 || (await Pointage.countDocuments()) > 0) {
@@ -503,11 +458,6 @@ async function seedNotifications(allUsers) {
       detailsUrl: "/affectation/temporaire",
     },
     {
-      type: "Recuperation",
-      message: "Une demande de récupération a été soumise par Yacine Boudiaf.",
-      detailsUrl: "/recuperations",
-    },
-    {
       type: "MonthlyAccrual",
       message: "Vous avez reçu 2,5 jours de congés supplémentaires ce mois-ci.",
       detailsUrl: "/conges",
@@ -543,7 +493,6 @@ async function main() {
   await seedAbsences(personnel);
   await seedAffectations(personnel, stations);
   await seedConges(personnel);
-  await seedRecuperations(personnel);
   await seedPointages(personnel, newUsers);
 
   const allUsers = await User.find().select("_id");

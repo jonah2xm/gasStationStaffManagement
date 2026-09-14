@@ -64,9 +64,6 @@ const getStatusColor = (status) => {
     case "conge":
     case "en conge":
       return "border-info-border bg-info-subtle text-info-text";
-    case "recuperation":
-    case "en recuperation":
-      return "border-teal-border bg-teal-subtle text-teal-text";
     case "ai":
     case "absence ai":
       return "border-destructive-border bg-destructive-subtle text-destructive-text";

@@ -25,7 +25,6 @@ const SEGMENT_LABELS = {
   personnel: "Personnel",
   "pointage-list": "Pointages",
   conges: "Congés",
-  recuperations: "Récupérations",
   absence: "Absences",
   aa: "Absences AA",
   ai: "Absences AI",
@@ -42,6 +41,10 @@ const SEGMENT_LABELS = {
   "edit-personnel": "Modifier",
   "edit-station": "Modifier",
   details: "Détails",
+  reprise: "Avis de reprise",
+  envoi: "Envois",
+  suivi: "Suivi des documents",
+  station: "Station",
 }
 
 // Sidebar section each module belongs to, shown as the first crumb.
@@ -52,9 +55,11 @@ const SECTION_LABELS = {
   personnel: "Organisation",
   "pointage-list": "Présence",
   conges: "Mouvements & absences",
-  recuperations: "Mouvements & absences",
   absence: "Mouvements & absences",
   affectation: "Mouvements & absences",
+  reprise: "Mouvements & absences",
+  envoi: "Mouvements & absences",
+  suivi: "Mouvements & absences",
   settings: "Administration",
   profile: "Mon compte",
 }
@@ -67,9 +72,10 @@ const LINKABLE_PATHS = new Set([
   "/personnel",
   "/pointage-list",
   "/conges",
-  "/recuperations",
   "/absence",
   "/reprise",
+  "/envoi",
+  "/suivi",
   "/affectation/definitif",
   "/affectation/temporaire",
   "/settings",
@@ -94,6 +100,8 @@ const NOTIFICATION_TYPE_LABELS = {
   CongeDays: "Jours de congé",
   Recuperation: "Récupération",
   MonthlyAccrual: "Acquisition mensuelle",
+  SuiviConge: "Suivi des congés",
+  SuiviAbsence: "Suivi des absences et reprises",
 }
 
 function buildCrumbs(pathname) {
