@@ -6,13 +6,11 @@ let socket = null;
 export function getSocket() {
   if (socket) return socket;
 
-  // prefer explicit env var; fallback to localhost:5000 (not window.location)
-  const backend =
-    process.env.NEXT_PUBLIC_BACKEND_URL && process.env.NEXT_PUBLIC_BACKEND_URL !== ""
-      ? process.env.NEXT_PUBLIC_BACKEND_URL
-      : "http://localhost:5000";
+  // prefer explicit env var; otherwise connect to the page's own origin,
+  // which next.config.ts proxies to the backend
+  const backend = process.env.NEXT_PUBLIC_BACKEND_URL || undefined;
 
-  console.log("[socket] connecting to backend:", backend);
+  console.log("[socket] connecting to backend:", backend || window.location.origin);
 
   socket = io(backend, {
     withCredentials: true,

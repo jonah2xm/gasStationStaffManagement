@@ -52,7 +52,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
       const response = await fetch(`${backendUrl}/api/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -56,7 +56,7 @@ export default function DocumentViewerPage() {
         return
       }
 
-      const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000").replace(/\/+$/, "")
+      const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/+$/, "")
       const url = `${base}/uploads/${encodeURIComponent(filename)}`
 
       setPdfUrl(url)

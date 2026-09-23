@@ -175,7 +175,7 @@ export default function StationDashboard() {
 
     setDeletingStation(true)
     try {
-      const response = await fetch(`http://localhost:5000/api/stations/${stationToDelete._id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/stations/${stationToDelete._id}`, {
         method: "DELETE",
         credentials: "include",
       })
