@@ -105,8 +105,28 @@ async function refuserAbsenceEnvoyee(req, res, absence) {
   );
 }
 
+/**
+ * Bordereau qui verrouille un document ("Absence", "Reprise" ou "Conge"), sans
+ * répondre à la requête : { bordereau, parReprise } ou null s'il est libre.
+ */
+async function verrouDocument(typeDocument, doc) {
+  if (!doc) return null;
+
+  const b = await bordereauDe(doc.bordereau);
+  if (b) return { bordereau: b, parReprise: false };
+  if (typeDocument !== "Absence") return null;
+
+  const repriseId = idDe(doc.reprise);
+  if (!repriseId) return null;
+  const reprise = await Reprise.findById(repriseId).select("bordereau").lean();
+  const br = await bordereauDe(reprise && reprise.bordereau);
+  return br ? { bordereau: br, parReprise: true } : null;
+}
+
 module.exports = {
   refuserCongeEnvoye,
   refuserRepriseEnvoyee,
   refuserAbsenceEnvoyee,
+  verrouDocument,
+  formatDate,
 };

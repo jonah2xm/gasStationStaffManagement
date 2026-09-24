@@ -12,10 +12,12 @@ export function getSocket() {
 
   console.log("[socket] connecting to backend:", backend || window.location.origin);
 
+  // Reconnexion sans limite : le serveur peut être indisponible quelques
+  // instants (redémarrage, veille du poste) sans couper le temps réel.
   socket = io(backend, {
     withCredentials: true,
     autoConnect: true,
-    reconnectionAttempts: 5,
+    reconnectionDelayMax: 10000,
   });
 
   socket.on("connect", () => {

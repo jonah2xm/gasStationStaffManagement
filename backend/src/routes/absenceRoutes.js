@@ -13,7 +13,8 @@ const {
 } = require("../controllers/absenceController");
 
 const upload = require("../middleware/upload");
-const { ensureAuthenticated } = require("../middleware/auth");
+const { ensureAuthenticated, interdireChefStation } = require("../middleware/auth");
+const { cloreDemandesApresSuppression } = require("../controllers/demandeController");
 
 // Les routes fixes passent avant "/:id" pour ne pas être capturées par elle.
 router.get("/non-autorisees-48h", ensureAuthenticated, getNonAutoriseesAfter48h);
@@ -23,6 +24,12 @@ router.post("/", ensureAuthenticated, upload.single("document"), createAbsence);
 router.get("/", ensureAuthenticated, getAbsences);
 router.get("/:id", ensureAuthenticated, getAbsenceById);
 router.put("/:id", ensureAuthenticated, upload.single("document"), updateAbsence);
-router.delete("/:id", ensureAuthenticated, deleteAbsence);
+router.delete(
+  "/:id",
+  ensureAuthenticated,
+  interdireChefStation,
+  cloreDemandesApresSuppression("Absence"),
+  deleteAbsence
+);
 
 module.exports = router;

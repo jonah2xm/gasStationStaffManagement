@@ -1,5 +1,5 @@
 const Conge = require("../models/congeModel");
-const { TYPES_CONGE, joursDecomptes } = require("../models/congeModel");
+const { TYPES_CONGE, joursDecomptes, lireJoursTravailles } = require("../models/congeModel");
 const Personnel = require("../models/personnelModel");
 const fs = require("fs");
 const path = require("path");
@@ -67,6 +67,14 @@ exports.addConge = async (req, res) => {
     if (typeConge !== undefined && !TYPES_CONGE.includes(typeConge)) {
       return res.status(400).json({ message: "Type de congé invalide." });
     }
+    const { jours: joursTravailles, erreur: erreurJours } = lireJoursTravailles(
+      typeConge,
+      dureeConge,
+      req.body.joursTravailles
+    );
+    if (erreurJours) {
+      return res.status(400).json({ message: erreurJours });
+    }
 
     // 2) Charge le personnel
     const personnel = await Personnel.findById(personnelId);
@@ -110,6 +118,7 @@ exports.addConge = async (req, res) => {
       stationName,
       typeConge,
       dureeConge,
+      joursTravailles,
       dateDebut,
       dateRetour,
       lieuSejour,
@@ -175,6 +184,7 @@ exports.addConge = async (req, res) => {
       station: { name: pop.stationName },
       typeConge: pop.typeConge,
       dureeConge: pop.dureeConge,
+      joursTravailles: pop.joursTravailles || [],
       dateDebut: pop.dateDebut,
       dateRetour: pop.dateRetour,
       lieuSejour: pop.lieuSejour,
@@ -212,6 +222,7 @@ exports.getAllConges = async (req, res) => {
       station: { name: c.stationName },
       typeConge: c.typeConge,
       dureeConge: c.dureeConge,
+      joursTravailles: c.joursTravailles || [],
       dateDebut: c.dateDebut,
       dateRetour: c.dateRetour,
       lieuSejour: c.lieuSejour,
@@ -252,6 +263,7 @@ exports.getCongeById = async (req, res) => {
       stationName: c.stationName,
       typeConge: c.typeConge,
       dureeConge: c.dureeConge,
+      joursTravailles: c.joursTravailles || [],
       dateDebut: c.dateDebut,
       dateRetour: c.dateRetour,
       lieuSejour: c.lieuSejour,
@@ -385,6 +397,15 @@ exports.updateConge = async (req, res) => {
     // Un congé envoyé sur un bordereau ne peut plus être modifié.
     if (await refuserCongeEnvoye(req, res, conge)) return;
 
+    const { jours: joursTravailles, erreur: erreurJours } = lireJoursTravailles(
+      typeConge ?? conge.typeConge,
+      dureeConge ?? conge.dureeConge,
+      req.body.joursTravailles
+    );
+    if (erreurJours) {
+      return res.status(400).json({ message: erreurJours });
+    }
+
     // 2) Charge le personnel
     const personnel = await Personnel.findById(personnelId);
     if (!personnel) {
@@ -438,6 +459,7 @@ exports.updateConge = async (req, res) => {
     conge.stationName = stationName;
     conge.typeConge = typeConge;
     conge.dureeConge = dureeConge;
+    conge.joursTravailles = joursTravailles;
     conge.dateDebut = dateDebut;
     conge.dateRetour = dateRetour;
     conge.lieuSejour = lieuSejour;
@@ -479,6 +501,7 @@ exports.updateConge = async (req, res) => {
       station: { name: pop.stationName },
       typeConge: pop.typeConge,
       dureeConge: pop.dureeConge,
+      joursTravailles: pop.joursTravailles || [],
       dateDebut: pop.dateDebut,
       dateRetour: pop.dateRetour,
       lieuSejour: pop.lieuSejour,

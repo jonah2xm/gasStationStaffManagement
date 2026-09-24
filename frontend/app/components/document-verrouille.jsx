@@ -35,10 +35,12 @@ export function EnvoyeBadge() {
 }
 
 /** Explication sous les actions désactivées du menu d'une ligne. */
-export function VerrouMenuNote() {
+export function VerrouMenuNote({ chef = false }) {
   return (
     <p className="max-w-[230px] px-2 pb-1.5 pt-1 text-[12px] leading-4 text-muted-foreground">
-      Document envoyé : annulez son bordereau pour le modifier ou le supprimer.
+      {chef
+        ? "Document envoyé : annulez son bordereau pour le modifier ou demander son annulation."
+        : "Document envoyé : annulez son bordereau pour le modifier ou le supprimer."}
     </p>
   );
 }

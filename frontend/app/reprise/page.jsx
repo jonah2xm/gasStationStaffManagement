@@ -11,6 +11,7 @@ import {
   Eye,
   Edit,
   Trash2,
+  FileX2,
   X,
   AlertTriangle,
   Filter,
@@ -51,9 +52,17 @@ import {
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EnvoyeBadge, VerrouMenuNote } from "@/components/document-verrouille";
+import { AnnulationDemandeeBadge, DemandeAnnulationDialog } from "@/components/demande-annulation-dialog";
+import { CHEF_STATION, useDemandesEnAttente } from "@/lib/demandes";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export default function RepriseListPage() {
   const router = useRouter();
+  const user = useCurrentUser();
+  // Le chef de station ne supprime pas : il demande l'annulation.
+  const estChef = user?.role === CHEF_STATION;
+  const { enAttente, ajouter: marquerDemande } = useDemandesEnAttente("Reprise", user);
+  const [demandeFor, setDemandeFor] = useState(null);
   const [reprises, setReprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -397,6 +406,7 @@ export default function RepriseListPage() {
                       <TableCell>
                         {r.personnel?.firstName} {r.personnel?.lastName}
                         {r.bordereau && <EnvoyeBadge />}
+                        {enAttente.has(String(r._id)) && <AnnulationDemandeeBadge />}
                         <div className="text-sm text-muted-foreground">
                           {r.personnel?.matricule}
                         </div>
@@ -424,7 +434,8 @@ export default function RepriseListPage() {
                         {r.absences?.length || 0} j
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
+                        {/* Non modal : le menu peut ouvrir la demande d'annulation (Dialog) sans laisser la page bloquée. */}
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="p-0">
                               <MoreHorizontal className="h-4 w-4" />
@@ -455,17 +466,27 @@ export default function RepriseListPage() {
                               <Edit className="mr-2 h-4 w-4" /> Modifier
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive-text"
-                              disabled={Boolean(r.bordereau)}
-                              onClick={() => {
-                                setRepriseToDelete(r);
-                                setDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                            </DropdownMenuItem>
-                            {r.bordereau && <VerrouMenuNote />}
+                            {estChef ? (
+                              <DropdownMenuItem
+                                disabled={Boolean(r.bordereau) || enAttente.has(String(r._id))}
+                                onClick={() => setDemandeFor(r)}
+                              >
+                                <FileX2 className="mr-2 h-4 w-4" />
+                                {enAttente.has(String(r._id)) ? "Annulation demandée" : "Demander l’annulation"}
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="text-destructive-text"
+                                disabled={Boolean(r.bordereau)}
+                                onClick={() => {
+                                  setRepriseToDelete(r);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                              </DropdownMenuItem>
+                            )}
+                            {r.bordereau && <VerrouMenuNote chef={estChef} />}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -516,6 +537,20 @@ export default function RepriseListPage() {
         loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteDialogOpen(false)}
+      />
+
+      <DemandeAnnulationDialog
+        open={Boolean(demandeFor)}
+        onOpenChange={(open) => !open && setDemandeFor(null)}
+        typeDocument="Reprise"
+        document={
+          demandeFor && {
+            _id: demandeFor._id,
+            agent: `${demandeFor.personnel?.firstName ?? ""} ${demandeFor.personnel?.lastName ?? ""}`,
+            detail: `Reprise le ${formatDate(demandeFor.dateReprise)}`,
+          }
+        }
+        onEnvoyee={marquerDemande}
       />
 
       <Toaster position="bottom-left" />

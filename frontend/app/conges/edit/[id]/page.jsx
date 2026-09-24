@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { JoursTravaillesSection } from "@/components/jours-travailles-section";
+import { erreursJours, joursDepuisApi } from "@/lib/recuperation";
 import { useRouter, useParams } from "next/navigation";
 import {
   Calendar,
@@ -80,6 +82,11 @@ export default function EditCongePage() {
     personnelId: "",
   });
   const [errors, setErrors] = useState({});
+  // Récupération : jours travaillés (un par jour récupéré), jamais imprimés.
+  const estRecuperation = formData.typeConge === "recuperation";
+  const [joursTravailles, setJoursTravailles] = useState([]);
+  const [erreursJoursVisibles, setErreursJoursVisibles] = useState(false);
+  const erreursRecup = estRecuperation ? erreursJours(joursTravailles, formData.dureeConge) : null;
   const [touched, setTouched] = useState({});
   const [nombreJourRestant, setNombreJourRestant] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -168,6 +175,7 @@ export default function EditCongePage() {
           agentInterimaire: data.agentInterimaire || "",
         });
 
+        setJoursTravailles(joursDepuisApi(data.joursTravailles));
         setSelectedPersonnel(personnelData);
         setNombreJourRestant(data.nombreJourRestant || 0);
         setExistingDocument(data.documentPath || null);
@@ -188,10 +196,20 @@ export default function EditCongePage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      // Retour = début + durée, recalculé seulement quand l'un des deux est
+      // modifié : ouvrir un congé ne change pas la date enregistrée.
+      if (name === "dateDebut" || name === "dureeConge") {
+        const duration = Number.parseInt(next.dureeConge);
+        if (next.dateDebut && !isNaN(duration) && duration > 0) {
+          const returnDate = new Date(next.dateDebut);
+          returnDate.setDate(returnDate.getDate() + duration);
+          next.dateRetour = returnDate.toISOString().split("T")[0];
+        }
+      }
+      return next;
+    });
 
     // Mark field as touched
     if (!touched[name]) {
@@ -286,7 +304,8 @@ export default function EditCongePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    setErreursJoursVisibles(true);
+    if (!validateForm() || erreursRecup) {
       toast.error("Veuillez corriger les erreurs dans le formulaire", {
         duration: 3000,
         position: "bottom-left",
@@ -306,6 +325,10 @@ export default function EditCongePage() {
       dataToSend.append("lieuSejour", formData.lieuSejour);
       dataToSend.append("agentInterimaire", formData.agentInterimaire);
       dataToSend.append("personnelId", formData.personnelId);
+      dataToSend.append(
+        "joursTravailles",
+        JSON.stringify(estRecuperation ? joursTravailles : [])
+      );
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges/${congeId}`,
@@ -481,6 +504,16 @@ export default function EditCongePage() {
             </InputWithIcon>
           </Field>
         </FormSection>
+
+        {estRecuperation && (
+          <JoursTravaillesSection
+            jours={joursTravailles}
+            onChange={setJoursTravailles}
+            duree={formData.dureeConge}
+            erreurs={erreursJoursVisibles ? erreursRecup : null}
+            disabled={loading}
+          />
+        )}
 
         <FormSection
           title="Intérim"

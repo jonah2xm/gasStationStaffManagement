@@ -28,6 +28,7 @@ import { EmployeeIdentity } from "@/components/ui/form-layout";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { VerrouNotice } from "@/components/document-verrouille";
 import { bordereauVerrou } from "@/lib/bordereau";
+import { motifRecuperationLabel } from "@/lib/recuperation";
 
 
 // Leave types with their display names and colors
@@ -257,7 +258,7 @@ export default function CongeDetailsPage() {
           </DetailList>
         </DetailSection>
 
-        <DetailSection title="Document">
+        <DetailSection title="Document" className="xl:row-span-2">
           <Button
             variant="outline"
             className="w-full"
@@ -280,6 +281,30 @@ export default function CongeDetailsPage() {
             )}
           </dl>
         </DetailSection>
+
+        {/* Justification de la récupération : consultée ici, jamais imprimée. */}
+        {conge.typeConge === "recuperation" && (
+          <DetailSection title="Jours travaillés" className="xl:col-span-2">
+            {conge.joursTravailles?.length ? (
+              <ul className="divide-y divide-border">
+                {conge.joursTravailles.map((j) => (
+                  <li key={j.date} className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
+                    <span className="text-[13.5px] font-medium tabular-nums text-foreground">
+                      {formatDate(j.date)}
+                    </span>
+                    <span className="text-[13.5px] text-muted-foreground">
+                      {motifRecuperationLabel(j.motif)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[13.5px] text-muted-foreground">
+                Non renseigné — récupération enregistrée avant l’ajout des jours travaillés.
+              </p>
+            )}
+          </DetailSection>
+        )}
       </div>
 
       <Toaster position="bottom-left" />

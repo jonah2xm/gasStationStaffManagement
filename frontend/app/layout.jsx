@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   Clock,
+  FileX2,
   Fuel,
   LayoutDashboard,
   LogIn,
@@ -28,6 +29,7 @@ import { AccountHeader } from "./components/account-header";
 import { cn } from "@/lib/utils";
 import { oublierUtilisateur, useCurrentUser } from "@/lib/use-current-user";
 import { sectionRestreinte, sectionRetiree } from "@/lib/acces";
+import { EVENEMENT_DEMANDES, ROLES_DECIDEURS } from "@/lib/demandes";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
@@ -62,6 +64,7 @@ const NAV_SECTIONS = [
       { href: "/reprise", label: "reprise", icon: LogIn },
       { href: "/envoi", label: "Envois", icon: Send },
       { href: "/suivi", label: "Suivi des documents", icon: ClipboardCheck, badge: "suivi" },
+      { href: "/demandes", label: "Demandes", icon: FileX2, badge: "demandes" },
       {
         label: "Affectations",
         icon: ArrowLeftRight,
@@ -105,7 +108,7 @@ function NavLink({ href, label, icon, active, collapsed, badge }) {
       {collapsed ? (
         <span className="sr-only">
           {label}
-          {badge ? ` (${badge.valeur} en alerte)` : ""}
+          {badge ? ` (${badge.texte})` : ""}
         </span>
       ) : (
         <span className="truncate">{label}</span>
@@ -118,7 +121,7 @@ function NavLink({ href, label, icon, active, collapsed, badge }) {
           />
         ) : (
           <span
-            title={`${badge.valeur} document${badge.valeur > 1 ? "s" : ""} en alerte`}
+            title={badge.texte}
             className={cn(
               "ml-auto rounded-full px-1.5 text-[11px] font-semibold leading-5 tabular-nums text-white",
               badge.retard ? "bg-destructive" : "bg-warning"
@@ -218,7 +221,45 @@ function useAlertesSuivi(user, pathname) {
   }, [role, pathname]);
 
   return resume && resume.nbAlertes > 0
-    ? { valeur: resume.nbAlertes, retard: resume.nbEnRetard > 0 }
+    ? {
+        valeur: resume.nbAlertes,
+        retard: resume.nbEnRetard > 0,
+        texte: `${resume.nbAlertes} document${resume.nbAlertes > 1 ? "s" : ""} en alerte`,
+      }
+    : null;
+}
+
+/** Pastille du menu Demandes : demandes d'annulation à traiter (gestionnaire, administrateur). */
+function useDemandesATraiter(user, pathname) {
+  const [nb, setNb] = useState(0);
+  const [version, setVersion] = useState(0);
+  const decideur = ROLES_DECIDEURS.includes(user?.role);
+
+  useEffect(() => {
+    const rafraichir = () => setVersion((v) => v + 1);
+    window.addEventListener(EVENEMENT_DEMANDES, rafraichir);
+    return () => window.removeEventListener(EVENEMENT_DEMANDES, rafraichir);
+  }, []);
+
+  useEffect(() => {
+    if (!decideur) {
+      setNb(0);
+      return;
+    }
+    let actif = true;
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/demandes/resume`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (actif) setNb((data && data.nbEnAttente) || 0);
+      })
+      .catch(() => { });
+    return () => {
+      actif = false;
+    };
+  }, [decideur, pathname, version]);
+
+  return nb > 0
+    ? { valeur: nb, retard: false, texte: `${nb} demande${nb > 1 ? "s" : ""} en attente` }
     : null;
 }
 
@@ -226,6 +267,7 @@ function Sidebar() {
   const pathname = usePathname();
   const user = useCurrentUser();
   const alertesSuivi = useAlertesSuivi(user, pathname);
+  const demandesATraiter = useDemandesATraiter(user, pathname);
 
   // Menu filtré selon le rôle. Tant que le rôle n'est pas connu, les sections
   // restreintes restent masquées plutôt que d'apparaître puis disparaître.
@@ -311,7 +353,13 @@ function Sidebar() {
                       icon={item.icon}
                       active={isActivePath(pathname, item.href)}
                       collapsed={collapsed}
-                      badge={item.badge === "suivi" ? alertesSuivi : null}
+                      badge={
+                        item.badge === "suivi"
+                          ? alertesSuivi
+                          : item.badge === "demandes"
+                            ? demandesATraiter
+                            : null
+                      }
                     />
                   )}
                 </li>

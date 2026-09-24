@@ -83,6 +83,45 @@ export function dateRetourEstimee({ date, duree } = {}) {
   return d;
 }
 
+// Absence maladie de longue durée, suivie à part sur le tableau de bord.
+export const SEUIL_MALADIE = 14;
+
+const JOUR = 24 * 60 * 60 * 1000;
+
+/**
+ * Durée d'une absence en jours calendaires, et d'où elle vient :
+ * - "duree"   : la durée saisie sur l'avis ;
+ * - "reprise" : les jours entre l'absence et l'avis de reprise qui l'a clôturée ;
+ * - "en_cours": les jours écoulés depuis la date d'absence, tant qu'aucun avis
+ *               de reprise ne la clôture (le jour d'absence compris).
+ * null si la date est absente ou invalide.
+ */
+export function joursAbsence(absence, maintenant = new Date()) {
+  const debut = dateLocale(absence?.date);
+  if (!debut) return null;
+  if (absence.duree && dureeValide(absence.duree)) {
+    return { jours: Number(absence.duree), source: "duree" };
+  }
+
+  debut.setHours(0, 0, 0, 0);
+  const dateReprise = absence.reprise?.dateReprise;
+  const fin = dateLocale(dateReprise || maintenant);
+  if (!fin) return null;
+  fin.setHours(0, 0, 0, 0);
+
+  const ecart = Math.round((fin - debut) / JOUR);
+  return dateReprise
+    ? { jours: Math.max(ecart, 1), source: "reprise" }
+    : { jours: Math.max(ecart + 1, 1), source: "en_cours" };
+}
+
+/** Absence maladie atteignant le seuil de longue durée. */
+export function estMaladieLongue(absence, maintenant = new Date()) {
+  if (absence?.motif !== "maladie") return false;
+  const duree = joursAbsence(absence, maintenant);
+  return Boolean(duree) && duree.jours >= SEUIL_MALADIE;
+}
+
 /** Absence toujours ouverte alors que sa date de retour estimée est arrivée. */
 export function isRetourDepasse(absence) {
   if (!isOuverte(absence)) return false;

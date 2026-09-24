@@ -23,6 +23,8 @@ const notificationSchema = new mongoose.Schema({
       // Alertes du suivi des documents (utils/suiviDocuments.js).
       "SuiviConge",
       "SuiviAbsence",
+      // Demandes d'annulation (demandeController.js).
+      "Demande",
     ],
     required: true,
   },

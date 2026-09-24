@@ -10,7 +10,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TableSkeleton } from "@/components/ui/table-skeleton"
 import { StatusBadge, DaysLeftBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
-import { dateRetourEstimee, isAutorisee, isSignaled48h } from "@/lib/absence-motifs"
+import {
+  SEUIL_MALADIE,
+  dateRetourEstimee,
+  isAutorisee,
+  isSignaled48h,
+  joursAbsence,
+} from "@/lib/absence-motifs"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { sectionRetiree } from "@/lib/acces"
 import {
@@ -21,6 +27,7 @@ import {
   Eye,
   LogIn,
   Plane,
+  Stethoscope,
   Users,
 } from "lucide-react"
 
@@ -41,8 +48,8 @@ const formatDate = (dateString) => {
 }
 
 const JOUR = 24 * 60 * 60 * 1000
-// Retours affichés : aujourd'hui et les 3 jours suivants.
-const FENETRE_RETOUR = 3
+// Retours affichés : aujourd'hui et le lendemain.
+const FENETRE_RETOUR = 1
 
 const minuit = (date) => {
   const d = new Date(date)
@@ -54,6 +61,30 @@ const minuit = (date) => {
 const joursAvant = (date) => Math.round((minuit(date) - minuit(new Date())) / JOUR)
 
 const nomComplet = (p) => `${p?.lastName || ""} ${p?.firstName || ""}`.trim()
+
+// Absences maladie retenues : les 6 derniers mois, 10 lignes au plus.
+const MOIS_MALADIE = 6
+const MAX_MALADIES = 10
+
+/**
+ * Absences maladie atteignant SEUIL_MALADIE jours : en cours d'abord, puis les
+ * plus récentes. La durée vient de l'avis, de sa reprise, ou du temps écoulé.
+ */
+function construireMaladies(absences = []) {
+  const limite = new Date()
+  limite.setMonth(limite.getMonth() - MOIS_MALADIE)
+
+  return absences
+    .filter((a) => a.motif === "maladie" && a.date && new Date(a.date) >= limite)
+    .map((a) => ({ absence: a, duree: joursAbsence(a) }))
+    .filter((m) => m.duree && m.duree.jours >= SEUIL_MALADIE)
+    .sort(
+      (m1, m2) =>
+        Boolean(m1.absence.reprise) - Boolean(m2.absence.reprise) ||
+        new Date(m2.absence.date) - new Date(m1.absence.date)
+    )
+    .slice(0, MAX_MALADIES)
+}
 
 /**
  * Agents attendus en reprise, quel que soit le motif de leur départ : fin de
@@ -305,7 +336,7 @@ function RetoursTable({ retours, loading }) {
       <EmptyState
         icon={LogIn}
         title="Aucun retour prévu"
-        description="Aucun agent n'est attendu en reprise dans les 3 prochains jours."
+        description="Aucun agent n'est attendu en reprise aujourd'hui ni demain."
       />
     )
   }
@@ -353,6 +384,75 @@ function RetoursTable({ retours, loading }) {
   )
 }
 
+const SOURCES_DUREE = {
+  duree: "Durée saisie",
+  reprise: "Selon l'avis de reprise",
+  en_cours: "Depuis la date d'absence",
+}
+
+function MaladiesTable({ maladies, loading }) {
+  if (loading) return <TableSkeleton rows={3} columns={6} />
+
+  if (maladies.length === 0) {
+    return (
+      <EmptyState
+        icon={Stethoscope}
+        title={`Aucune absence maladie de ${SEUIL_MALADIE} jours ou plus`}
+        description="Aucun arrêt maladie de cette durée n'a été enregistré ces 6 derniers mois."
+      />
+    )
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Employé</TableHead>
+          <TableHead>Station</TableHead>
+          <TableHead>Date d'absence</TableHead>
+          <TableHead>Durée</TableHead>
+          <TableHead>Retour estimé</TableHead>
+          <TableHead>État</TableHead>
+          <TableHead className="w-12">
+            <span className="sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {maladies.map(({ absence, duree }) => {
+          const retour = dateRetourEstimee(absence)
+          return (
+            <TableRow key={absence._id}>
+              <TableCell>
+                <EmployeeCell personnel={absence.personnel} />
+              </TableCell>
+              <TableCell>{absence.personnel?.stationName || "—"}</TableCell>
+              <TableCell className="tabular-nums">{formatDate(absence.date)}</TableCell>
+              <TableCell>
+                <span className="font-semibold tabular-nums">{duree.jours} j</span>
+                <div className="text-xs text-muted-foreground">{SOURCES_DUREE[duree.source]}</div>
+              </TableCell>
+              <TableCell className="tabular-nums">{retour ? formatDate(retour) : "—"}</TableCell>
+              <TableCell>
+                {absence.reprise ? (
+                  <span className="text-[13.5px] text-muted-foreground">
+                    Clôturée le {formatDate(absence.reprise.dateReprise)}
+                  </span>
+                ) : (
+                  <Badge className="border-warning-border bg-warning-subtle text-warning-text">En cours</Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">
+                <ViewButton href={`/absence/details/${absence._id}`} label="Voir l'absence" />
+              </TableCell>
+            </TableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
+  )
+}
+
 function StatusChart({ data, loading }) {
   if (loading) {
     return (
@@ -393,6 +493,7 @@ export default function DashboardPage() {
   const [absences, setAbsences] = useState([])
   const [absences48h, setAbsences48h] = useState([])
   const [retours, setRetours] = useState([])
+  const [maladies, setMaladies] = useState([])
   const [loadingAbsences, setLoadingAbsences] = useState(true)
 
   // Statistics state
@@ -524,6 +625,8 @@ export default function DashboardPage() {
           const result = await absence48hRes.json()
           setAbsences48h(result.data || [])
         }
+
+        setMaladies(construireMaladies(Array.isArray(absenceData) ? absenceData : []))
 
         setRetours(
           construireRetours({
@@ -672,8 +775,16 @@ export default function DashboardPage() {
       </SectionCard>
 
       <SectionCard
+        icon={Stethoscope}
+        title={`Absences maladie de ${SEUIL_MALADIE} jours ou plus`}
+        description="Arrêts maladie de longue durée des 6 derniers mois, les absences en cours d'abord."
+      >
+        <MaladiesTable maladies={maladies} loading={loadingAbsences} />
+      </SectionCard>
+
+      <SectionCard
         icon={LogIn}
-        title="Retours dans les 3 prochains jours"
+        title="Retours aujourd'hui et demain"
         description={
           afficherAffectations
             ? "Agents attendus en reprise : fin de congé, retour estimé d'une absence ou fin d'affectation temporaire."

@@ -44,6 +44,7 @@ const SEGMENT_LABELS = {
   reprise: "Avis de reprise",
   envoi: "Envois",
   suivi: "Suivi des documents",
+  demandes: "Demandes d'annulation",
   station: "Station",
 }
 
@@ -60,6 +61,7 @@ const SECTION_LABELS = {
   reprise: "Mouvements & absences",
   envoi: "Mouvements & absences",
   suivi: "Mouvements & absences",
+  demandes: "Mouvements & absences",
   settings: "Administration",
   profile: "Mon compte",
 }
@@ -76,6 +78,7 @@ const LINKABLE_PATHS = new Set([
   "/reprise",
   "/envoi",
   "/suivi",
+  "/demandes",
   "/affectation/definitif",
   "/affectation/temporaire",
   "/settings",
@@ -102,6 +105,7 @@ const NOTIFICATION_TYPE_LABELS = {
   MonthlyAccrual: "Acquisition mensuelle",
   SuiviConge: "Suivi des congés",
   SuiviAbsence: "Suivi des absences et reprises",
+  Demande: "Demande d'annulation",
 }
 
 function buildCrumbs(pathname) {
@@ -209,7 +213,16 @@ export function AccountHeader({ name, role, avatarUrl }) {
     // connect if needed
     if (!socket.connected) socket.connect?.();
 
-    socket.emit("join", userId);
+    // Une room est liée à une connexion : après une coupure (redémarrage du
+    // serveur, réseau, veille), la nouvelle connexion doit la rejoindre, sinon
+    // plus rien n'arrive jusqu'au rechargement. On resynchronise aussi le
+    // compteur, les notifications émises pendant la coupure étant perdues.
+    const rejoindre = () => {
+      socket.emit("join", userId);
+      fetchOverview().catch(() => { });
+    };
+    if (socket.connected) socket.emit("join", userId);
+    socket.on("connect", rejoindre);
 
     // NEW notification
     const onNewNotification = (payload) => {
@@ -297,6 +310,7 @@ export function AccountHeader({ name, role, avatarUrl }) {
 
     return () => {
       try {
+        socket.off("connect", rejoindre);
         socket.off("notification:new", onNewNotification);
         socket.off("notification:read", onNotificationRead);
         socket.off("notification:markAllRead", onMarkAllRead);

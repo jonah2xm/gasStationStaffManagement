@@ -12,6 +12,61 @@ function joursDecomptes(typeConge, duree) {
   return TYPES_HORS_SOLDE.includes(typeConge) ? 0 : Number(duree) || 0;
 }
 
+// Pourquoi une récupération est due : un jour travaillé par jour récupéré.
+const MOTIFS_RECUPERATION = ["jour_ferie", "double_poste", "jour_repos"];
+
+/**
+ * Jours travaillés d'un congé, lus depuis la requête (tableau ou JSON, le
+ * formulaire étant envoyé en multipart). Seule une récupération en porte :
+ * autant de jours que sa durée, dates distinctes et passées, motif connu.
+ * Renvoie { jours } ou { erreur }.
+ */
+function lireJoursTravailles(typeConge, duree, valeur) {
+  if (typeConge !== "recuperation") return { jours: [] };
+
+  let liste = valeur;
+  if (typeof liste === "string") {
+    try {
+      liste = JSON.parse(liste || "[]");
+    } catch {
+      return { erreur: "Jours travaillés illisibles." };
+    }
+  }
+  if (!Array.isArray(liste)) liste = [];
+
+  const nb = Number(duree) || 0;
+  if (liste.length !== nb) {
+    return {
+      erreur: `Une récupération de ${nb} jour${nb > 1 ? "s" : ""} doit indiquer ${nb} jour${nb > 1 ? "s" : ""} travaillé${nb > 1 ? "s" : ""} (${liste.length} renseigné${liste.length > 1 ? "s" : ""}).`,
+    };
+  }
+
+  const finAujourdhui = new Date();
+  finAujourdhui.setHours(23, 59, 59, 999);
+  const vus = new Set();
+  const jours = [];
+  for (const item of liste) {
+    const date = new Date(item && item.date);
+    if (!item || !item.date || Number.isNaN(date.getTime())) {
+      return { erreur: "Chaque jour travaillé doit avoir une date." };
+    }
+    if (date > finAujourdhui) {
+      return { erreur: "Un jour travaillé ne peut pas être dans le futur." };
+    }
+    if (!MOTIFS_RECUPERATION.includes(item.motif)) {
+      return { erreur: "Chaque jour travaillé doit avoir un motif valide." };
+    }
+    const cle = date.toISOString().slice(0, 10);
+    if (vus.has(cle)) {
+      return { erreur: "Le même jour travaillé est indiqué deux fois." };
+    }
+    vus.add(cle);
+    jours.push({ date, motif: item.motif });
+  }
+  jours.sort((a, b) => a.date - b.date);
+  return { jours };
+}
+
 const CongeSchema = new mongoose.Schema(
   {
     personnelId: {
@@ -31,6 +86,18 @@ const CongeSchema = new mongoose.Schema(
     dureeConge: {
       type: Number,
       required: true,
+    },
+    // Récupération : jours travaillés qui la justifient (voir
+    // lireJoursTravailles). Consultés dans l'application, jamais imprimés.
+    joursTravailles: {
+      type: [
+        {
+          _id: false,
+          date: { type: Date, required: true },
+          motif: { type: String, enum: MOTIFS_RECUPERATION, required: true },
+        },
+      ],
+      default: [],
     },
     dateDebut: {
       type: Date,
@@ -108,3 +175,5 @@ module.exports = mongoose.model("Conge", CongeSchema);
 module.exports.TYPES_CONGE = TYPES_CONGE;
 module.exports.TYPES_HORS_SOLDE = TYPES_HORS_SOLDE;
 module.exports.joursDecomptes = joursDecomptes;
+module.exports.MOTIFS_RECUPERATION = MOTIFS_RECUPERATION;
+module.exports.lireJoursTravailles = lireJoursTravailles;

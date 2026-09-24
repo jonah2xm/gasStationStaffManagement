@@ -11,6 +11,7 @@ import {
   Eye,
   Edit,
   Trash2,
+  FileX2,
   Loader2,
   X,
   AlertTriangle,
@@ -54,6 +55,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { EnvoyeBadge, VerrouMenuNote } from "@/components/document-verrouille";
+import { AnnulationDemandeeBadge, DemandeAnnulationDialog } from "@/components/demande-annulation-dialog";
+import { CHEF_STATION, useDemandesEnAttente } from "@/lib/demandes";
 import { CustomAlertDialog } from "@/components/ui/custom-alert-dialog"
 // Leave types
 const leaveTypes = {
@@ -108,6 +111,10 @@ export default function CongeMainPage() {
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [user, setUser] = useState({});
+  // Le chef de station ne supprime pas : il demande l'annulation.
+  const estChef = user?.role === CHEF_STATION;
+  const { enAttente, ajouter: marquerDemande } = useDemandesEnAttente("Conge", user);
+  const [demandeFor, setDemandeFor] = useState(null);
 
   const itemsPerPage = 5;
   useEffect(() => {
@@ -594,6 +601,7 @@ export default function CongeMainPage() {
                     <TableCell>
                       {r.personnel.firstName} {r.personnel.lastName}
                       {r.bordereau && <EnvoyeBadge />}
+                      {enAttente.has(String(r._id)) && <AnnulationDemandeeBadge />}
                       <div className="text-sm text-muted-foreground">
                         {r.personnel.matricule}
                       </div>
@@ -625,7 +633,8 @@ export default function CongeMainPage() {
                       {getLeaveStatusBadge(r.dateDebut, r.dateRetour)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
+                      {/* Non modal : le menu peut ouvrir la demande d'annulation (Dialog) sans laisser la page bloquée. */}
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="p-0">
                             <MoreHorizontal className="h-4 w-4" />
@@ -650,14 +659,24 @@ export default function CongeMainPage() {
                             <Edit className="mr-2 h-4 w-4" /> Modifier
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive-text"
-                            disabled={Boolean(r.bordereau)}
-                            onClick={() => handleDeleteClick(r)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                          </DropdownMenuItem>
-                          {r.bordereau && <VerrouMenuNote />}
+                          {estChef ? (
+                            <DropdownMenuItem
+                              disabled={Boolean(r.bordereau) || enAttente.has(String(r._id))}
+                              onClick={() => setDemandeFor(r)}
+                            >
+                              <FileX2 className="mr-2 h-4 w-4" />
+                              {enAttente.has(String(r._id)) ? "Annulation demandée" : "Demander l’annulation"}
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="text-destructive-text"
+                              disabled={Boolean(r.bordereau)}
+                              onClick={() => handleDeleteClick(r)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                            </DropdownMenuItem>
+                          )}
+                          {r.bordereau && <VerrouMenuNote chef={estChef} />}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -708,6 +727,20 @@ export default function CongeMainPage() {
         loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteDialogOpen(false)}
+      />
+
+      <DemandeAnnulationDialog
+        open={Boolean(demandeFor)}
+        onOpenChange={(open) => !open && setDemandeFor(null)}
+        typeDocument="Conge"
+        document={
+          demandeFor && {
+            _id: demandeFor._id,
+            agent: `${demandeFor.personnel?.firstName ?? ""} ${demandeFor.personnel?.lastName ?? ""}`,
+            detail: `Du ${formatDate(demandeFor.dateDebut)} au ${formatDate(demandeFor.dateRetour)}`,
+          }
+        }
+        onEnvoyee={marquerDemande}
       />
 
       <Toaster position="bottom-left" />

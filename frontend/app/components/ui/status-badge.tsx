@@ -140,6 +140,12 @@ const STATUS = {
     non_delivre: { label: "Non délivré", tone: "upcoming", dot: true },
     delivre: { label: "Délivré", tone: "success", dot: true },
   },
+  // Demandes d'annulation (chef de station → gestionnaire).
+  demande: {
+    en_attente: { label: "En attente", tone: "warning", dot: true },
+    acceptee: { label: "Acceptée", tone: "success", dot: true },
+    refusee: { label: "Refusée", tone: "danger", dot: true },
+  },
   echeance: {
     en_retard: { label: "En retard", tone: "danger", dot: true },
     proche: { label: "Proche de l'échéance", tone: "warning", dot: true },

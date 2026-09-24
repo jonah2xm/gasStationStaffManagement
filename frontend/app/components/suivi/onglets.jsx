@@ -16,7 +16,7 @@ const TONS_COMPTEUR = {
  */
 export function Onglets({ onglets, valeur, onChange, label }) {
   return (
-    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto border-b border-border">
+    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_rgb(var(--border))]">
       {onglets.map((o) => {
         const actif = o.value === valeur;
         return (
@@ -27,7 +27,7 @@ export function Onglets({ onglets, valeur, onChange, label }) {
             aria-selected={actif}
             onClick={() => onChange(o.value)}
             className={cn(
-              "-mb-px inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-[13.5px] font-medium transition-colors",
+              "inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-[13.5px] font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               actif ? "border-bleu text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
             )}

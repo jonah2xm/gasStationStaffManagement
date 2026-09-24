@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
+  FileX2,
   Bell,
   Calendar,
   MapPin,
@@ -105,6 +106,12 @@ const notificationTypes = {
     label: "Suivi des absences et reprises",
     color: "border-warning-border bg-warning-subtle text-warning-text",
     icon: Calendar,
+  },
+  // Demandes d'annulation (chef de station → gestionnaire).
+  Demande: {
+    label: "Demande d'annulation",
+    color: "border-border bg-muted text-ink-750",
+    icon: FileX2,
   },
 };
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { JoursTravaillesSection } from "@/components/jours-travailles-section";
+import { erreursJours } from "@/lib/recuperation";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -96,6 +98,11 @@ export default function AddCongePage() {
   const [nombreJourRestant] = useState(0); // Always starts at 0
   // Une récupération ne consomme pas le solde de congés.
   const horsSolde = formData.typeConge === "recuperation";
+  // Récupération : jours travaillés (un par jour récupéré), jamais imprimés.
+  const estRecuperation = formData.typeConge === "recuperation";
+  const [joursTravailles, setJoursTravailles] = useState([]);
+  const [erreursJoursVisibles, setErreursJoursVisibles] = useState(false);
+  const erreursRecup = estRecuperation ? erreursJours(joursTravailles, formData.dureeConge) : null;
   const [showPreview, setShowPreview] = useState(false);
   const [createdCongeId, setCreatedCongeId] = useState(null);
   const [user, setUser] = useState({});
@@ -342,7 +349,8 @@ const handleSelectById = (id) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    setErreursJoursVisibles(true);
+    if (!validateForm() || erreursRecup) {
       toast.error("Veuillez corriger les erreurs dans le formulaire", {
         duration: 3000,
         position: "bottom-left",
@@ -379,6 +387,10 @@ const handleSelectById = (id) => {
       formDataToSend.append("lieuSejour", formData.lieuSejour);
       formDataToSend.append("agentInterimaire", formData.agentInterimaire);
       formDataToSend.append("nombreJourRestant", nombreJourRestant.toString());
+      formDataToSend.append(
+        "joursTravailles",
+        JSON.stringify(estRecuperation ? joursTravailles : [])
+      );
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/conges`,
@@ -626,6 +638,16 @@ useEffect(() => {
             </InputWithIcon>
           </Field>
         </FormSection>
+
+        {estRecuperation && (
+          <JoursTravaillesSection
+            jours={joursTravailles}
+            onChange={setJoursTravailles}
+            duree={formData.dureeConge}
+            erreurs={erreursJoursVisibles ? erreursRecup : null}
+            disabled={loading}
+          />
+        )}
 
         <FormSection
           title="Intérim"
