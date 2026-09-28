@@ -28,7 +28,7 @@ async function createAndEmitNotifications(req, notifications) {
           _id: n._id,
           type: n.type,
           reference: n.reference,
-          title: n.title || "Notification",
+          title: n.title,
           message: n.message,
           detailsUrl: n.detailsUrl,
           countIncrement: 1,

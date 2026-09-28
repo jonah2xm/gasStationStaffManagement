@@ -234,7 +234,7 @@ export function AccountHeader({ name, role, avatarUrl }) {
         setNotifications((prev) => [
           {
             _id: payload._id || payload.reference || `socket-${Date.now()}`,
-            title: payload.title || "Nouvelle notification",
+            title: payload.title,
             message: payload.message,
             type: payload.type || "info",
             createdAt: payload.createdAt || payload.date || new Date().toISOString(),

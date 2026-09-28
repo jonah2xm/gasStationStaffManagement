@@ -26,17 +26,53 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
-// Mark a notification as read
+// Prévient tous les onglets ouverts de l'utilisateur que des notifications
+// sont lues, pour que la cloche se mette à jour sans rechargement.
+function diffuserLecture(req, userId, event, payload) {
+  const io = req.app && req.app.get("io");
+  if (io) io.to(`user:${String(userId)}`).emit(event, payload);
+}
+
+/**
+ * @desc    Mark one of the current user's notifications as read
+ * @route   PATCH /api/notifications/:id/mark-read
+ * @access  Private
+ */
 exports.markAsRead = async (req, res) => {
   try {
-    const notif = await Notification.findByIdAndUpdate(
-      req.params.id,
-      { read: true },
+    const userId = req.session.user.id;
+    const notif = await Notification.findOneAndUpdate(
+      { _id: req.params.id, personnel: userId },
+      { $set: { seen: true, seenAt: new Date() } },
       { new: true }
     );
+    if (!notif) {
+      return res.status(404).json({ success: false, error: "Notification introuvable" });
+    }
+    diffuserLecture(req, userId, "notification:read", { ids: [String(notif._id)] });
     res.status(200).json({ success: true, data: notif });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * @desc    Mark all of the current user's notifications as read
+ * @route   PATCH /api/notifications/mark-all-read
+ * @access  Private
+ */
+exports.markAllAsRead = async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { modifiedCount } = await Notification.updateMany(
+      { personnel: userId, seen: false },
+      { $set: { seen: true, seenAt: new Date() } }
+    );
+    diffuserLecture(req, userId, "notification:markAllRead", { all: true });
+    res.status(200).json({ success: true, data: { modified: modifiedCount } });
+  } catch (err) {
+    console.error("Error in markAllAsRead:", err);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
   }
 };
 
@@ -117,6 +153,8 @@ exports.getAndMarkLatestNotifications = async (req, res) => {
       { _id: { $in: ids } },
       { $set: { seen: true, seenAt: new Date() } }
     );
+    const nonLues = latest.filter((n) => !n.seen).map((n) => String(n._id));
+    if (nonLues.length) diffuserLecture(req, userId, "notification:read", { ids: nonLues });
 
     // 3. Re-fetch the updated docs so `seen: true` shows up
     const updated = await Notification.find({ _id: { $in: ids } }).sort({
@@ -180,6 +218,7 @@ exports.listNotifications = async (req, res) => {
         { _id: { $in: unreadIds } },
         { $set: { seen: true, seenAt: new Date() } }
       );
+      diffuserLecture(req, userId, "notification:read", { ids: unreadIds.map(String) });
       // (optional) reflect that change back in your response:
       notifications.forEach((n) => {
         if (unreadIds.includes(n._id)) {

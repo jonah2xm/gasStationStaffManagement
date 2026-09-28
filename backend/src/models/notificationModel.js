@@ -32,6 +32,10 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
    
   },
+  // Intitulé court affiché au-dessus du message (ex. « Annulation de congé »).
+  title: {
+    type: String,
+  },
   message: {
     type: String,
     required: true,

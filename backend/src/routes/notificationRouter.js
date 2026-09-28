@@ -5,6 +5,8 @@ const {
   getAndMarkLatestNotifications,
   getNotificationsOverview,
   listNotifications,
+  markAsRead,
+  markAllAsRead,
 } = require("../controllers/notificationController");
 const { ensureAuthenticated } = require("../middleware/auth");
 
@@ -16,4 +18,7 @@ router.get("/overview", ensureAuthenticated, getNotificationsOverview);
 router.get("/latest", ensureAuthenticated, getAndMarkLatestNotifications);
 
 router.get("/list-notifications", ensureAuthenticated, listNotifications);
+
+router.patch("/mark-all-read", ensureAuthenticated, markAllAsRead);
+router.patch("/:id/mark-read", ensureAuthenticated, markAsRead);
 module.exports = router;
