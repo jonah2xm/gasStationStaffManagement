@@ -1020,7 +1020,7 @@ export default function SettingsPage() {
               placeholder="Rechercher par nom ou email…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 placeholder:text-ink-750"
               aria-label="Rechercher un utilisateur"
             />
           </InputWithIcon>
@@ -1219,7 +1219,7 @@ export default function SettingsPage() {
                 placeholder={personnelView === "available" ? "Nom, prénom ou matricule…" : "Rechercher un matricule…"}
                 value={personnelSearchTerm}
                 onChange={(e) => setPersonnelSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-9 placeholder:text-ink-750"
                 aria-label="Rechercher un employé"
               />
             </InputWithIcon>
@@ -1777,7 +1777,7 @@ export default function SettingsPage() {
                   placeholder="Rechercher par nom ou matricule…"
                   value={personnelSearchTerm}
                   onChange={(e) => setPersonnelSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 placeholder:text-ink-750"
                   aria-label="Rechercher un employé"
                 />
               </InputWithIcon>

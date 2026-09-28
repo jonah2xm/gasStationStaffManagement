@@ -45,7 +45,7 @@ const CommandInput = React.forwardRef<
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-ink-600 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-ink-750 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -111,7 +111,7 @@ const CommandItem = React.forwardRef<
     className={cn(
       // Removed aria-selected:text-accent-foreground to allow custom colors
       "relative flex cursor-pointer select-none items-center rounded-[7px] px-2.5 py-2 text-[13.5px] outline-none hover:bg-ink-100 focus:bg-ink-100 " +
-        "aria-selected:bg-ink-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "aria-selected:bg-ink-100 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
       className
     )}
     {...props}

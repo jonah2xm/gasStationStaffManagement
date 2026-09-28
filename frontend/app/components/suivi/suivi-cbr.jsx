@@ -533,10 +533,10 @@ export function SuiviCbr({ donnees, recharger }) {
                 placeholder="Rechercher un employé, un matricule, une station..."
                 value={filtres.recherche}
                 onChange={(e) => maj("recherche")(e.target.value)}
-                className="pl-10"
+                className="pl-10 placeholder:text-ink-750"
                 aria-label="Rechercher"
               />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-750" size={18} />
             </div>
             <div className="inline-flex w-fit flex-wrap rounded-md border border-border bg-card p-0.5">
               {FILTRES_TYPE.map((f) => (

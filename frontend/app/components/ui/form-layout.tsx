@@ -403,7 +403,7 @@ function EmployeeIdentity({ firstName, lastName, matricule, meta, size = "md", h
         <span className={cn("truncate font-medium text-foreground", name, size === "lg" && "font-semibold")}>
           {firstName} {lastName}
         </span>
-        <span className="truncate text-xs tabular-nums text-muted-foreground">
+        <span className="truncate text-xs tabular-nums text-ink-750">
           {[matricule, meta].filter(Boolean).join(" · ")}
         </span>
       </span>

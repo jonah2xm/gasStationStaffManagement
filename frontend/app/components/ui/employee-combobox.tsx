@@ -75,12 +75,12 @@ function EmployeeCombobox({
               className="flex-1"
             />
           ) : (
-            <span className="flex flex-1 items-center gap-2 px-0.5 text-ink-600">
+            <span className="flex flex-1 items-center gap-2 px-0.5 text-ink-750">
               <Search aria-hidden className="h-4 w-4" />
               {placeholder}
             </span>
           )}
-          <ChevronsUpDown aria-hidden className="h-4 w-4 shrink-0 text-ink-600" />
+          <ChevronsUpDown aria-hidden className="h-4 w-4 shrink-0 text-ink-750" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-[320px] p-0">

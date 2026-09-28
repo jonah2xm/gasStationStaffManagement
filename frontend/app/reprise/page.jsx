@@ -231,10 +231,10 @@ export default function RepriseListPage() {
             placeholder="Rechercher par nom, matricule..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 placeholder:text-ink-750"
           />
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-750"
             size={20}
           />
         </div>

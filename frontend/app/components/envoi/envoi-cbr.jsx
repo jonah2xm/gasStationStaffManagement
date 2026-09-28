@@ -309,10 +309,10 @@ export function EnvoiCbr() {
                 placeholder="Rechercher par nom, matricule, station..."
                 value={recherche}
                 onChange={(e) => setRecherche(e.target.value)}
-                className="pl-10"
+                className="pl-10 placeholder:text-ink-750"
                 aria-label="Rechercher"
               />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600" size={20} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-750" size={20} />
             </div>
 
             <div className="flex flex-wrap items-center gap-2">

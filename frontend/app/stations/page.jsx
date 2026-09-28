@@ -211,9 +211,9 @@ export default function StationDashboard() {
               placeholder="Rechercher stations ou personnel..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full rounded-full bg-card border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50"
+              className="pl-10 pr-4 py-2 w-full rounded-full bg-card border-input focus:border-foreground focus:ring focus:ring-ring/20 focus:ring-opacity-50 placeholder:text-ink-750"
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-600" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-750" size={20} />
           </div>
           <Link href="/stations/add-station">
             <Button>
