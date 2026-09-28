@@ -41,6 +41,9 @@ const posts = [
   "Agent Prevention Intervention",
   "Chef d'equipe",
   "Chef de station",
+  "Agent d'assainissement",
+  "Employé principal aux ventes",
+  "Vulcanisateur",
 ];
 const contractTypes = ["CDD", "CDI"];
 

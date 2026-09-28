@@ -47,9 +47,13 @@ const educationLevels = [
 
 const posts = [
   "Pompiste Encaisseur",
-  "LAveur Graisseur",
+  "Laveur Graisseur",
+  "Agent Prevention Intervention",
   "Chef d'equipe",
   "Chef de station",
+  "Agent d'assainissement",
+  "Employé principal aux ventes",
+  "Vulcanisateur",
 ];
 const contractTypes = ["CDD", "CDI"];
 
