@@ -1,0 +1,479 @@
+// BROUILLON — schéma PostgreSQL équivalent aux 15 modèles Mongoose actuels.
+// Rien ne l'utilise encore : il sert à évaluer la migration MongoDB → Postgres.
+//
+// Choix principaux (détaillés au fil du fichier) :
+// - Les stations sont référencées par clé étrangère, plus par nom recopié
+//   (Personnel.stationName, User.occupiedStation et son enum figé).
+// - Chaque lien n'est stocké que d'un côté : le document pointe vers son
+//   bordereau / sa reprise ; les tableaux absences[] / conges[] disparaissent.
+// - Les dates sans heure (naissance, début de congé…) sont en @db.Date :
+//   plus de décalage « 23:00Z » lié au fuseau.
+// - AbsenceAA et AbsenceAI ne sont pas reprises : seuls seed.js et
+//   scripts/migrateAbsences.js les utilisent encore.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Énumérations. @map garde les valeurs déjà utilisées par le frontend.
+
+enum Role {
+  administrateur
+  gestionnaire
+  chefStation    @map("chef station")
+  personnel
+}
+
+enum StationType {
+  Urbaine
+  Rurale
+  Autoroute
+  Airport
+}
+
+enum Poste {
+  PompisteEncaisseur          @map("Pompiste Encaisseur")
+  LaveurGraisseur             @map("Laveur Graisseur")
+  AgentPreventionIntervention @map("Agent Prevention Intervention")
+  ChefEquipe                  @map("Chef d'equipe")
+  ChefStation                 @map("Chef de station")
+  AgentAssainissement         @map("Agent d'assainissement")
+  EmployePrincipalVentes      @map("Employé principal aux ventes")
+  Vulcanisateur
+}
+
+enum ContractType {
+  CDI
+  CDD
+}
+
+enum PersonnelStatus {
+  Actif
+  EnConge     @map("En congé")
+  EnFormation @map("En formation")
+  Inactif
+  Absent
+}
+
+enum TypeConge {
+  ordinaire
+  anticipe
+  recuperation
+}
+
+enum MotifRecuperation {
+  jour_ferie
+  double_poste
+  jour_repos
+}
+
+enum MotifAbsence {
+  maladie
+  deces        @map("decés")
+  mariage      @map("marriage")
+  naissance
+  examen
+  autre
+  nonAutorisee
+}
+
+// utils/suivi.js · STATUTS_GESTION
+enum StatutGestion {
+  non_recu
+  non_delivre
+  delivre
+}
+
+enum TypeDocument {
+  Absence
+  Reprise
+  Conge
+}
+
+enum StatutDemande {
+  en_attente
+  acceptee
+  refusee
+}
+
+enum NotificationType {
+  Absence
+  AbsenceAA // notifications antérieures à la fusion des absences
+  AbsenceAI
+  AffectationTemporaire
+  AffectationDefinitive
+  Conge
+  CongeDays
+  MonthlyAccrual
+  SuiviConge
+  SuiviAbsence
+  Demande
+}
+
+// ---------------------------------------------------------------------------
+// Référentiel
+
+model Station {
+  id        String      @id @default(uuid()) @db.Uuid
+  code      String      @unique // « R3120 »
+  name      String      @unique // « GD R3120 »
+  address   String
+  city      String
+  state     String
+  type      StationType
+  notes     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  personnel               Personnel[]
+  users                   User[]
+  conges                  Conge[]
+  bordereaux              Bordereau[]
+  demandesAnnulation      DemandeAnnulation[]
+  pointages               Pointage[]
+  affectationsTempDepart  AffectationTemporaire[] @relation("AffTempOrigine")
+  affectationsTempArrivee AffectationTemporaire[] @relation("AffTempDestination")
+  affectationsDefDepart   AffectationDefinitive[] @relation("AffDefOrigine")
+  affectationsDefArrivee  AffectationDefinitive[] @relation("AffDefDestination")
+}
+
+model Personnel {
+  id           String          @id @default(uuid()) @db.Uuid
+  matricule    String          @unique
+  firstName    String
+  lastName     String
+  birthDate    DateTime        @db.Date
+  hireDate     DateTime        @db.Date
+  poste        Poste
+  contractType ContractType
+  decision     String
+  status       PersonnelStatus @default(Actif)
+  // 2,5 jours acquis par mois (cronjobs/statusCronjobs.js) : décimal.
+  holidaysLeft Decimal         @default(0) @db.Decimal(6, 1)
+  // Restrict : une station qui a encore du personnel ne peut pas être supprimée.
+  stationId    String          @db.Uuid
+  station      Station         @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  account                 User?
+  conges                  Conge[]
+  absences                Absence[]
+  reprises                Reprise[]
+  affectationsTemporaires AffectationTemporaire[]
+  affectationsDefinitives AffectationDefinitive[]
+
+  @@index([stationId])
+  @@index([lastName, firstName])
+}
+
+// Comptes du portail et comptes de pointage.
+model User {
+  id          String     @id @default(uuid()) @db.Uuid
+  username    String     @unique // matricule pour un compte de pointage
+  email       String     @unique
+  password    String // hash bcrypt
+  role        Role
+  // Chef de station et personnel : leur station. Null pour administrateur et
+  // gestionnaire (corrige le rejet de la chaîne vide par l'enum Mongoose).
+  stationId   String?    @db.Uuid
+  station     Station?   @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  // Remplace le lien implicite username = matricule des comptes de pointage.
+  personnelId String?    @unique @db.Uuid
+  personnel   Personnel? @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  notifications   Notification[]
+  pointages       Pointage[]
+  bordereaux      Bordereau[]
+  bordereauxCbr   BordereauCbr[]
+  demandes        DemandeAnnulation[] @relation("Demandeur")
+  decisions       DemandeAnnulation[] @relation("Decideur")
+  congesSuivis    Conge[]             @relation("CongeSuiviPar")
+  absencesSuivies Absence[]           @relation("AbsenceSuiviPar")
+  reprisesSuivies Reprise[]           @relation("RepriseSuiviPar")
+}
+
+// ---------------------------------------------------------------------------
+// Mouvements
+
+model Conge {
+  id                String    @id @default(uuid()) @db.Uuid
+  personnelId       String    @db.Uuid
+  personnel         Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  // Station au moment du congé (l'agent peut changer de station ensuite).
+  stationId         String    @db.Uuid
+  station           Station   @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  typeConge         TypeConge @default(ordinaire)
+  dureeConge        Int
+  dateDebut         DateTime  @db.Date
+  dateRetour        DateTime  @db.Date
+  lieuSejour        String?
+  agentInterimaire  String    @default("")
+  nombreJourRestant Decimal   @default(0) @db.Decimal(6, 1)
+  documentPath      String?
+
+  joursTravailles JourTravaille[]
+
+  // Envoi à l'Agence COM Oran puis au District CBR
+  bordereauId      String?        @db.Uuid
+  bordereau        Bordereau?     @relation(fields: [bordereauId], references: [id], onDelete: SetNull)
+  bordereauCbrId   String?        @db.Uuid
+  bordereauCbr     BordereauCbr?  @relation(fields: [bordereauCbrId], references: [id], onDelete: SetNull)
+  statutGestion    StatutGestion  @default(non_recu)
+  statutGestionLe  DateTime?
+  statutGestionPar String?        @db.Uuid
+  suiviPar         User?          @relation("CongeSuiviPar", fields: [statutGestionPar], references: [id], onDelete: SetNull)
+  statutAvantCbr   StatutGestion?
+
+  demandesAnnulation DemandeAnnulation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([personnelId, dateDebut])
+  @@index([bordereauId, stationId])
+  @@index([bordereauCbrId])
+}
+
+// Remplace le tableau imbriqué Conge.joursTravailles (récupérations).
+model JourTravaille {
+  congeId String            @db.Uuid
+  conge   Conge             @relation(fields: [congeId], references: [id], onDelete: Cascade)
+  date    DateTime          @db.Date
+  motif   MotifRecuperation
+
+  @@id([congeId, date]) // une même date ne compte qu'une fois par congé
+}
+
+model Absence {
+  id          String       @id @default(uuid()) @db.Uuid
+  personnelId String       @db.Uuid
+  personnel   Personnel    @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  date        DateTime     @db.Date
+  duree       Int? // 1 à 365 : contrainte CHECK à ajouter dans la migration SQL
+  motif       MotifAbsence
+  description String       @default("")
+  document    String       @default("")
+  // Avis de reprise qui clôture l'absence ; null = absence encore ouverte.
+  // Remplace aussi Reprise.absences[] : le lien n'est stocké qu'ici.
+  repriseId   String?      @db.Uuid
+  reprise     Reprise?     @relation(fields: [repriseId], references: [id], onDelete: SetNull)
+
+  bordereauId      String?        @db.Uuid
+  bordereau        Bordereau?     @relation(fields: [bordereauId], references: [id], onDelete: SetNull)
+  bordereauCbrId   String?        @db.Uuid
+  bordereauCbr     BordereauCbr?  @relation(fields: [bordereauCbrId], references: [id], onDelete: SetNull)
+  statutGestion    StatutGestion  @default(non_recu)
+  statutGestionLe  DateTime?
+  statutGestionPar String?        @db.Uuid
+  suiviPar         User?          @relation("AbsenceSuiviPar", fields: [statutGestionPar], references: [id], onDelete: SetNull)
+  statutAvantCbr   StatutGestion?
+
+  demandesAnnulation DemandeAnnulation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([motif, repriseId, date(sort: Desc)]) // signalement des 48 h
+  @@index([personnelId, repriseId]) // absences ouvertes d'un agent
+  @@index([bordereauId, personnelId])
+  @@index([bordereauCbrId])
+}
+
+model Reprise {
+  id          String    @id @default(uuid()) @db.Uuid
+  personnelId String    @db.Uuid
+  personnel   Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  dateReprise DateTime  @db.Date
+  absences    Absence[] // absences clôturées par cet avis
+
+  bordereauId      String?        @db.Uuid
+  bordereau        Bordereau?     @relation(fields: [bordereauId], references: [id], onDelete: SetNull)
+  bordereauCbrId   String?        @db.Uuid
+  bordereauCbr     BordereauCbr?  @relation(fields: [bordereauCbrId], references: [id], onDelete: SetNull)
+  statutGestion    StatutGestion  @default(non_recu)
+  statutGestionLe  DateTime?
+  statutGestionPar String?        @db.Uuid
+  suiviPar         User?          @relation("RepriseSuiviPar", fields: [statutGestionPar], references: [id], onDelete: SetNull)
+  statutAvantCbr   StatutGestion?
+
+  demandesAnnulation DemandeAnnulation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([personnelId, dateReprise(sort: Desc)])
+  @@index([bordereauId, personnelId])
+  @@index([bordereauCbrId])
+}
+
+model AffectationTemporaire {
+  id                String    @id @default(uuid()) @db.Uuid
+  personnelId       String    @db.Uuid
+  personnel         Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  startDate         DateTime  @db.Date
+  endDate           DateTime  @db.Date
+  originStationId   String    @db.Uuid
+  originStation     Station   @relation("AffTempOrigine", fields: [originStationId], references: [id], onDelete: Restrict)
+  affectedStationId String    @db.Uuid
+  affectedStation   Station   @relation("AffTempDestination", fields: [affectedStationId], references: [id], onDelete: Restrict)
+  description       String    @default("")
+  document          String    @default("")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([personnelId, startDate])
+}
+
+model AffectationDefinitive {
+  id                String    @id @default(uuid()) @db.Uuid
+  personnelId       String    @db.Uuid
+  personnel         Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  startDate         DateTime  @db.Date
+  originStationId   String    @db.Uuid
+  originStation     Station   @relation("AffDefOrigine", fields: [originStationId], references: [id], onDelete: Restrict)
+  affectedStationId String    @db.Uuid
+  affectedStation   Station   @relation("AffDefDestination", fields: [affectedStationId], references: [id], onDelete: Restrict)
+  description       String    @default("")
+  document          String    @default("")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([personnelId, startDate])
+}
+
+// ---------------------------------------------------------------------------
+// Envois
+
+// Station → Agence COM Oran. Les documents envoyés pointent vers lui ;
+// annuler le bordereau remet leur bordereauId à null (onDelete: SetNull).
+model Bordereau {
+  id          String    @id @default(uuid()) @db.Uuid
+  stationId   String    @db.Uuid
+  station     Station   @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  destination String    @default("Agence COM Oran")
+  createdById String?   @db.Uuid
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  absences    Absence[]
+  reprises    Reprise[]
+  conges      Conge[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([stationId, createdAt(sort: Desc)])
+}
+
+// Agence → District CBR, numéroté par année (« 007/2026 »).
+model BordereauCbr {
+  id          String    @id @default(uuid()) @db.Uuid
+  annee       Int
+  numero      Int
+  expediteur  String    @default("Agence COM Oran")
+  destination String    @default("District CBR")
+  createdById String?   @db.Uuid
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  absences    Absence[]
+  reprises    Reprise[]
+  conges      Conge[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([annee, numero])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ---------------------------------------------------------------------------
+// Demandes d'annulation
+
+// Le refPath polymorphe devient trois clés étrangères facultatives, dont une
+// seule est renseignée (CHECK à ajouter dans la migration SQL). À
+// l'acceptation, le document est supprimé : la clé passe à null et `apercu*`
+// garde l'historique lisible.
+model DemandeAnnulation {
+  id              String        @id @default(uuid()) @db.Uuid
+  typeDocument    TypeDocument
+  absenceId       String?       @db.Uuid
+  absence         Absence?      @relation(fields: [absenceId], references: [id], onDelete: SetNull)
+  repriseId       String?       @db.Uuid
+  reprise         Reprise?      @relation(fields: [repriseId], references: [id], onDelete: SetNull)
+  congeId         String?       @db.Uuid
+  conge           Conge?        @relation(fields: [congeId], references: [id], onDelete: SetNull)
+  stationId       String        @db.Uuid
+  station         Station       @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  apercuAgent     String        @default("")
+  apercuMatricule String        @default("")
+  apercuTitre     String        @default("")
+  apercuDetail    String        @default("")
+  motif           String        @db.VarChar(500)
+  demandeurId     String        @db.Uuid
+  demandeur       User          @relation("Demandeur", fields: [demandeurId], references: [id], onDelete: Restrict)
+  statut          StatutDemande @default(en_attente)
+  decisionParId   String?       @db.Uuid
+  decisionPar     User?         @relation("Decideur", fields: [decisionParId], references: [id], onDelete: SetNull)
+  decisionLe      DateTime?
+  commentaire     String        @default("") @db.VarChar(500)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // « Une seule demande en attente par document » : index unique partiel
+  // (WHERE statut = 'en_attente'), que Prisma ne sait pas déclarer ; à
+  // écrire en SQL dans la migration.
+  @@index([stationId, statut])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications et pointage
+
+// Destinataire = un compte (User). Aujourd'hui, les notifications
+// personnelles (« Votre congé a été enregistré ») visent l'id du Personnel :
+// aucune cloche ne les affiche. Ici, elles iraient au compte lié à l'agent
+// (User.personnelId), ou ne seraient pas créées s'il n'en a pas.
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  // Id du document concerné (absence, congé…), sans clé étrangère : le
+  // document peut être supprimé sans effacer la notification.
+  referenceId String?          @db.Uuid
+  title       String?
+  message     String
+  detailsUrl  String
+  // Clé d'une alerte de suivi : notifiée une seule fois par destinataire.
+  // Les NULL étant distincts en SQL, l'unicité ne s'applique qu'aux alertes.
+  cle         String?
+  seen        Boolean          @default(false)
+  seenAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@unique([userId, cle])
+  @@index([userId, seen])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// Un pointage par compte et par jour. Les copies matricule / nom / station
+// du modèle actuel disparaissent : elles se lisent via user.personnel, et la
+// station du jour est gardée par clé étrangère.
+model Pointage {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stationId String    @db.Uuid
+  station   Station   @relation(fields: [stationId], references: [id], onDelete: Restrict)
+  date      DateTime  @db.Date
+  entryTime DateTime?
+  exitTime  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([stationId, date])
+}
+
+// Sessions de connexion : remplacer connect-mongo par connect-pg-simple, qui
+// crée sa propre table « session » (hors de ce schéma).
