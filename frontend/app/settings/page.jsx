@@ -10,12 +10,15 @@ import {
   Eye,
   EyeOff,
   Fingerprint,
+  Headset,
   Info,
   KeyRound,
   Loader2,
   Lock,
+  Mail,
   MoreHorizontal,
   Pencil,
+  Phone,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -88,6 +91,8 @@ import {
   InputWithIcon,
   formatDateFr,
 } from "@/components/ui/form-layout";
+import { ContactSupport } from "../components/contact-support";
+import { CONTACT_VIDE, chargerContact, contactRenseigne } from "@/lib/contact";
 
 const STATIONS = [
   "GD R3120", "GD R3121", "GD R3122", "GD R3124", "GD R3125",
@@ -347,6 +352,13 @@ export default function SettingsPage() {
   const [showResetSuccessDialog, setShowResetSuccessDialog] = useState(false);
   const [personnelToReset, setPersonnelToReset] = useState(null);
 
+  // Contact d'assistance (affiché sur la page de connexion)
+  const [contact, setContact] = useState(CONTACT_VIDE);
+  const [contactForm, setContactForm] = useState(CONTACT_VIDE);
+  const [contactErrors, setContactErrors] = useState({});
+  const [contactLoading, setContactLoading] = useState(true);
+  const [savingContact, setSavingContact] = useState(false);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -375,6 +387,63 @@ export default function SettingsPage() {
 
     checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    chargerContact()
+      .then((data) => {
+        setContact(data);
+        setContactForm(data);
+      })
+      .catch(() => toast.error("Impossible de charger le contact d'assistance"))
+      .finally(() => setContactLoading(false));
+  }, []);
+
+  const validateContact = (values) => {
+    const next = {};
+    if (!values.telephone.trim() && !values.email.trim()) {
+      next.telephone = "Indiquez au moins un téléphone ou une adresse email.";
+    }
+    if (values.telephone.trim() && !/^[0-9+().\s/-]{6,30}$/.test(values.telephone.trim())) {
+      next.telephone = "Numéro de téléphone invalide.";
+    }
+    if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+      next.email = "Adresse email invalide.";
+    }
+    return next;
+  };
+
+  const handleContactChange = (e) => {
+    const { name, value } = e.target;
+    setContactForm((prev) => ({ ...prev, [name]: value }));
+    if (contactErrors[name]) setContactErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    const nextErrors = validateContact(contactForm);
+    setContactErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setSavingContact(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/settings/contact`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(contactForm),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Erreur lors de l'enregistrement du contact");
+      const saved = { ...CONTACT_VIDE, ...data };
+      setContact(saved);
+      setContactForm(saved);
+      toast.success("Contact d'assistance enregistré");
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setSavingContact(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -970,6 +1039,7 @@ export default function SettingsPage() {
   const sections = [
     isAdmin && { id: "utilisateurs", label: "Utilisateurs", hint: "Accès au portail", icon: Users },
     canManagePersonnel && { id: "pointage", label: "Comptes de pointage", hint: "Pointage des employés", icon: Fingerprint },
+    { id: "contact", label: "Contact", hint: "Assistance à la connexion", icon: Headset },
     { id: "securite", label: "Sécurité", hint: "Votre mot de passe", icon: Shield },
   ].filter(Boolean);
   const currentSection = sections.find((section) => section.id === activeSection)?.id ?? sections[0].id;
@@ -1443,13 +1513,115 @@ export default function SettingsPage() {
     </form>
   );
 
+  const contactChanged = Object.keys(CONTACT_VIDE).some((key) => (contactForm[key] || "") !== (contact[key] || ""));
+  const contactField = (name, label, props = {}) => (
+    <Field label={label} htmlFor={`contact-${name}`} error={contactErrors[name]} hint={props.hint} full={props.full}>
+      {props.icon ? (
+        <InputWithIcon icon={props.icon}>
+          <Input
+            id={`contact-${name}`}
+            name={name}
+            value={contactForm[name]}
+            onChange={handleContactChange}
+            placeholder={props.placeholder}
+            type={props.type || "text"}
+            aria-invalid={!!contactErrors[name] || undefined}
+            disabled={savingContact}
+            className="pl-9"
+          />
+        </InputWithIcon>
+      ) : (
+        <Input
+          id={`contact-${name}`}
+          name={name}
+          value={contactForm[name]}
+          onChange={handleContactChange}
+          placeholder={props.placeholder}
+          aria-invalid={!!contactErrors[name] || undefined}
+          disabled={savingContact}
+        />
+      )}
+    </Field>
+  );
+
+  const contactPanel = contactLoading ? (
+    <div className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-xs">
+      <Skeleton className="h-4 w-40" />
+      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-9 w-full" />
+    </div>
+  ) : isAdmin ? (
+    <form onSubmit={handleContactSubmit} noValidate className="rounded-lg border border-border bg-card shadow-xs">
+      <FormSection
+        title="Contact d'assistance"
+        description="Affiché sur la page de connexion pour les utilisateurs qui ont oublié leur mot de passe ou dont l'accès est bloqué."
+      >
+        {contactField("nom", "Nom du responsable", { placeholder: "Ex. Karim B." })}
+        {contactField("service", "Service", { placeholder: "Ex. Service informatique" })}
+        {contactField("telephone", "Téléphone", { icon: Phone, type: "tel", placeholder: "+213 …" })}
+        {contactField("email", "Adresse email", { icon: Mail, type: "email", placeholder: "support@naftal.dz" })}
+        {contactField("horaires", "Disponibilité", {
+          full: true,
+          placeholder: "Ex. Dim – Jeu, 8h00 – 16h30",
+          hint: "Facultatif. Au moins un téléphone ou une adresse email est requis.",
+        })}
+      </FormSection>
+
+      <FormSection title="Aperçu" description="Tel qu'il apparaît sous le formulaire de connexion.">
+        <div className="sm:col-span-2 sm:max-w-[400px]">
+          <ContactSupport contact={contactForm} />
+        </div>
+      </FormSection>
+
+      <FormActions showRequiredNote={false}>
+        {contact.updatedAt && (
+          <p className="text-xs text-muted-foreground sm:mr-auto">Dernière mise à jour le {formatDateFr(contact.updatedAt)}</p>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!contactChanged || savingContact}
+          onClick={() => {
+            setContactForm(contact);
+            setContactErrors({});
+          }}
+        >
+          Annuler
+        </Button>
+        <Button type="submit" disabled={!contactChanged || savingContact}>
+          {savingContact ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          {savingContact ? "Enregistrement…" : "Enregistrer"}
+        </Button>
+      </FormActions>
+    </form>
+  ) : (
+    <DetailSection
+      title="Contact d'assistance"
+      description="Pour un mot de passe oublié, un accès bloqué ou un problème sur le portail."
+    >
+      {contactRenseigne(contact) ? (
+        <div className="max-w-[400px]">
+          <ContactSupport contact={contact} />
+        </div>
+      ) : (
+        <EmptyState
+          icon={Headset}
+          title="Aucun contact renseigné"
+          hint="L'administrateur n'a pas encore indiqué de contact d'assistance. Adressez-vous à votre administrateur."
+        />
+      )}
+    </DetailSection>
+  );
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-6 lg:p-8">
       <PageHeader
         title="Paramètres"
         description={
           sections.length > 1
-            ? "Gérez les accès au portail, les comptes de pointage et la sécurité de votre compte."
+            ? isAdmin
+              ? "Gérez les accès au portail, les comptes de pointage, le contact d'assistance et la sécurité de votre compte."
+              : "Consultez le contact d'assistance et gérez la sécurité de votre compte."
             : "Gérez la sécurité de votre compte."
         }
       />
@@ -1489,6 +1661,7 @@ export default function SettingsPage() {
         <div className="min-w-0">
           {currentSection === "utilisateurs" && usersPanel}
           {currentSection === "pointage" && personnelPanel}
+          {currentSection === "contact" && contactPanel}
           {currentSection === "securite" && securityPanel}
         </div>
       </div>

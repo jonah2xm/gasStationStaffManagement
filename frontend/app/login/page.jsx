@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Toaster } from "@/components/ui/toaster";
-import { EyeIcon, EyeOffIcon, Loader2, Lock, User } from "lucide-react";
+import { ArrowRight, EyeIcon, EyeOffIcon, Fingerprint, Loader2, Lock, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
+import { ContactSupport } from "../components/contact-support";
+import { chargerContact } from "@/lib/contact";
 
 function Brand({ size = "md", onDark = false }) {
   const tile = size === "lg" ? "h-11 w-11" : "h-9 w-9";
@@ -36,9 +38,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [contact, setContact] = useState(null);
 
   useEffect(() => {
     setMounted(true);
+    chargerContact().then(setContact).catch(() => setContact(null));
   }, []);
 
   const handleSubmit = async (e) => {
@@ -114,81 +118,90 @@ export default function LoginPage() {
       </aside>
 
       {/* Sign-in form */}
-      <main className="flex flex-1 items-center justify-center p-6">
-        <div className="w-full max-w-[380px] space-y-7">
-          {/* Petit écran : le panneau photo est masqué, la marque garde son fond bleu marine. */}
-          <div className="rounded-xl bg-brand p-4 lg:hidden">
-            <Brand onDark />
-          </div>
+      <main className="flex min-w-0 flex-1 flex-col">
+        {/* Petit écran : le panneau photo est masqué, la marque passe en bandeau en haut. */}
+        <header className="bg-brand px-6 py-4 lg:hidden">
+          <Brand onDark />
+        </header>
 
-          <div className="space-y-1.5">
-            <h2 className="text-2xl font-semibold tracking-tight text-brand">Connexion</h2>
-            <p className="text-[13.5px] text-muted-foreground">Accédez à votre espace de gestion.</p>
-          </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="identifier">Nom d'utilisateur</Label>
-              <div className="relative">
-                <User aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-600" />
-                <Input
-                  id="identifier"
-                  placeholder="Identifiant"
-                  type="text"
-                  autoComplete="username"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  className="h-11 pl-9"
-                  disabled={isLoading}
-                />
-              </div>
+        <div className="flex flex-1 items-center justify-center px-6 py-8">
+          <div className="w-full max-w-[400px] space-y-6 rounded-xl border border-border bg-card p-6 shadow-xs sm:p-7">
+            <div className="space-y-1.5">
+              <h2 className="text-2xl font-semibold tracking-tight text-brand">Connexion</h2>
+              <p className="text-[13.5px] text-muted-foreground">Accédez à votre espace de gestion.</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
-              <div className="relative">
-                <Lock aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-600" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 pl-9 pr-11"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[7px] text-ink-700 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                </button>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="identifier">Nom d'utilisateur</Label>
+                <div className="relative">
+                  <User aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-600" />
+                  <Input
+                    id="identifier"
+                    placeholder="Identifiant"
+                    type="text"
+                    autoComplete="username"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    className="h-11 pl-9"
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-            </div>
 
-            <Button type="submit" size="lg" disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Connexion…</span>
-                </>
-              ) : (
-                "Se connecter"
-              )}
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="password">Mot de passe</Label>
+                <div className="relative">
+                  <Lock aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-600" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 pl-9 pr-11"
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[7px] text-ink-700 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
 
-          <div className="space-y-2 border-t border-border pt-5 text-[13px]">
-            <p className="text-muted-foreground">Mot de passe oublié ? Contactez votre administrateur.</p>
-            <Link href="/pointage" className="inline-block font-medium text-brand underline-offset-4 hover:underline">
-              Aller à l'espace pointage
-            </Link>
+              <Button type="submit" size="lg" disabled={isLoading} className="w-full">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Connexion…</span>
+                  </>
+                ) : (
+                  "Se connecter"
+                )}
+              </Button>
+            </form>
+
+            <ContactSupport contact={contact} />
           </div>
         </div>
+
+        <footer className="flex flex-col items-center justify-between gap-2 border-t border-border px-6 py-4 text-[13px] sm:flex-row">
+          <Link
+            href="/pointage"
+            className="inline-flex items-center gap-1.5 font-medium text-brand underline-offset-4 hover:underline"
+          >
+            <Fingerprint aria-hidden className="h-4 w-4" />
+            Aller à l'espace pointage
+            <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+          <p className="text-xs tabular-nums text-muted-foreground">© {new Date().getFullYear()} Naftal · NSC Portal</p>
+        </footer>
       </main>
 
       <Toaster position="top-right" />

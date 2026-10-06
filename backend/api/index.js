@@ -25,6 +25,7 @@ const bordereauRoutes = require("../src/routes/bordereauRoutes");
 const suiviRoutes = require("../src/routes/suiviRoutes");
 const bordereauCbrRoutes = require("../src/routes/bordereauCbrRoutes");
 const demandeRoutes = require("../src/routes/demandeRoutes");
+const settingRoutes = require("../src/routes/settingRoutes");
 
 const fs = require("fs");
 
@@ -150,6 +151,7 @@ app.use("/api/bordereaux", bordereauRoutes);
 app.use("/api/suivi", suiviRoutes);
 app.use("/api/bordereaux-cbr", bordereauCbrRoutes);
 app.use("/api/demandes", demandeRoutes);
+app.use("/api/settings", settingRoutes);
 
 // 9. Error handler
 app.use((err, req, res, next) => {
