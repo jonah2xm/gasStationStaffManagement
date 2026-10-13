@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema(
     },
     occupiedStation: {
       type: String,
+      set: (v) => v || undefined,
       enum: [
         "GD R3120", "GD R3121", "GD R3122", "GD R3124", "GD R3125",
         "GD R3126", "GD R3127", "GD R3128", "GD R3130", "GD R3132",

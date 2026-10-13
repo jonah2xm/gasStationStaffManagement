@@ -18,7 +18,7 @@ const { logoutUser } = require("../controllers/userController");
 
 router.post("/login", loginUser);
 router.patch("/reset-password/:id", resetPassword);
-router.delete("/:id", deleteUser);
+router.delete("/:id", ensureAuthenticated, deleteUser);
 router.put("/updatePassword", ensureAuthenticated, updatePassword);
 router.put("/:id", ensureAuthenticated, updateUser);
 router.get('/', ensureAuthenticated, getUsers)
